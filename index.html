@@ -1,0 +1,463 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine 
+} from 'recharts';
+import { 
+  ClipboardList, TrendingUp, Info, ArrowRight, CheckCircle2, AlertCircle, 
+  Brain, Heart, Activity, Trash2
+} from 'lucide-react';
+
+const BECK_QUESTIONS = [
+  {
+    id: 1,
+    title: "Настроение",
+    options: [
+      "Я не чувствую себя несчастным.",
+      "Я чувствую себя несчастным.",
+      "Я все время несчастен и не могу от этого освободиться.",
+      "Я настолько несчастен и печален, что больше не могу этого выносить."
+    ]
+  },
+  {
+    id: 2,
+    title: "Пессимизм",
+    options: [
+      "Я не настроен пессимистично в отношении своего будущего.",
+      "Я чувствую, что больше чем обычно расстроен своим будущим.",
+      "Я чувствую, что мне нечего ждать от будущего.",
+      "Я чувствую, что мое будущее безнадежно и станет только хуже."
+    ]
+  },
+  {
+    id: 3,
+    title: "Чувство несостоятельности",
+    options: [
+      "Я не чувствую себя неудачником.",
+      "Я чувствую, что терпел неудачи чаще, чем другие.",
+      "Когда я оглядываюсь на свою жизнь, я вижу в ней много неудач.",
+      "Я чувствую себя полным неудачником как личность."
+    ]
+  },
+  {
+    id: 4,
+    title: "Неудовлетворенность",
+    options: [
+      "Я получаю столько же удовольствия от жизни, как и раньше.",
+      "Я не получаю столько же удовольствия, как раньше.",
+      "Я получаю очень мало удовлетворения от тех вещей, которые раньше мне нравились.",
+      "Я ни от чего не получаю удовлетворения."
+    ]
+  },
+  {
+    id: 5,
+    title: "Чувство вины",
+    options: [
+      "Я не чувствую себя в чем-либо особенно виноватым.",
+      "Довольно часто я чувствую себя виноватым.",
+      "Большую часть времени я чувствую себя виноватым.",
+      "Я постоянно чувствую себя виноватым."
+    ]
+  },
+  {
+    id: 6,
+    title: "Ощущение наказания",
+    options: [
+      "Я не чувствую, что меня за что-то наказывают.",
+      "Я чувствую, что могу быть наказан.",
+      "Я ожидаю, что буду наказан.",
+      "Я чувствую, что уже наказан."
+    ]
+  },
+  {
+    id: 7,
+    title: "Самообвинение",
+    options: [
+      "Я не разочарован в себе.",
+      "Я разочарован в себе.",
+      "Я себе противен.",
+      "Я себя ненавижу."
+    ]
+  },
+  {
+    id: 8,
+    title: "Критичность к себе",
+    options: [
+      "Я не критикую и не виню себя больше, чем обычно.",
+      "Я более критичен к себе, чем раньше.",
+      "Я критикую себя за все свои ошибки.",
+      "Я виню себя во всем плохом, что происходит."
+    ]
+  },
+  {
+    id: 9,
+    title: "Суицидальные мысли",
+    options: [
+      "У меня нет никаких мыслей о самоповреждении.",
+      "У меня бывают мысли о самоповреждении, но я не стал бы их осуществлять.",
+      "Я хотел бы покончить с собой.",
+      "Я бы покончил с собой, если бы представился случай."
+    ]
+  },
+  {
+    id: 10,
+    title: "Слезливость",
+    options: [
+      "Я плачу не больше, чем обычно.",
+      "Я плачу чаще, чем раньше.",
+      "Я плачу по любому поводу.",
+      "Мне хочется плакать, но я не могу."
+    ]
+  },
+  {
+    id: 11,
+    title: "Раздражительность",
+    options: [
+      "Я не более раздражителен, чем обычно.",
+      "Я более раздражителен, чем обычно.",
+      "Я постоянно чувствую раздражение.",
+      "Меня вообще больше ничего не раздражает, потому что мне все равно."
+    ]
+  },
+  {
+    id: 12,
+    title: "Утрата интереса",
+    options: [
+      "Я не утратил интереса к другим людям.",
+      "Я меньше интересуюсь другими людьми, чем раньше.",
+      "Я почти утратил интерес к другим людям.",
+      "Я полностью утратил интерес к другим людям."
+    ]
+  },
+  {
+    id: 13,
+    title: "Нерешительность",
+    options: [
+      "Я принимаю решения так же легко, как и раньше.",
+      "Я чаще откладываю принятие решений, чем раньше.",
+      "Мне труднее принимать решения, чем раньше.",
+      "Я больше не могу принимать никаких решений."
+    ]
+  },
+  {
+    id: 14,
+    title: "Бесполезность",
+    options: [
+      "Я не чувствую, что я выгляжу хуже, чем обычно.",
+      "Я обеспокоен тем, что выгляжу старым или непривлекательным.",
+      "Я чувствую, что в моей внешности произошли изменения, которые делают меня непривлекательным.",
+      "Я уверен, что выгляжу ужасно."
+    ]
+  },
+  {
+    id: 15,
+    title: "Утрата трудоспособности",
+    options: [
+      "Я могу работать так же хорошо, как и раньше.",
+      "Мне требуется дополнительное усилие, чтобы начать что-то делать.",
+      "Я должен заставлять себя с большим трудом, чтобы хоть что-то сделать.",
+      "Я совсем не могу работать."
+    ]
+  },
+  {
+    id: 16,
+    title: "Расстройство сна",
+    options: [
+      "Мой сон не изменился.",
+      "Я сплю немного хуже, чем раньше.",
+      "Я просыпаюсь на 1-2 часа раньше и мне трудно заснуть снова.",
+      "Я просыпаюсь на несколько часов раньше и вообще не могу заснуть."
+    ]
+  },
+  {
+    id: 17,
+    title: "Утомляемость",
+    options: [
+      "Я устаю не больше, чем обычно.",
+      "Я устаю быстрее, чем обычно.",
+      "Я устаю почти от всего, что я делаю.",
+      "Я слишком устал, чтобы что-либо делать."
+    ]
+  },
+  {
+    id: 18,
+    title: "Аппетит",
+    options: [
+      "Мой аппетит не изменился.",
+      "Мой аппетит немного хуже, чем раньше.",
+      "Мой аппетит гораздо хуже, чем раньше.",
+      "У меня совсем нет аппетита."
+    ]
+  },
+  {
+    id: 19,
+    title: "Снижение веса",
+    options: [
+      "Я не терял в весе за последнее время.",
+      "Я потерял более 2 кг.",
+      "Я потерял более 4 кг.",
+      "Я потерял более 7 кг."
+    ]
+  },
+  {
+    id: 20,
+    title: "Ипохондрия",
+    options: [
+      "Я беспокоюсь о своем здоровье не больше, чем обычно.",
+      "Я обеспокоен своими болями, расстройством желудка или запорами.",
+      "Я очень обеспокоен своим здоровьем, и мне трудно думать о чем-то другом.",
+      "Я настолько обеспокоен своим здоровьем, что не могу ни о чем другом думать."
+    ]
+  },
+  {
+    id: 21,
+    title: "Потеря либидо",
+    options: [
+      "Мой интерес к сексу не изменился.",
+      "Я меньше интересуюсь сексом, чем раньше.",
+      "Сейчас я значительно меньше интересуюсь сексом.",
+      "Я полностью утратил интерес к сексу."
+    ]
+  }
+];
+
+export default function App() {
+  const [view, setView] = useState('dashboard'); // dashboard, test, history
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [answers, setAnswers] = useState(new Array(21).fill(null));
+  const [history, setHistory] = useState([]);
+
+  // Загрузка данных (имитация локального хранилища)
+  useEffect(() => {
+    const saved = localStorage.getItem('beck_history');
+    if (saved) setHistory(JSON.parse(saved));
+  }, []);
+
+  const saveToHistory = (score) => {
+    const newEntry = {
+      date: new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+      fullDate: new Date().toISOString(),
+      score: score
+    };
+    const updatedHistory = [...history, newEntry].slice(-8); // Ограничиваем последними 8 неделями
+    setHistory(updatedHistory);
+    localStorage.setItem('beck_history', JSON.stringify(updatedHistory));
+  };
+
+  const handleAnswer = (value) => {
+    const newAnswers = [...answers];
+    newAnswers[currentQuestion] = value;
+    setAnswers(newAnswers);
+
+    if (currentQuestion < 20) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      const total = newAnswers.reduce((a, b) => a + b, 0);
+      saveToHistory(total);
+      setView('dashboard');
+      setCurrentQuestion(0);
+      setAnswers(new Array(21).fill(null));
+    }
+  };
+
+  const getInterpretation = (score) => {
+    if (score === null) return { label: 'Нет данных', color: 'text-slate-400', desc: 'Пройдите тест для оценки.' };
+    if (score <= 13) return { label: 'Норма', color: 'text-emerald-400', desc: 'Отсутствие депрессивных симптомов.' };
+    if (score <= 19) return { label: 'Легкая депрессия', color: 'text-yellow-400', desc: 'Субдепрессия (мягкая форма).' };
+    if (score <= 29) return { label: 'Умеренная депрессия', color: 'text-orange-400', desc: 'Выраженная депрессивная симптоматика.' };
+    return { label: 'Тяжелая депрессия', color: 'text-red-500', desc: 'Критический уровень. Требуется помощь специалиста.' };
+  };
+
+  const latestScore = history.length > 0 ? history[history.length - 1].score : null;
+  const interpretation = getInterpretation(latestScore);
+
+  return (
+    <div className="min-h-screen bg-[#0f172a] text-slate-200 font-sans p-4 md:p-8">
+      <div className="max-w-4xl mx-auto">
+        
+        {/* Заголовок */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-2">
+              <Brain className="text-indigo-500" />
+              Depression Monitor
+            </h1>
+            <p className="text-slate-500 text-sm font-medium">Шкала Бека (BDI) • 8-недельный трекер</p>
+          </div>
+          
+          <nav className="flex gap-2">
+            <button 
+              onClick={() => setView('dashboard')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${view === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+            >
+              Главная
+            </button>
+            <button 
+              onClick={() => { setView('test'); setCurrentQuestion(0); setAnswers(new Array(21).fill(null)); }}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${view === 'test' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+            >
+              Пройти тест
+            </button>
+          </nav>
+        </header>
+
+        {view === 'dashboard' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Текущий статус */}
+            <div className="lg:col-span-1 space-y-6">
+              <div className="bg-[#1e293b] p-6 rounded-3xl border border-slate-800 shadow-xl">
+                <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest mb-4">Текущий статус</h3>
+                <div className="text-4xl font-black text-white mb-1">
+                  {latestScore !== null ? `${latestScore} б.` : "—"}
+                </div>
+                <div className={`text-lg font-bold mb-4 ${interpretation.color}`}>
+                  {interpretation.label}
+                </div>
+                <p className="text-slate-400 text-sm leading-relaxed mb-6 italic">
+                  "{interpretation.desc}"
+                </p>
+                <button 
+                  onClick={() => setView('test')}
+                  className="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all border border-slate-700/50"
+                >
+                  <Activity size={18} className="text-indigo-400" />
+                  Обновить замер
+                </button>
+              </div>
+
+              <div className="bg-indigo-600/10 p-6 rounded-3xl border border-indigo-500/20">
+                <h4 className="flex items-center gap-2 text-indigo-400 font-bold mb-3 text-sm">
+                  <Info size={16} /> Рекомендация
+                </h4>
+                <p className="text-slate-300 text-xs leading-relaxed">
+                  {latestScore >= 30 
+                    ? "Ваш результат указывает на критический уровень. Пожалуйста, не откладывайте визит к психотерапевту. Современная медицина успешно справляется с такими состояниями."
+                    : "Регулярный мониторинг помогает заметить ухудшение до того, как оно станет критическим. Продолжайте замеры раз в неделю."}
+                </p>
+              </div>
+            </div>
+
+            {/* График динамики */}
+            <div className="lg:col-span-2 bg-[#1e293b] p-6 rounded-3xl border border-slate-800 shadow-xl flex flex-col">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-white font-bold flex items-center gap-2">
+                  <TrendingUp className="text-indigo-400" size={20} />
+                  Динамика за 8 недель
+                </h3>
+                {history.length > 0 && (
+                  <button 
+                    onClick={() => {if(confirm('Очистить историю?')) { setHistory([]); localStorage.removeItem('beck_history'); }}}
+                    className="p-2 text-slate-600 hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+              
+              <div className="h-[250px] w-full">
+                {history.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={history}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                      <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis domain={[0, 63]} stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px' }}
+                        itemStyle={{ color: '#818cf8', fontWeight: 'bold' }}
+                      />
+                      <ReferenceLine y={14} label={{ value: 'Порог', fill: '#fbbf24', fontSize: 10, position: 'insideBottomRight' }} stroke="#fbbf24" strokeDasharray="3 3" />
+                      <Line 
+                        type="monotone" 
+                        dataKey="score" 
+                        stroke="#6366f1" 
+                        strokeWidth={4} 
+                        dot={{ r: 6, fill: '#6366f1', strokeWidth: 2, stroke: '#1e293b' }}
+                        activeDot={{ r: 8, strokeWidth: 0 }}
+                        animationDuration={1500}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-800 rounded-2xl">
+                    <TrendingUp size={48} className="mb-2 opacity-10" />
+                    <p className="text-sm">Нет данных для построения графика</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Образовательный контент */}
+              <div className="mt-8 pt-8 border-t border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="text-amber-500" size={16} />
+                    <h5 className="text-sm font-bold text-slate-200">На что обратить внимание?</h5>
+                  </div>
+                  <ul className="text-xs text-slate-400 space-y-1 list-disc pl-4">
+                    <li>Качество сна и аппетит</li>
+                    <li>Появление суицидальных мыслей</li>
+                    <li>Чувство полной безнадежности</li>
+                    <li>Социальная изоляция</li>
+                  </ul>
+                </div>
+                <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Heart className="text-rose-500" size={16} />
+                    <h5 className="text-sm font-bold text-slate-200">Эффективные методы</h5>
+                  </div>
+                  <ul className="text-xs text-slate-400 space-y-1 list-disc pl-4">
+                    <li>КПТ (Когнитивно-поведенческая терапия)</li>
+                    <li>Медикаментозная поддержка (по назначению)</li>
+                    <li>Поведенческая активация (малые шаги)</li>
+                    <li>Физическая нагрузка (доказано)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === 'test' && (
+          <div className="bg-[#1e293b] rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4">
+            {/* Прогресс-бар */}
+            <div className="h-2 bg-slate-800 w-full">
+              <div 
+                className="h-full bg-indigo-500 transition-all duration-300 ease-out"
+                style={{ width: `${((currentQuestion + 1) / 21) * 100}%` }}
+              ></div>
+            </div>
+
+            <div className="p-8 md:p-12">
+              <div className="flex items-center justify-between mb-8">
+                <span className="text-indigo-400 font-black text-xs uppercase tracking-[0.2em]">Вопрос {currentQuestion + 1} из 21</span>
+                <span className="bg-slate-900 px-3 py-1 rounded-full text-[10px] text-slate-500 border border-slate-800">
+                  Баллы за тест суммируются
+                </span>
+              </div>
+
+              <h2 className="text-2xl font-bold text-white mb-8 leading-tight">
+                {BECK_QUESTIONS[currentQuestion].title}
+              </h2>
+
+              <div className="space-y-3">
+                {BECK_QUESTIONS[currentQuestion].options.map((option, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleAnswer(index)}
+                    className="w-full text-left p-5 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-indigo-500 hover:bg-slate-800 transition-all group relative overflow-hidden"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-6 h-6 rounded-full border-2 border-slate-700 flex items-center justify-center shrink-0 group-hover:border-indigo-500 mt-1">
+                        <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 opacity-0 group-active:opacity-100 transition-opacity"></div>
+                      </div>
+                      <span className="text-slate-300 group-hover:text-white leading-snug">{option}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
