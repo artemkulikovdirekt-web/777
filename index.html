@@ -1,225 +1,742 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Depression Monitor - Beck Scale</title>
-    <!-- Подключаем Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- React 18 -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
-    <!-- Prop-Types (необходимы для Recharts в браузере) -->
-    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
-    
-    <!-- Заглушка для Recharts -->
-    <script>
-        window.process = { env: { NODE_ENV: 'production' } };
-    </script>
-    
-    <!-- Подключаем Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Recharts (версия 2.x через CDN часто требует специфического порядка) -->
-    <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
-    
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; margin: 0; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
+import React, { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { Sky } from 'three/examples/jsm/objects/Sky.js';
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-        
-        // Функция для безопасного получения компонентов Recharts
-        const getRechartsComponent = (name) => {
-            if (window.Recharts && window.Recharts[name]) {
-                return window.Recharts[name];
+const App = () => {
+  const containerRef = useRef(null);
+  
+  // UI State
+  const [invOpen, setInvOpen] = useState(false);
+  const [actionIcon, setActionIcon] = useState(null);
+  const [isSittingUI, setIsSittingUI] = useState(false);
+  const [uiData, setUiData] = useState({
+      hunger: 100, thirst: 100,
+      bigSticks: 0, smallSticks: 0,
+      bottle: 0, bread: 5, pumpkins: 0, cactusFruits: 0
+  });
+  
+  const stateRef = useRef({
+      isWalking: false, isSitting: false,
+      yaw: 0, pitch: 0, targetYaw: 0, targetPitch: 0,
+      walkCycle: 0, rockCycle: 0, lastSin: 0,
+      audioCtx: null, colliders: [], doorCollider: null,
+      timeOfDay: 10, dayCount: 0, lastTimeOfDay: 10,
+      isDoorOpen: false, doorRot: 0,
+      isFireLit: false, fireParticles: [], fireLight: null,
+      torches: [], isHandTorchLit: false, handTorchTimer: 0, handTorch: null,
+      activeAction: null, activeIcon: null,
+      ui: { hunger: 100, thirst: 100, bigSticks: 0, smallSticks: 0, bottle: 0, bread: 5, pumpkins: 0, cactusFruits: 0 },
+      plants: [] 
+  });
+
+  useEffect(() => {
+    // --- СЦЕНА ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x66aaff);
+    scene.fog = new THREE.FogExp2(0xc29a6b, 0.015);
+
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 800);
+    camera.position.set(0, 1.6, 25); 
+    scene.add(camera);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    containerRef.current.appendChild(renderer.domElement);
+
+    // --- ТЕКСТУРЫ ---
+    const createBrickTex = () => {
+        const c = document.createElement('canvas'); c.width = 256; c.height = 256; const ctx = c.getContext('2d');
+        ctx.fillStyle = '#6b5345'; ctx.fillRect(0, 0, 256, 256); 
+        for(let y=0; y<256; y+=32) {
+            const offset = (y/32) % 2 === 0 ? 0 : 32;
+            for(let x=-offset; x<256; x+=64) {
+                ctx.fillStyle = Math.random() > 0.5 ? '#b08d6a' : '#9c7b5a';
+                ctx.fillRect(x+2, y+2, 60, 28);
             }
-            // Заглушка, если библиотека еще не загрузилась (хотя Babel ждет выполнения скриптов)
-            return () => null;
-        };
+        }
+        const tex = new THREE.CanvasTexture(c); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(4, 2); return tex;
+    };
+    
+    const createPumpkinTex = () => {
+        const c = document.createElement('canvas'); c.width = 128; c.height = 128; const ctx = c.getContext('2d');
+        ctx.fillStyle = '#ff8800'; ctx.fillRect(0, 0, 128, 128); 
+        ctx.strokeStyle = '#226622'; ctx.lineWidth = 6;
+        for(let i=16; i<128; i+=32) { ctx.beginPath(); ctx.moveTo(i,0); ctx.quadraticCurveTo(i-10, 64, i, 128); ctx.stroke(); }
+        return new THREE.CanvasTexture(c);
+    };
 
-        const LineChart = getRechartsComponent('LineChart');
-        const Line = getRechartsComponent('Line');
-        const XAxis = getRechartsComponent('XAxis');
-        const YAxis = getRechartsComponent('YAxis');
-        const CartesianGrid = getRechartsComponent('CartesianGrid');
-        const Tooltip = getRechartsComponent('Tooltip');
-        const ResponsiveContainer = getRechartsComponent('ResponsiveContainer');
+    const brickMat = new THREE.MeshStandardMaterial({map: createBrickTex(), roughness: 0.9});
+    const woodMat = new THREE.MeshStandardMaterial({color: 0x4a3c2a, roughness: 0.9});
+    const leafMat = new THREE.MeshStandardMaterial({color: 0x3d5c3a, roughness: 0.9});
+    const pumpkinMat = new THREE.MeshStandardMaterial({map: createPumpkinTex(), roughness: 0.7});
+    
+    const circleCanvas = document.createElement('canvas'); circleCanvas.width = 16; circleCanvas.height = 16;
+    const cCtx = circleCanvas.getContext('2d'); cCtx.beginPath(); cCtx.arc(8, 8, 8, 0, Math.PI*2); cCtx.fillStyle = '#ffffff'; cCtx.fill();
+    const circleTex = new THREE.CanvasTexture(circleCanvas);
 
-        const BECK_QUESTIONS = [
-            { id: 1, title: "Настроение", options: ["Я не чувствую себя несчастным.", "Я чувствую себя несчастным.", "Я все время несчастен и не могу от этого освободиться.", "Я настолько несчастен и печален, что больше не могу этого выносить."] },
-            { id: 2, title: "Пессимизм", options: ["Я не настроен пессимистично в отношении своего будущего.", "Я чувствую, что больше чем обычно расстроен своим будущим.", "Я чувствую, что мне нечего ждать от будущего.", "Я чувствую, что мое будущее безнадежно и станет только хуже."] },
-            { id: 3, title: "Чувство несостоятельности", options: ["Я не чувствую себя неудачником.", "Я чувствую, что терпел неудачи чаще, чем другие.", "Когда я оглядываюсь на свою жизнь, я вижу в ней много неудач.", "Я чувствую себя полным неудачником как личность."] },
-            { id: 4, title: "Неудовлетворенность", options: ["Я получаю столько же удовольствия от жизни, как и раньше.", "Я не получаю столько же удовольствия, как раньше.", "Я получаю очень мало удовлетворения от тех вещей, которые раньше мне нравились.", "Я ни от чего не получаю удовлетворения."] },
-            { id: 5, title: "Чувство вины", options: ["Я не чувствую себя в чем-либо особенно виноватым.", "Довольно часто я чувствую себя виноватым.", "Большую часть времени я чувствую себя виноватым.", "Я постоянно чувствую себя виноватым."] },
-            { id: 6, title: "Ощущение наказания", options: ["Я не чувствую, что меня за что-то наказывают.", "Я чувствую, что могу быть наказан.", "Я ожидаю, что буду наказан.", "Я чувствую, что уже наказан."] },
-            { id: 7, title: "Самообвинение", options: ["Я не разочарован в себе.", "Я разочарован в себе.", "Я себе противен.", "Я себя ненавижу."] },
-            { id: 8, title: "Критичность к себе", options: ["Я не критикую и не виню себя больше, чем обычно.", "Я более критичен к себе, чем раньше.", "Я критикую себя за все свои ошибки.", "Я виню себя во всем плохом, что происходит."] },
-            { id: 9, title: "Суицидальные мысли", options: ["У меня нет никаких мыслей о самоповреждении.", "У меня бывают мысли о самоповреждении, но я не стал бы их осуществлять.", "Я хотел бы покончить с собой.", "Я бы покончил с собой, если бы представился случай."] },
-            { id: 10, title: "Слезливость", options: ["Я плачу не больше, чем обычно.", "Я плачу чаще, чем раньше.", "Я плачу по любому поводу.", "Мне хочется плакать, но я не могу."] },
-            { id: 11, title: "Раздражительность", options: ["Я не более раздражителен, чем обычно.", "Я более раздражителен, чем обычно.", "Я постоянно чувствую раздражение.", "Меня вообще больше ничего не раздражает, потому что мне все равно."] },
-            { id: 12, title: "Утрата интереса", options: ["Я не утратил интереса к другим людям.", "Я меньше интересуюсь другими людьми, чем раньше.", "Я почти утратил интерес к другим людям.", "Я полностью утратил интерес к другим людям."] },
-            { id: 13, title: "Нерешительность", options: ["Я принимаю решения так же легко, как и раньше.", "Я чаще откладываю принятие решений, чем раньше.", "Мне труднее принимать решения, чем раньше.", "Я больше не могу принимать никаких решений."] },
-            { id: 14, title: "Бесполезность", options: ["Я не чувствую, что я выгляжу хуже, чем обычно.", "Я обеспокоен тем, что выгляжу старым или непривлекательным.", "Я чувствую, что в моей внешности произошли изменения, которые делают меня непривлекательным.", "Я уверен, что выгляжу ужасно."] },
-            { id: 15, title: "Утрата трудоспособности", options: ["Я могу работать так же хорошо, как и раньше.", "Мне требуется дополнительное усилие, чтобы начать что-то делать.", "Я должен заставлять себя с большим трудом, чтобы хоть что-то сделать.", "Я совсем не могу работать."] },
-            { id: 16, title: "Расстройство сна", options: ["Мой сон не изменился.", "Я сплю немного хуже, чем раньше.", "Я просыпаюсь на 1-2 часа раньше и мне трудно заснуть снова.", "Я просыпаюсь на несколько часов раньше и вообще не могу заснуть."] },
-            { id: 17, title: "Утомляемость", options: ["Я устаю не больше, чем обычно.", "Я устаю быстрее, чем обычно.", "Я устаю почти от всего, что я делаю.", "Я слишком устал, чтобы что-либо делать."] },
-            { id: 18, title: "Аппетит", options: ["Мой аппетит не изменился.", "Мой аппетит немного хуже, чем раньше.", "Мой аппетит гораздо хуже, чем раньше.", "У меня совсем нет аппетита."] },
-            { id: 19, title: "Снижение веса", options: ["Я не терял в весе за последнее время.", "Я потерял более 2 кг.", "Я потерял более 4 кг.", "Я потерял более 7 кг."] },
-            { id: 20, title: "Ипохондрия", options: ["Я беспокоюсь о своем здоровье не больше, чем обычно.", "Я обеспокоен своими болями, расстройством желудка или запорами.", "Я очень обеспокоен своим здоровьем, и мне трудно думать о чем-то другом.", "Я настолько обеспокоен своим здоровьем, что не могу ни о чем другом думать."] },
-            { id: 21, title: "Потеря либидо", options: ["Мой интерес к сексу не изменился.", "Я меньше интересуюсь сексом, чем раньше.", "Сейчас я значительно меньше интересуюсь сексом.", "Я полностью утратил интерес к сексу."] }
-        ];
+    // --- НАСТОЯЩЕЕ НЕБО И ОСВЕЩЕНИЕ ---
+    const sky = new Sky(); 
+    sky.scale.setScalar(5000); 
+    scene.add(sky);
+    
+    // Объявляем векторы заранее, чтобы избежать ReferenceError
+    const sunVec = new THREE.Vector3(); 
+    const moonVec = new THREE.Vector3();
+    
+    const uniforms = sky.material.uniforms;
+    uniforms['turbidity'].value = 4.0; 
+    uniforms['rayleigh'].value = 1.2; 
+    uniforms['mieCoefficient'].value = 0.005; 
+    uniforms['mieDirectionalG'].value = 0.8;
 
-        function App() {
-            const [view, setView] = useState('dashboard');
-            const [currentQuestion, setCurrentQuestion] = useState(0);
-            const [answers, setAnswers] = useState(new Array(21).fill(null));
-            const [history, setHistory] = useState([]);
+    const sunLight = new THREE.DirectionalLight(0xffeedd, 2.5);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 1024; sunLight.shadow.mapSize.height = 1024; 
+    sunLight.shadow.camera.near = 0.5; sunLight.shadow.camera.far = 100;
+    sunLight.shadow.camera.left = -40; sunLight.shadow.camera.right = 40; sunLight.shadow.camera.top = 40; sunLight.shadow.camera.bottom = -40;
+    sunLight.shadow.bias = -0.001; 
+    scene.add(sunLight);
 
-            useEffect(() => {
-                try {
-                    const saved = localStorage.getItem('beck_history_v3');
-                    if (saved) setHistory(JSON.parse(saved));
-                } catch (e) {
-                    console.error("Failed to load history", e);
-                }
-            }, []);
+    const ambient = new THREE.AmbientLight(0x404050, 0.2); 
+    scene.add(ambient);
 
-            const saveToHistory = (score) => {
-                const newEntry = {
-                    date: new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
-                    score: score,
-                    timestamp: Date.now()
-                };
-                const updatedHistory = [...history, newEntry].slice(-8);
-                setHistory(updatedHistory);
-                localStorage.setItem('beck_history_v3', JSON.stringify(updatedHistory));
-            };
+    // Звезды (Белые, fog: false защищает от черноты)
+    const starsGeo = new THREE.BufferGeometry(); const starsArray = [];
+    for(let i=0; i<200; i++) starsArray.push(THREE.MathUtils.randFloatSpread(400), THREE.MathUtils.randFloat(50, 200), THREE.MathUtils.randFloatSpread(400));
+    starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(starsArray, 3));
+    const starsMat = new THREE.PointsMaterial({color: 0xffffff, size: 1.0, map: circleTex, transparent: true, opacity: 0, depthWrite: false, fog: false});
+    scene.add(new THREE.Points(starsGeo, starsMat));
 
-            const handleAnswer = (value) => {
-                const newAnswers = [...answers];
-                newAnswers[currentQuestion] = value;
-                setAnswers(newAnswers);
+    // Фазы Луны
+    const moonTextures = [];
+    for(let phase=0; phase<8; phase++) {
+        const c = document.createElement('canvas'); c.width = 64; c.height = 64; const ctx = c.getContext('2d');
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(32, 32, 30, 0, Math.PI*2); ctx.fill(); ctx.globalCompositeOperation = 'destination-out';
+        if (phase === 0) { ctx.beginPath(); ctx.arc(32, 32, 31, 0, Math.PI*2); ctx.fill(); } 
+        else if (phase === 1) { ctx.beginPath(); ctx.arc(22, 32, 30, 0, Math.PI*2); ctx.fill(); } 
+        else if (phase === 2) { ctx.fillRect(0, 0, 32, 64); } 
+        else if (phase === 3) { ctx.beginPath(); ctx.arc(-10, 32, 30, 0, Math.PI*2); ctx.fill(); } 
+        else if (phase === 5) { ctx.beginPath(); ctx.arc(74, 32, 30, 0, Math.PI*2); ctx.fill(); } 
+        else if (phase === 6) { ctx.fillRect(32, 0, 32, 64); } 
+        else if (phase === 7) { ctx.beginPath(); ctx.arc(42, 32, 30, 0, Math.PI*2); ctx.fill(); } 
+        moonTextures.push(new THREE.CanvasTexture(c));
+    }
+    const moonSprite = new THREE.Sprite(new THREE.SpriteMaterial({map: moonTextures[0], transparent: true, opacity: 0, depthWrite: false, fog: false}));
+    moonSprite.scale.set(10, 10, 1); scene.add(moonSprite);
 
-                if (currentQuestion < 20) {
-                    setCurrentQuestion(currentQuestion + 1);
-                } else {
-                    const total = newAnswers.reduce((a, b) => a + (b || 0), 0);
-                    saveToHistory(total);
-                    setView('dashboard');
-                }
-            };
+    // --- РУЧНОЙ ФАКЕЛ ---
+    const handTorchGroup = new THREE.Group();
+    handTorchGroup.position.set(0.5, -0.4, -0.8);
+    const handTorchStick = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6, 4), woodMat);
+    handTorchStick.rotation.x = Math.PI / 6; handTorchGroup.add(handTorchStick);
+    const handTorchLight = new THREE.PointLight(0xff7700, 0, 15);
+    handTorchLight.position.set(0, 0.4, 0); handTorchGroup.add(handTorchLight);
+    const handTorchFlame = new THREE.Sprite(new THREE.SpriteMaterial({map: circleTex, color: 0xff5500, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}));
+    handTorchFlame.position.set(0, 0.4, 0); handTorchFlame.scale.set(0.4, 0.5, 1); handTorchGroup.add(handTorchFlame);
+    handTorchGroup.visible = false; camera.add(handTorchGroup);
+    stateRef.current.handTorch = { group: handTorchGroup, light: handTorchLight, flame: handTorchFlame };
 
-            const getInterpretation = (score) => {
-                if (score === null || score === undefined) return { label: 'Нет данных', color: 'text-slate-400', desc: 'Пройдите первый тест.' };
-                if (score <= 13) return { label: 'Норма', color: 'text-emerald-400', desc: 'Симптомов нет.' };
-                if (score <= 19) return { label: 'Легкая', color: 'text-yellow-400', desc: 'Мягкая форма.' };
-                if (score <= 29) return { label: 'Умеренная', color: 'text-orange-400', desc: 'Выраженная депрессия.' };
-                return { label: 'Тяжелая', color: 'text-red-500', desc: 'Нужна помощь врача.' };
-            };
+    // --- ИНТЕРАКТИВ И ОКРУЖЕНИЕ ---
+    const interactables = [];
+    const addInteractable = (mesh, icon, action) => { mesh.userData = { icon, action }; interactables.push(mesh); };
 
-            const latestScore = history.length > 0 ? history[history.length - 1].score : null;
-            const interpretation = getInterpretation(latestScore);
+    // МАЛЕНЬКИЙ РУЧЕЙ (Только в одной небольшой впадине слева)
+    const groundGeo = new THREE.PlaneGeometry(300, 300, 60, 60);
+    groundGeo.rotateX(-Math.PI/2);
+    const pos = groundGeo.attributes.position;
+    for(let i=0; i<pos.count; i++) {
+        const x = pos.getX(i); const z = pos.getZ(i); 
+        let y = (Math.random()-0.5)*0.1;
+        const distX = Math.abs(x - (-40));
+        if (distX < 4) {
+            y -= Math.cos((distX/4)*(Math.PI/2)) * 2; 
+        }
+        pos.setY(i, y);
+    }
+    groundGeo.computeVertexNormals();
+    const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({color: 0xc29a6b, roughness: 1}));
+    ground.receiveShadow = true; ground.matrixAutoUpdate = false; ground.updateMatrix(); 
+    scene.add(ground);
 
-            return (
-                <div className="min-h-screen text-slate-200 p-4 md:p-8">
-                    <div className="max-w-4xl mx-auto">
-                        <header className="flex justify-between items-center mb-10">
-                            <div>
-                                <h1 className="text-3xl font-black text-white italic tracking-tighter">DEPRESSION MONITOR</h1>
-                                <p className="text-slate-500 text-[10px] uppercase tracking-widest font-bold">Beck Scale Tracking System</p>
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => setView('dashboard')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${view === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>DASHBOARD</button>
-                                <button onClick={() => {setView('test'); setCurrentQuestion(0); setAnswers(new Array(21).fill(null));}} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${view === 'test' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>NEW TEST</button>
-                            </div>
-                        </header>
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(6, 300), new THREE.MeshStandardMaterial({color: 0x226699, transparent: true, opacity: 0.8}));
+    water.rotation.x = -Math.PI/2; water.position.set(-40, -1.0, 0); water.matrixAutoUpdate = false; water.updateMatrix();
+    scene.add(water);
 
-                        {view === 'dashboard' ? (
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                <div className="bg-[#1e293b] p-8 rounded-[2rem] border border-slate-800 shadow-2xl">
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Текущий результат</span>
-                                    <div className="text-5xl font-black text-white my-2 tracking-tight">{latestScore !== null ? latestScore : '--'}</div>
-                                    <div className={`text-xl font-bold mb-4 ${interpretation.color}`}>{interpretation.label}</div>
-                                    <p className="text-slate-400 text-sm italic leading-relaxed mb-6">{interpretation.desc}</p>
-                                    <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 text-xs text-indigo-300">
-                                        Данные сохраняются локально в вашем браузере.
-                                    </div>
-                                </div>
+    const waterTrigger = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 300), new THREE.MeshBasicMaterial({visible: false}));
+    waterTrigger.position.set(-40, -0.5, 0);
+    addInteractable(waterTrigger, "💧", () => {
+        if (stateRef.current.ui.bottle === 1) { stateRef.current.ui.bottle = 2; playWaterSound(); }
+    });
+    scene.add(waterTrigger);
 
-                                <div className="lg:col-span-2 bg-[#1e293b] p-8 rounded-[2rem] border border-slate-800 shadow-2xl flex flex-col min-h-[400px]">
-                                    <h3 className="text-white font-bold mb-8 flex items-center gap-2 uppercase text-xs tracking-widest text-slate-400">Динамика за 8 недель</h3>
-                                    <div className="flex-grow w-full">
-                                        {history.length > 0 ? (
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <LineChart data={history}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                                                    <XAxis dataKey="date" stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
-                                                    <YAxis domain={[0, 63]} stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
-                                                    <Tooltip 
-                                                        contentStyle={{backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px'}}
-                                                        itemStyle={{color: '#818cf8'}}
-                                                    />
-                                                    <Line 
-                                                        type="monotone" 
-                                                        dataKey="score" 
-                                                        stroke="#6366f1" 
-                                                        strokeWidth={4} 
-                                                        dot={{r:6, fill:'#6366f1', strokeWidth: 0}} 
-                                                        activeDot={{r:8}}
-                                                    />
-                                                </LineChart>
-                                            </ResponsiveContainer>
-                                        ) : (
-                                            <div className="h-full flex items-center justify-center text-slate-600 italic text-sm border-2 border-dashed border-slate-800 rounded-3xl">
-                                                Нет данных. Пройдите первый тест.
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="max-w-xl mx-auto bg-[#1e293b] rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="h-1.5 bg-slate-800 w-full">
-                                    <div className="h-full bg-indigo-500 transition-all duration-300" style={{width: `${((currentQuestion + 1)/21)*100}%`}}></div>
-                                </div>
-                                <div className="p-10">
-                                    <div className="text-indigo-400 text-[10px] font-black uppercase tracking-widest mb-4">Вопрос {currentQuestion + 1} / 21</div>
-                                    <h2 className="text-2xl font-bold text-white mb-8 leading-tight">{BECK_QUESTIONS[currentQuestion].title}</h2>
-                                    <div className="space-y-3">
-                                        {BECK_QUESTIONS[currentQuestion].options.map((opt, i) => (
-                                            <button 
-                                                key={i} 
-                                                onClick={() => handleAnswer(i)} 
-                                                className="w-full text-left p-5 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-indigo-500 hover:bg-slate-800/50 transition-all text-slate-300 hover:text-white text-sm"
-                                            >
-                                                {opt}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
+    // ДЕРЕВЬЯ И КАМНИ
+    const rockMat = new THREE.MeshStandardMaterial({color: 0x777777, roughness: 0.9});
+    for (let i = 0; i < 70; i++) { 
+        const x = (Math.random() - 0.5) * 150; const z = (Math.random() - 0.5) * 150;
+        if (Math.abs(x) < 15 && Math.abs(z) < 15) continue; 
+        if (Math.abs(x - (-40)) < 6) continue; // Не растут в реке
+
+        if (Math.random() > 0.4) {
+            const treeGroup = new THREE.Group();
+            const height = 2 + Math.random() * 2.5;
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.25, height, 5), woodMat);
+            trunk.position.y = height/2; trunk.castShadow = true; treeGroup.add(trunk);
+            
+            for(let b=0; b<3; b++) {
+                const bLen = 1 + Math.random();
+                const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.1, bLen, 4), woodMat);
+                branch.position.y = height * (0.3 + Math.random()*0.5);
+                branch.rotation.z = Math.PI / 4; 
+                branch.rotation.y = (Math.PI * 2 / 3) * b + Math.random();
+                branch.position.x = Math.sin(branch.rotation.y) * 0.15;
+                branch.position.z = Math.cos(branch.rotation.y) * 0.15;
+                branch.castShadow = true; treeGroup.add(branch);
+            }
+
+            treeGroup.position.set(x, 0, z); treeGroup.updateMatrixWorld(true);
+            treeGroup.children.forEach(c => { c.matrixAutoUpdate = false; c.updateMatrix(); });
+            
+            const hit = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, height), new THREE.MeshBasicMaterial({visible: false}));
+            hit.position.y = height/2;
+            addInteractable(hit, "🪓", () => {
+                stateRef.current.ui.bigSticks += 1;
+                stateRef.current.ui.smallSticks += Math.floor(Math.random() * 3);
+                playAxeSound();
+                treeGroup.remove(hit); interactables.splice(interactables.indexOf(hit), 1);
+            });
+            treeGroup.add(hit); scene.add(treeGroup);
+        } else {
+            const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3 + Math.random()*0.5, 0), rockMat);
+            rock.position.set(x, 0.1, z); rock.rotation.set(Math.random(), Math.random(), Math.random()); 
+            rock.castShadow = true; rock.matrixAutoUpdate = false; rock.updateMatrix();
+            scene.add(rock);
+        }
+    }
+
+    // КАКТУСЫ
+    for(let i=0; i<2; i++) {
+        const cx = (Math.random()>0.5?1:-1) * (30 + Math.random()*30);
+        const cz = (Math.random()>0.5?1:-1) * (30 + Math.random()*30);
+        const cactus = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 2, 5), new THREE.MeshStandardMaterial({color: 0x228b22, roughness: 0.8}));
+        cactus.position.set(cx, 1, cz); cactus.castShadow = true;
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1, 5), new THREE.MeshStandardMaterial({color: 0x228b22}));
+        arm.position.set(0.4, 0.5, 0); arm.rotation.z = Math.PI/4; cactus.add(arm);
+        
+        cactus.matrixAutoUpdate = false; cactus.updateMatrix(); arm.matrixAutoUpdate = false; arm.updateMatrix();
+        scene.add(cactus);
+        
+        const hit = new THREE.Mesh(new THREE.BoxGeometry(2,3,2), new THREE.MeshBasicMaterial({visible: false}));
+        cactus.add(hit);
+        const plantData = { type: 'cactus', mesh: cactus, daysWatered: 0, wateredToday: false, stage: 0 };
+        stateRef.current.plants.push(plantData);
+        
+        addInteractable(hit, "💧➡️🌵", () => {
+            if (plantData.stage === 2) {
+                stateRef.current.ui.cactusFruits++; plantData.stage = 0; plantData.wateredToday = false;
+                cactus.children.forEach(c => { if(c.name==='fruit') cactus.remove(c); });
+            } else if (stateRef.current.ui.bottle === 2 && !plantData.wateredToday) {
+                stateRef.current.ui.bottle = 1; plantData.wateredToday = true; playWaterSound();
+            }
+        });
+    }
+
+    // --- ОГОРОД ---
+    const gardenGroup = new THREE.Group();
+    gardenGroup.position.set(-10, 0, 5); 
+    
+    for(let i=0; i<12; i++) {
+        const fence = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6), woodMat);
+        fence.position.set(Math.cos(i*Math.PI/6)*3, 0.3, Math.sin(i*Math.PI/6)*3);
+        fence.rotation.x = (Math.random()-0.5)*0.2; fence.castShadow = true; gardenGroup.add(fence);
+    }
+    const pole1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3), woodMat); pole1.position.set(-2, 1.5, -2); gardenGroup.add(pole1);
+    const pole2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3), woodMat); pole2.position.set(2, 1.5, -2); gardenGroup.add(pole2);
+    const pole3 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3), woodMat); pole3.position.set(0, 1.5, 2); gardenGroup.add(pole3);
+    const cross = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 4), woodMat); cross.position.set(0, 2.9, -2); cross.rotation.z = Math.PI/2; gardenGroup.add(cross);
+
+    const pumpPositions = [[-1, 0], [1, 0], [0, 1.5]];
+    pumpPositions.forEach(p => {
+        const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.6), leafMat);
+        bush.position.set(p[0], 0.3, p[1]); bush.castShadow = true;
+        
+        const pumpkinMesh = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), pumpkinMat);
+        pumpkinMesh.scale.setScalar(0.01); pumpkinMesh.position.set(0, -0.1, 0); pumpkinMesh.castShadow = true; bush.add(pumpkinMesh);
+        gardenGroup.add(bush);
+
+        const hit = new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.5), new THREE.MeshBasicMaterial({visible: false}));
+        bush.add(hit);
+
+        const plantData = { type: 'pumpkin', mesh: pumpkinMesh, stage: 0, wateredToday: false };
+        stateRef.current.plants.push(plantData);
+
+        addInteractable(hit, "💧➡️🎃", () => {
+            if (plantData.stage === 3) {
+                stateRef.current.ui.pumpkins++; plantData.stage = 0; plantData.wateredToday = false; pumpkinMesh.scale.setScalar(0.01);
+            } else if (stateRef.current.ui.bottle === 2 && !plantData.wateredToday) {
+                stateRef.current.ui.bottle = 1; plantData.wateredToday = true; playWaterSound();
+            }
+        });
+    });
+    
+    gardenGroup.updateMatrixWorld(true);
+    gardenGroup.children.forEach(c => { c.matrixAutoUpdate = false; c.updateMatrix(); });
+    scene.add(gardenGroup);
+
+    // --- ДОМ ---
+    const houseGroup = new THREE.Group();
+    const addWall = (w, h, d, x, y, z) => {
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), brickMat);
+        wall.position.set(x, y, z); wall.castShadow = true; wall.receiveShadow = true; 
+        wall.matrixAutoUpdate = false; wall.updateMatrix(); houseGroup.add(wall);
+    };
+
+    addWall(10, 4, 0.5, 0, 2, -5); addWall(0.5, 4, 10, 5, 2, 0); addWall(3.5, 4, 0.5, -3.25, 2, 5); addWall(3.5, 4, 0.5, 3.25, 2, 5);
+    addWall(0.5, 1.2, 10, -5, 0.6, 0); addWall(0.5, 1.2, 10, -5, 3.4, 0); addWall(0.5, 1.6, 3, -5, 2, -3.5); addWall(0.5, 1.6, 3, -5, 2, 3.5);
+
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(9.8, 9.8), woodMat);
+    floor.rotation.x = -Math.PI/2; floor.position.y = 0.05; floor.receiveShadow = true; 
+    floor.matrixAutoUpdate = false; floor.updateMatrix(); houseGroup.add(floor);
+
+    const roofGroup = new THREE.Group(); roofGroup.position.y = 4.25;
+    for(let i=0; i<3; i++) {
+        const size = 10.5 - i*2.5;
+        const step = new THREE.Mesh(new THREE.BoxGeometry(size, 0.5, size), new THREE.MeshStandardMaterial({color: 0x6b3232, roughness: 0.9}));
+        step.position.y = i * 0.5; step.castShadow = true; step.receiveShadow = true; 
+        step.matrixAutoUpdate = false; step.updateMatrix(); roofGroup.add(step);
+    }
+    houseGroup.add(roofGroup);
+
+    // КАМИН
+    const fireplaceGroup = new THREE.Group(); fireplaceGroup.position.set(0, 0, -4.2); 
+    const fireplaceBody = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.5, 1.4), brickMat);
+    fireplaceBody.position.y = 1.25; fireplaceGroup.add(fireplaceBody);
+    const firePit = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 0.8), new THREE.MeshBasicMaterial({color: 0x111111}));
+    firePit.position.set(0, 0.5, 0.4); fireplaceGroup.add(firePit);
+    const chimney = new THREE.Mesh(new THREE.BoxGeometry(1, 6, 1), brickMat);
+    chimney.position.y = 4; fireplaceGroup.add(chimney);
+
+    const fireLight = new THREE.PointLight(0xff6600, 0, 25); 
+    fireLight.position.set(0, 1.5, 1.5); fireLight.castShadow = true; fireLight.shadow.bias = -0.005;
+    stateRef.current.fireLight = fireLight; fireplaceGroup.add(fireLight);
+
+    const fireParticlesMat = new THREE.SpriteMaterial({map: circleTex, color: 0xff4400, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false});
+    for(let i=0; i<15; i++) {
+        const p = new THREE.Sprite(fireParticlesMat);
+        p.position.set((Math.random()-0.5)*0.8, 0.5 + Math.random(), 0.4 + (Math.random()-0.5)*0.4);
+        p.scale.set(0.6, 0.6, 1); p.visible = false;
+        fireplaceGroup.add(p); stateRef.current.fireParticles.push(p);
+    }
+    
+    fireplaceBody.matrixAutoUpdate = false; fireplaceBody.updateMatrix();
+    chimney.matrixAutoUpdate = false; chimney.updateMatrix();
+    firePit.matrixAutoUpdate = false; firePit.updateMatrix();
+    houseGroup.add(fireplaceGroup); scene.add(houseGroup);
+
+    houseGroup.updateMatrixWorld(true);
+    houseGroup.children.forEach(c => { if(c.geometry?.type === "BoxGeometry" && c.position.y === 2) stateRef.current.colliders.push(new THREE.Box3().setFromObject(c)); });
+    fireplaceGroup.updateMatrixWorld(true); stateRef.current.colliders.push(new THREE.Box3().setFromObject(fireplaceBody));
+
+    const fireTrigger = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshBasicMaterial({visible: false}));
+    fireTrigger.position.set(0, 1, -2.5); 
+    addInteractable(fireTrigger, "🔥", () => { stateRef.current.isFireLit = !stateRef.current.isFireLit; });
+    scene.add(fireTrigger);
+
+    // СТОЛ И БУТЫЛКА (Левый дальний угол)
+    const tableTop = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 1), woodMat);
+    tableTop.position.set(-3.5, 1, -3.5); tableTop.castShadow = true; 
+    tableTop.matrixAutoUpdate = false; tableTop.updateMatrix(); scene.add(tableTop);
+    stateRef.current.colliders.push(new THREE.Box3().setFromObject(tableTop));
+
+    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.4), new THREE.MeshStandardMaterial({color: 0x4488ff, transparent: true, opacity: 0.6}));
+    bottle.position.set(-3.5, 1.25, -3.5); bottle.castShadow = true; scene.add(bottle);
+    addInteractable(bottle, "✋", () => {
+        stateRef.current.ui.bottle = 1; scene.remove(bottle); interactables.splice(interactables.indexOf(bottle), 1);
+    });
+
+    // КРЕСЛО-КАЧАЛКА (Справа, смотрит на камин)
+    const chairGroup = new THREE.Group(); 
+    chairGroup.position.set(2.5, 0, -1.0); 
+    chairGroup.rotation.y = -Math.PI/6; 
+    
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.8), woodMat); seat.position.y = 0.6; chairGroup.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.1), woodMat); back.position.set(0, 1.2, -0.35); back.rotation.x = -0.15; chairGroup.add(back);
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.8), woodMat); armL.position.set(-0.45, 0.9, 0); chairGroup.add(armL);
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.8), woodMat); armR.position.set(0.45, 0.9, 0); chairGroup.add(armR);
+    const rockerGeo = new THREE.TorusGeometry(1.2, 0.05, 8, 20, Math.PI / 3);
+    const rL = new THREE.Mesh(rockerGeo, woodMat); rL.rotation.y = Math.PI/2; rL.rotation.z = -Math.PI/6 - Math.PI/2; rL.position.set(-0.4, 1.2, 0); chairGroup.add(rL);
+    const rR = new THREE.Mesh(rockerGeo, woodMat); rR.rotation.y = Math.PI/2; rR.rotation.z = -Math.PI/6 - Math.PI/2; rR.position.set(0.4, 1.2, 0); chairGroup.add(rR);
+    
+    const chairHitbox = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), new THREE.MeshBasicMaterial({visible: false}));
+    chairHitbox.position.y = 0.6;
+    addInteractable(chairHitbox, "🪑", () => {
+        const st = stateRef.current; st.isSitting = true;
+        st.isWalking = false; st.targetYaw = -Math.PI/6; st.targetPitch = 0; 
+    });
+    chairGroup.add(chairHitbox); scene.add(chairGroup);
+
+    // ФАКЕЛА НА СТЕНАХ
+    const createTorch = (x, z, rotY) => {
+        const tGroup = new THREE.Group(); tGroup.position.set(x, 2.5, z); tGroup.rotation.y = rotY;
+        const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.02, 0.6, 4), woodMat); stick.rotation.x = Math.PI/4; tGroup.add(stick);
+        const light = new THREE.PointLight(0xff7700, 0, 15); light.position.set(0, 0.4, 0.2); tGroup.add(light);
+        const flame = new THREE.Sprite(new THREE.SpriteMaterial({map: circleTex, color: 0xff5500, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}));
+        flame.position.set(0, 0.4, 0.2); flame.scale.set(0.6, 0.8, 1); flame.visible = false; tGroup.add(flame);
+        scene.add(tGroup);
+        
+        const idx = stateRef.current.torches.length; stateRef.current.torches.push({lit: false, timer: 0, light, flame});
+        
+        const trigger = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), new THREE.MeshBasicMaterial({visible: false}));
+        trigger.position.copy(tGroup.position);
+        addInteractable(trigger, "🔥", () => {
+            if(stateRef.current.ui.bigSticks > 0) {
+                stateRef.current.ui.bigSticks--;
+                stateRef.current.torches[idx].lit = true; stateRef.current.torches[idx].timer = 80;
+            } else alert("Нужна 1 палка (🪵)");
+        });
+        scene.add(trigger);
+    };
+    createTorch(1.5, 5.2, 0); createTorch(-5.2, 0, -Math.PI/2); createTorch(5.2, 0, Math.PI/2); createTorch(0, -5.2, Math.PI);
+
+    // ДВЕРЬ
+    const doorGroup = new THREE.Group(); doorGroup.position.set(-1.5, 0, 5); 
+    const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(3, 3.8, 0.2), woodMat); doorMesh.position.set(1.5, 2, 0); doorGroup.add(doorMesh);
+    scene.add(doorGroup); doorGroup.updateMatrixWorld(true); stateRef.current.doorCollider = new THREE.Box3().setFromObject(doorMesh);
+
+    const doorHitbox = new THREE.Mesh(new THREE.BoxGeometry(3, 3.8, 0.6), new THREE.MeshBasicMaterial({visible: false}));
+    doorHitbox.position.set(1.5, 2, 0); doorGroup.add(doorHitbox);
+    addInteractable(doorHitbox, "🚪", () => { stateRef.current.isDoorOpen = !stateRef.current.isDoorOpen; playWoodGroan(); });
+
+    // --- ЗВУКИ ---
+    const initAudio = () => { if (!stateRef.current.audioCtx) stateRef.current.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (stateRef.current.audioCtx.state === 'suspended') stateRef.current.audioCtx.resume(); };
+
+    const playStepSound = (isInside) => {
+        const ctx = stateRef.current.audioCtx; if (!ctx) return; const time = ctx.currentTime;
+        if (isInside) {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(50, time); osc.frequency.exponentialRampToValueAtTime(10, time + 0.1);
+            gain.gain.setValueAtTime(0.2, time); gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+            osc.connect(gain); gain.connect(ctx.destination); osc.start(time); osc.stop(time + 0.15);
+        } else {
+            const bSize = ctx.sampleRate * 0.1; const buffer = ctx.createBuffer(1, bSize, ctx.sampleRate); const data = buffer.getChannelData(0);
+            for (let i = 0; i < bSize; i++) data[i] = (Math.random() * 2 - 1);
+            const noise = ctx.createBufferSource(); noise.buffer = buffer;
+            const filter = ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 1200; filter.Q.value = 0.8;
+            const gain = ctx.createGain(); gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(0.02, time + 0.05); gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1); 
+            noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination); noise.start(time);
+        }
+    };
+
+    const playWoodGroan = () => {
+        const ctx = stateRef.current.audioCtx; if (!ctx) return; const time = ctx.currentTime;
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, time); osc.frequency.exponentialRampToValueAtTime(50, time + 0.4);
+        gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(0.1, time + 0.1); gain.gain.linearRampToValueAtTime(0, time + 0.4);
+        osc.connect(gain); gain.connect(ctx.destination); osc.start(time); osc.stop(time + 0.4);
+    };
+
+    const playWaterSound = () => {
+        const ctx = stateRef.current.audioCtx; if (!ctx) return; const time = ctx.currentTime;
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(400, time); osc.frequency.exponentialRampToValueAtTime(600, time + 0.2);
+        gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(0.3, time + 0.1); gain.gain.linearRampToValueAtTime(0, time + 0.3);
+        osc.connect(gain); gain.connect(ctx.destination); osc.start(time); osc.stop(time + 0.3);
+    };
+
+    const playAxeSound = () => {
+        const ctx = stateRef.current.audioCtx; if (!ctx) return; const time = ctx.currentTime;
+        const osc = ctx.createOscillator(); const gainOsc = ctx.createGain();
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(150, time); osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+        gainOsc.gain.setValueAtTime(1, time); gainOsc.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+        osc.connect(gainOsc); gainOsc.connect(ctx.destination); osc.start(time); osc.stop(time + 0.15);
+        
+        const bSize = ctx.sampleRate * 0.1; const buffer = ctx.createBuffer(1, bSize, ctx.sampleRate); const data = buffer.getChannelData(0);
+        for(let i=0; i<bSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = ctx.createBufferSource(); noise.buffer = buffer;
+        const filter = ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 1000;
+        const gainNoise = ctx.createGain(); gainNoise.gain.setValueAtTime(0.5, time); gainNoise.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+        noise.connect(filter); filter.connect(gainNoise); gainNoise.connect(ctx.destination); noise.start(time);
+    };
+
+    // --- УПРАВЛЕНИЕ ---
+    const raycaster = new THREE.Raycaster(); raycaster.far = 3.5; const center = new THREE.Vector2(0, 0);
+
+    const onPointerMove = (e) => {
+        if (e.pointerType === 'mouse' && e.buttons === 0) { 
+            const sens = 0.003; stateRef.current.targetYaw -= e.movementX * sens; stateRef.current.targetPitch -= e.movementY * sens;
+            stateRef.current.targetPitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, stateRef.current.targetPitch));
+        }
+    };
+
+    let lastTouchX = null, lastTouchY = null;
+    const onTouchStart = (e) => { if (e.target.closest('button')) return; lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; };
+    const handleTouchRotate = (e) => {
+        if (e.target.closest('button')) return;
+        if (lastTouchX !== null) {
+            const touch = e.touches[0];
+            stateRef.current.targetYaw -= (touch.clientX - lastTouchX) * 0.005; stateRef.current.targetPitch -= (touch.clientY - lastTouchY) * 0.005;
+            stateRef.current.targetPitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, stateRef.current.targetPitch));
+            lastTouchX = touch.clientX; lastTouchY = touch.clientY;
+        }
+    };
+    const onTouchEnd = () => { lastTouchX = null; lastTouchY = null; };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('touchstart', onTouchStart, {passive: false});
+    window.addEventListener('touchmove', handleTouchRotate, {passive: false});
+    window.addEventListener('touchend', onTouchEnd);
+
+    // Локальные вызовы для UI
+    window.startWalking = () => { if(!stateRef.current.isSitting) { stateRef.current.isWalking = true; initAudio(); } };
+    window.stopWalking = () => { stateRef.current.isWalking = false; };
+    window.standUp = () => { stateRef.current.isSitting = false; };
+
+    window.craftHandTorch = () => {
+        const st = stateRef.current;
+        if (st.ui.bigSticks > 0 && st.ui.smallSticks > 0 && !st.isHandTorchLit) {
+            st.ui.bigSticks--; st.ui.smallSticks--; st.isHandTorchLit = true; st.handTorchTimer = 120; initAudio();
+        }
+    };
+
+    window.eatFood = (type) => {
+        const ui = stateRef.current.ui;
+        if (type === 'bread' && ui.bread > 0) { ui.bread--; ui.hunger = Math.min(100, ui.hunger + 50); playWaterSound(); }
+        if (type === 'pumpkin' && ui.pumpkins > 0) { ui.pumpkins--; ui.hunger = Math.min(100, ui.hunger + 40); ui.thirst = Math.min(100, ui.thirst + 20); playWaterSound(); }
+        if (type === 'cactus' && ui.cactusFruits > 0) { ui.cactusFruits--; ui.thirst = Math.min(100, ui.thirst + 30); playWaterSound(); }
+        if (type === 'water' && ui.bottle === 2) { ui.bottle = 1; ui.thirst = Math.min(100, ui.thirst + 50); playWaterSound(); }
+    };
+
+    const uiInterval = setInterval(() => {
+        const ui = stateRef.current.ui;
+        setUiData({...ui});
+        setIsSittingUI(stateRef.current.isSitting);
+    }, 200);
+
+    // --- ЦИКЛ АНИМАЦИИ ---
+    const clock = new THREE.Clock();
+    let animId;
+    const animate = () => {
+        animId = requestAnimationFrame(animate);
+        const delta = clock.getDelta();
+        const state = stateRef.current;
+
+        const prevHour = Math.floor(state.timeOfDay);
+        state.timeOfDay += (delta / 10); 
+        
+        if (Math.floor(state.timeOfDay) > prevHour || (prevHour === 23 && state.timeOfDay < 1)) {
+            state.ui.hunger = Math.max(0, state.ui.hunger - (80/24)); 
+            state.ui.thirst = Math.max(0, state.ui.thirst - (100/24)); 
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+        if (state.timeOfDay >= 24) {
+            state.timeOfDay = 0; state.dayCount++;
+            moonSprite.material.map = moonTextures[state.dayCount % 8];
+            
+            state.plants.forEach(p => {
+                if (p.wateredToday) {
+                    if (p.type === 'pumpkin' && p.stage < 3) {
+                        p.stage++; p.mesh.scale.setScalar(p.stage === 0 ? 0.01 : p.stage * 0.33);
+                    }
+                    if (p.type === 'cactus' && p.stage < 2) {
+                        p.stage++;
+                        if (p.stage === 2) {
+                            const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.15), new THREE.MeshStandardMaterial({color: 0xff2222}));
+                            fruit.position.set(0, 1, 0); fruit.name = 'fruit'; p.mesh.add(fruit);
+                        }
+                    }
+                    p.wateredToday = false;
+                }
+            });
+        }
+
+        const sunAngle = ((state.timeOfDay - 6) / 24) * Math.PI * 2;
+        const elevation = Math.sin(sunAngle) * 90; 
+        const azimuth = 180 + Math.cos(sunAngle) * 45; 
+
+        sunVec.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - elevation), THREE.MathUtils.degToRad(azimuth));
+        uniforms['sunPosition'].value.copy(sunVec);
+        sunLight.position.copy(sunVec).multiplyScalar(100);
+
+        moonVec.copy(sunVec).multiplyScalar(-100); moonSprite.position.copy(moonVec); 
+
+        const isDay = elevation > 0;
+        sunLight.intensity = Math.max(0, Math.sin(sunAngle)) * 3.0;
+        
+        if (!isDay) {
+            starsMat.opacity = Math.min(1, -elevation / 10); moonSprite.material.opacity = Math.min(1, -elevation / 10);
+            scene.fog.color.setHex(0x020205); ambient.intensity = 0.02; 
+        } else {
+            starsMat.opacity = 0; moonSprite.material.opacity = 0; 
+            let t = Math.max(0, Math.sin(sunAngle));
+            const skyColor = new THREE.Color().lerpColors(new THREE.Color(0xff8844), new THREE.Color(0x66aaff), t);
+            scene.fog.color.copy(skyColor);
+            ambient.intensity = 0.3;
+        }
+
+        state.doorRot = THREE.MathUtils.lerp(state.doorRot, state.isDoorOpen ? -Math.PI/2 : 0, 0.1); doorGroup.rotation.y = state.doorRot;
+
+        if (state.isFireLit) {
+            state.fireLight.intensity = 5 + Math.random() * 2.0; 
+            state.fireParticles.forEach(p => {
+                p.visible = true; p.position.y += delta * 2;
+                if (p.position.y > 1.8) { p.position.y = 0.5; p.position.x = (Math.random()-0.5)*0.8; }
+                p.material.opacity = 1 - ((p.position.y - 0.5) / 1.3); 
+                p.material.color.setHSL(0.1 - ((p.position.y - 0.5) * 0.1), 1, 0.5);
+            });
+        } else {
+            state.fireLight.intensity = THREE.MathUtils.lerp(state.fireLight.intensity, 0, 0.1); state.fireParticles.forEach(p => p.visible = false);
+        }
+
+        state.torches.forEach(t => {
+            if (t.lit) {
+                t.timer -= delta; t.light.intensity = 3 + Math.random(); t.flame.visible = true; t.flame.scale.setScalar(0.5 + Math.random()*0.3);
+                if (t.timer <= 0) t.lit = false;
+            } else { t.light.intensity = 0; t.flame.visible = false; }
+        });
+
+        if (state.isHandTorchLit) {
+            state.handTorchTimer -= delta; state.handTorch.group.visible = true;
+            state.handTorch.light.intensity = 3 + Math.random(); state.handTorch.flame.scale.setScalar(0.4 + Math.random()*0.2);
+            if (state.handTorchTimer <= 0) state.isHandTorchLit = false;
+        } else { state.handTorch.group.visible = false; state.handTorch.light.intensity = 0; }
+
+        const isInside = Math.abs(camera.position.x) < 4.8 && Math.abs(camera.position.z) < 4.8;
+        if (!isDay) {
+            if (isInside && state.isFireLit) renderer.toneMappingExposure = 1.3;
+            else if (state.isHandTorchLit) renderer.toneMappingExposure = 0.8; 
+            else if (!isInside && state.torches.some(t => t.lit && camera.position.distanceTo(t.light.parent.position) < 8)) renderer.toneMappingExposure = 1.0;
+            else renderer.toneMappingExposure = 0.2; 
+        } else { renderer.toneMappingExposure = 1.0; }
+
+        // КРЕСЛО
+        if (state.isSitting) {
+            const tPos = new THREE.Vector3().copy(chairGroup.position); tPos.y += 1.3; tPos.x -= 0.2;
+            camera.position.lerp(tPos, 0.1);
+            
+            state.rockCycle += delta * 1.5; const rockAngle = Math.sin(state.rockCycle) * 0.15;
+            chairGroup.rotation.x = rockAngle;
+            
+            state.yaw = THREE.MathUtils.lerp(state.yaw, state.targetYaw, 0.15); 
+            state.pitch = THREE.MathUtils.lerp(state.pitch, state.targetPitch, 0.15); 
+            camera.rotation.order = 'YXZ'; camera.rotation.y = state.yaw; camera.rotation.x = state.pitch + rockAngle;
+
+            if (Math.sin(state.rockCycle) * Math.sin(state.rockCycle - delta*1.5) < 0) playWoodGroan();
+        } else {
+            chairGroup.rotation.x = THREE.MathUtils.lerp(chairGroup.rotation.x, 0, 0.1);
+            
+            state.yaw = THREE.MathUtils.lerp(state.yaw, state.targetYaw, 0.15); state.pitch = THREE.MathUtils.lerp(state.pitch, state.targetPitch, 0.15);
+            camera.rotation.order = 'YXZ'; camera.rotation.y = state.yaw; camera.rotation.x = state.pitch;
+
+            if (state.isWalking) {
+                const speedMult = (state.ui.hunger <= 0 || state.ui.thirst <= 0) ? 0.5 : 1.0;
+                
+                const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); dir.y = 0; dir.normalize();
+                const nextPos = camera.position.clone().addScaledVector(dir, 4.0 * delta * speedMult);
+                const playerBox = new THREE.Box3().setFromCenterAndSize(nextPos, new THREE.Vector3(1, 1.5, 1));
+                
+                let canMove = true;
+                for(let i=0; i<state.colliders.length; i++) if (state.colliders[i].intersectsBox(playerBox)) { canMove = false; break; }
+                if (canMove && !state.isDoorOpen && state.doorCollider.intersectsBox(playerBox)) canMove = false;
+
+                if (canMove) camera.position.copy(nextPos);
+
+                state.walkCycle += delta * 10 * speedMult; const currentSin = Math.sin(state.walkCycle); camera.position.y = 1.6 + currentSin * 0.06;
+
+                if ((state.lastSin < 0 && currentSin >= 0 || state.lastSin > 0 && currentSin <= 0) && canMove) playStepSound(isInside);
+                state.lastSin = currentSin;
+            } else { camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.6, 0.1); }
+        }
+
+        raycaster.setFromCamera(center, camera);
+        const intersects = raycaster.intersectObjects(interactables);
+        const hitData = intersects.length > 0 ? intersects[0].object.userData : null;
+        if (state.activeAction !== hitData?.action && !state.isSitting) { 
+            state.activeAction = hitData?.action; state.activeIcon = hitData?.icon;
+            setActionIcon(hitData && typeof hitData.icon === 'string' ? hitData.icon : null); 
+        }
+
+        renderer.render(scene, camera);
+    };
+
+    animate();
+
+    const handleResize = () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
+    window.addEventListener('resize', handleResize);
+
+    return () => { 
+        cancelAnimationFrame(animId);
+        clearInterval(uiInterval);
+        window.removeEventListener('resize', handleResize); window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('touchstart', onTouchStart); window.removeEventListener('touchmove', handleTouchRotate); window.removeEventListener('touchend', onTouchEnd);
+        containerRef.current?.removeChild(renderer.domElement); 
+    };
+  }, []);
+
+  const noSelect = { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', msUserSelect: 'none' };
+  const btnStyle = { background: 'rgba(0,0,0,0.7)', color: '#fff', border: '1px solid #aaa', borderRadius: '50%', width: '50px', height: '50px', fontSize: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', outline: 'none', ...noSelect };
+
+  return (
+    <div style={{ width: '100vw', height: '100vh', background: '#000', touchAction: 'none', overflow: 'hidden', ...noSelect }}>
+      <div ref={containerRef} style={{...noSelect}} />
+      
+      {/* HUD: Голод и Жажда */}
+      <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', flexDirection: 'column', gap: '5px', pointerEvents: 'none', ...noSelect }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,0,0,0.5)', padding: '5px', borderRadius: '15px' }}>
+              <span style={{fontSize: '20px'}}>🍖</span>
+              <div style={{ width: '100px', height: '10px', background: '#333', borderRadius: '5px', overflow: 'hidden' }}>
+                  <div style={{ width: `${uiData.hunger}%`, height: '100%', background: uiData.hunger > 20 ? '#ff4444' : '#ff0000', transition: '0.5s' }} />
+              </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,0,0,0.5)', padding: '5px', borderRadius: '15px' }}>
+              <span style={{fontSize: '20px'}}>💧</span>
+              <div style={{ width: '100px', height: '10px', background: '#333', borderRadius: '5px', overflow: 'hidden' }}>
+                  <div style={{ width: `${uiData.thirst}%`, height: '100%', background: uiData.thirst > 20 ? '#44aaff' : '#ff0000', transition: '0.5s' }} />
+              </div>
+          </div>
+      </div>
+
+      {/* ИНВЕНТАРЬ */}
+      <button onClick={() => setInvOpen(!invOpen)} style={{ position: 'absolute', top: '10px', right: '10px', pointerEvents: 'auto', ...btnStyle }}>🎒</button>
+      {invOpen && (
+          <div style={{ position: 'absolute', top: '70px', right: '10px', background: 'rgba(20,20,20,0.9)', border: '1px solid #555', borderRadius: '10px', padding: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', pointerEvents: 'auto', ...noSelect }}>
+              <div style={{ color: '#fff', fontSize: '18px' }}>🪵 {uiData.bigSticks}</div>
+              <div style={{ color: '#fff', fontSize: '18px' }}>🌿 {uiData.smallSticks}</div>
+              <button onClick={() => window.eatFood('water')} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '18px', textAlign: 'left', cursor: 'pointer' }}>{uiData.bottle === 0 ? '❌ 🫙' : (uiData.bottle === 1 ? '🫙 0' : '💧 1')}</button>
+              <button onClick={() => window.eatFood('bread')} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '18px', textAlign: 'left', cursor: 'pointer' }}>🫓 {uiData.bread}</button>
+              <button onClick={() => window.eatFood('pumpkin')} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '18px', textAlign: 'left', cursor: 'pointer' }}>🎃 {uiData.pumpkins}</button>
+              <button onClick={() => window.eatFood('cactus')} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '18px', textAlign: 'left', cursor: 'pointer' }}>🌵 {uiData.cactusFruits}</button>
+              <button onClick={() => window.craftHandTorch()} style={{ gridColumn: '1 / span 2', background: '#ff6600', color: '#fff', border: 'none', borderRadius: '5px', padding: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>🔥 ФАКЕЛ (120с)</button>
+          </div>
+      )}
+
+      {/* ПРИЦЕЛ */}
+      {!isSittingUI && <div style={{ position: 'absolute', top: '50%', left: '50%', width: '4px', height: '4px', background: actionIcon ? '#0f0' : '#fff', borderRadius: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', boxShadow: actionIcon ? '0 0 10px #0f0' : 'none' }} />}
+
+      {/* КНОПКИ УПРАВЛЕНИЯ */}
+      <div style={{ position: 'absolute', bottom: '20px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none', ...noSelect }}>
+          <div style={{ position: 'absolute', right: '30px', bottom: '10px', pointerEvents: 'auto' }}>
+            {actionIcon && typeof actionIcon === 'string' && !isSittingUI && (
+                <button onClick={() => stateRef.current.activeAction?.()} style={{ ...btnStyle, width: '70px', height: '70px', fontSize: '30px', background: 'rgba(0, 150, 0, 0.7)', border: '2px solid #0f0' }}>{actionIcon}</button>
+            )}
+            {isSittingUI && (
+                <button onClick={() => window.standUp()} style={{ ...btnStyle, width: '70px', height: '70px', fontSize: '30px', background: 'rgba(200, 0, 0, 0.7)', border: '2px solid #f00' }}>🏃‍♂️</button>
+            )}
+          </div>
+
+          {!isSittingUI && (
+              <button 
+                onMouseDown={() => window.startWalking()} onMouseUp={() => window.stopWalking()} onMouseLeave={() => window.stopWalking()}
+                onTouchStart={(e) => { e.preventDefault(); window.startWalking(); }} onTouchEnd={() => window.stopWalking()}
+                style={{ pointerEvents: 'auto', width: '90px', height: '90px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.1)', border: '3px solid rgba(255,255,255,0.4)', cursor: 'pointer', outline: 'none', backdropFilter: 'blur(2px)', display: 'flex', justifyContent: 'center', alignItems: 'center', ...noSelect }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.3)', pointerEvents: 'none' }}></div>
+              </button>
+          )}
+      </div>
+    </div>
+  );
+};
+
+export default App;
