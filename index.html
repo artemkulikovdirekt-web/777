@@ -1,742 +1,2549 @@
-import React, { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
-import { Sky } from 'three/examples/jsm/objects/Sky.js';
-
-const App = () => {
-  const containerRef = useRef(null);
-  
-  // UI State
-  const [invOpen, setInvOpen] = useState(false);
-  const [actionIcon, setActionIcon] = useState(null);
-  const [isSittingUI, setIsSittingUI] = useState(false);
-  const [uiData, setUiData] = useState({
-      hunger: 100, thirst: 100,
-      bigSticks: 0, smallSticks: 0,
-      bottle: 0, bread: 5, pumpkins: 0, cactusFruits: 0
-  });
-  
-  const stateRef = useRef({
-      isWalking: false, isSitting: false,
-      yaw: 0, pitch: 0, targetYaw: 0, targetPitch: 0,
-      walkCycle: 0, rockCycle: 0, lastSin: 0,
-      audioCtx: null, colliders: [], doorCollider: null,
-      timeOfDay: 10, dayCount: 0, lastTimeOfDay: 10,
-      isDoorOpen: false, doorRot: 0,
-      isFireLit: false, fireParticles: [], fireLight: null,
-      torches: [], isHandTorchLit: false, handTorchTimer: 0, handTorch: null,
-      activeAction: null, activeIcon: null,
-      ui: { hunger: 100, thirst: 100, bigSticks: 0, smallSticks: 0, bottle: 0, bread: 5, pumpkins: 0, cactusFruits: 0 },
-      plants: [] 
-  });
-
-  useEffect(() => {
-    // --- СЦЕНА ---
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x66aaff);
-    scene.fog = new THREE.FogExp2(0xc29a6b, 0.015);
-
-    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 800);
-    camera.position.set(0, 1.6, 25); 
-    scene.add(camera);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: false });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
-    containerRef.current.appendChild(renderer.domElement);
-
-    // --- ТЕКСТУРЫ ---
-    const createBrickTex = () => {
-        const c = document.createElement('canvas'); c.width = 256; c.height = 256; const ctx = c.getContext('2d');
-        ctx.fillStyle = '#6b5345'; ctx.fillRect(0, 0, 256, 256); 
-        for(let y=0; y<256; y+=32) {
-            const offset = (y/32) % 2 === 0 ? 0 : 32;
-            for(let x=-offset; x<256; x+=64) {
-                ctx.fillStyle = Math.random() > 0.5 ? '#b08d6a' : '#9c7b5a';
-                ctx.fillRect(x+2, y+2, 60, 28);
-            }
-        }
-        const tex = new THREE.CanvasTexture(c); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(4, 2); return tex;
-    };
-    
-    const createPumpkinTex = () => {
-        const c = document.createElement('canvas'); c.width = 128; c.height = 128; const ctx = c.getContext('2d');
-        ctx.fillStyle = '#ff8800'; ctx.fillRect(0, 0, 128, 128); 
-        ctx.strokeStyle = '#226622'; ctx.lineWidth = 6;
-        for(let i=16; i<128; i+=32) { ctx.beginPath(); ctx.moveTo(i,0); ctx.quadraticCurveTo(i-10, 64, i, 128); ctx.stroke(); }
-        return new THREE.CanvasTexture(c);
-    };
-
-    const brickMat = new THREE.MeshStandardMaterial({map: createBrickTex(), roughness: 0.9});
-    const woodMat = new THREE.MeshStandardMaterial({color: 0x4a3c2a, roughness: 0.9});
-    const leafMat = new THREE.MeshStandardMaterial({color: 0x3d5c3a, roughness: 0.9});
-    const pumpkinMat = new THREE.MeshStandardMaterial({map: createPumpkinTex(), roughness: 0.7});
-    
-    const circleCanvas = document.createElement('canvas'); circleCanvas.width = 16; circleCanvas.height = 16;
-    const cCtx = circleCanvas.getContext('2d'); cCtx.beginPath(); cCtx.arc(8, 8, 8, 0, Math.PI*2); cCtx.fillStyle = '#ffffff'; cCtx.fill();
-    const circleTex = new THREE.CanvasTexture(circleCanvas);
-
-    // --- НАСТОЯЩЕЕ НЕБО И ОСВЕЩЕНИЕ ---
-    const sky = new Sky(); 
-    sky.scale.setScalar(5000); 
-    scene.add(sky);
-    
-    // Объявляем векторы заранее, чтобы избежать ReferenceError
-    const sunVec = new THREE.Vector3(); 
-    const moonVec = new THREE.Vector3();
-    
-    const uniforms = sky.material.uniforms;
-    uniforms['turbidity'].value = 4.0; 
-    uniforms['rayleigh'].value = 1.2; 
-    uniforms['mieCoefficient'].value = 0.005; 
-    uniforms['mieDirectionalG'].value = 0.8;
-
-    const sunLight = new THREE.DirectionalLight(0xffeedd, 2.5);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 1024; sunLight.shadow.mapSize.height = 1024; 
-    sunLight.shadow.camera.near = 0.5; sunLight.shadow.camera.far = 100;
-    sunLight.shadow.camera.left = -40; sunLight.shadow.camera.right = 40; sunLight.shadow.camera.top = 40; sunLight.shadow.camera.bottom = -40;
-    sunLight.shadow.bias = -0.001; 
-    scene.add(sunLight);
-
-    const ambient = new THREE.AmbientLight(0x404050, 0.2); 
-    scene.add(ambient);
-
-    // Звезды (Белые, fog: false защищает от черноты)
-    const starsGeo = new THREE.BufferGeometry(); const starsArray = [];
-    for(let i=0; i<200; i++) starsArray.push(THREE.MathUtils.randFloatSpread(400), THREE.MathUtils.randFloat(50, 200), THREE.MathUtils.randFloatSpread(400));
-    starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(starsArray, 3));
-    const starsMat = new THREE.PointsMaterial({color: 0xffffff, size: 1.0, map: circleTex, transparent: true, opacity: 0, depthWrite: false, fog: false});
-    scene.add(new THREE.Points(starsGeo, starsMat));
-
-    // Фазы Луны
-    const moonTextures = [];
-    for(let phase=0; phase<8; phase++) {
-        const c = document.createElement('canvas'); c.width = 64; c.height = 64; const ctx = c.getContext('2d');
-        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(32, 32, 30, 0, Math.PI*2); ctx.fill(); ctx.globalCompositeOperation = 'destination-out';
-        if (phase === 0) { ctx.beginPath(); ctx.arc(32, 32, 31, 0, Math.PI*2); ctx.fill(); } 
-        else if (phase === 1) { ctx.beginPath(); ctx.arc(22, 32, 30, 0, Math.PI*2); ctx.fill(); } 
-        else if (phase === 2) { ctx.fillRect(0, 0, 32, 64); } 
-        else if (phase === 3) { ctx.beginPath(); ctx.arc(-10, 32, 30, 0, Math.PI*2); ctx.fill(); } 
-        else if (phase === 5) { ctx.beginPath(); ctx.arc(74, 32, 30, 0, Math.PI*2); ctx.fill(); } 
-        else if (phase === 6) { ctx.fillRect(32, 0, 32, 64); } 
-        else if (phase === 7) { ctx.beginPath(); ctx.arc(42, 32, 30, 0, Math.PI*2); ctx.fill(); } 
-        moonTextures.push(new THREE.CanvasTexture(c));
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Холодная Осень — Выживание</title>
+  <style>
+    :root {
+      --light-x: 50%; --light-y: 82%; --light-r: 0px; --light-alpha: 0;
+      --parallax-x: 0px; --parallax-y: 0px; --bob-x: 0px; --bob-y: 0px; --step-zoom: 1.03;
     }
-    const moonSprite = new THREE.Sprite(new THREE.SpriteMaterial({map: moonTextures[0], transparent: true, opacity: 0, depthWrite: false, fog: false}));
-    moonSprite.scale.set(10, 10, 1); scene.add(moonSprite);
-
-    // --- РУЧНОЙ ФАКЕЛ ---
-    const handTorchGroup = new THREE.Group();
-    handTorchGroup.position.set(0.5, -0.4, -0.8);
-    const handTorchStick = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6, 4), woodMat);
-    handTorchStick.rotation.x = Math.PI / 6; handTorchGroup.add(handTorchStick);
-    const handTorchLight = new THREE.PointLight(0xff7700, 0, 15);
-    handTorchLight.position.set(0, 0.4, 0); handTorchGroup.add(handTorchLight);
-    const handTorchFlame = new THREE.Sprite(new THREE.SpriteMaterial({map: circleTex, color: 0xff5500, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}));
-    handTorchFlame.position.set(0, 0.4, 0); handTorchFlame.scale.set(0.4, 0.5, 1); handTorchGroup.add(handTorchFlame);
-    handTorchGroup.visible = false; camera.add(handTorchGroup);
-    stateRef.current.handTorch = { group: handTorchGroup, light: handTorchLight, flame: handTorchFlame };
-
-    // --- ИНТЕРАКТИВ И ОКРУЖЕНИЕ ---
-    const interactables = [];
-    const addInteractable = (mesh, icon, action) => { mesh.userData = { icon, action }; interactables.push(mesh); };
-
-    // МАЛЕНЬКИЙ РУЧЕЙ (Только в одной небольшой впадине слева)
-    const groundGeo = new THREE.PlaneGeometry(300, 300, 60, 60);
-    groundGeo.rotateX(-Math.PI/2);
-    const pos = groundGeo.attributes.position;
-    for(let i=0; i<pos.count; i++) {
-        const x = pos.getX(i); const z = pos.getZ(i); 
-        let y = (Math.random()-0.5)*0.1;
-        const distX = Math.abs(x - (-40));
-        if (distX < 4) {
-            y -= Math.cos((distX/4)*(Math.PI/2)) * 2; 
-        }
-        pos.setY(i, y);
+    * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; -webkit-user-drag: none; }
+    body, html {
+      width: 100%; height: 100%; overflow: hidden; background: #020305;
+      font-family: 'Georgia', serif; color: #e6dccb; display: flex; align-items: center; justify-content: center;
     }
-    groundGeo.computeVertexNormals();
-    const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({color: 0xc29a6b, roughness: 1}));
-    ground.receiveShadow = true; ground.matrixAutoUpdate = false; ground.updateMatrix(); 
-    scene.add(ground);
+    #stage-16x9 {
+      position: relative; width: 100vw; height: 56.25vw; max-height: 100vh; max-width: 177.78vh;
+      overflow: hidden; background: #040507; box-shadow: 0 0 60px rgba(0,0,0,0.95);
+    }
+    .scene-slot {
+      position: absolute; inset: -3%; width: 106%; height: 106%; pointer-events: none;
+      will-change: transform, opacity;
+      transition: opacity 0.85s cubic-bezier(0.25,0.1,0.25,1), transform 0.85s cubic-bezier(0.22,0.61,0.36,1);
+    }
+    .scene-slot.current {
+      opacity: 1; z-index: 2;
+      transform: translate3d(calc(var(--parallax-x) + var(--bob-x)), calc(var(--parallax-y) + var(--bob-y)), 0) scale(var(--step-zoom));
+    }
+    .scene-slot.current.peephole-zoom {
+      transition: transform 1.1s cubic-bezier(0.2,0.7,0.3,1);
+      transform: translate3d(0,0,0) scale(1.32);
+    }
+    .scene-slot.outgoing {
+      opacity: 0; z-index: 1;
+      transform: translate3d(calc(var(--parallax-x)*1.3), calc(var(--parallax-y)*1.3 - 8px), 0) scale(1.1);
+    }
+    .scene-slot.incoming-prep {
+      opacity: 0; z-index: 3; transform: translate3d(0,8px,0) scale(0.97); transition: none !important;
+    }
+    .layer-dark, .layer-lit {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      background-position: center; background-size: 100% 100%; background-repeat: no-repeat;
+    }
+    body[data-lit="intro"] .layer-dark { filter: brightness(0.62) saturate(0.12) contrast(1.08); }
+    body[data-lit="false"] .layer-dark { filter: brightness(0.08) saturate(0.15) contrast(1.2) hue-rotate(200deg); }
+    body[data-lit="true"] .layer-dark { filter: brightness(0.16) saturate(0.22) contrast(1.15) hue-rotate(195deg); }
+    .layer-lit {
+      opacity: var(--light-alpha); filter: brightness(1.12) sepia(0.26) saturate(1.34) contrast(1.06);
+      -webkit-mask-image: radial-gradient(circle var(--light-r) at var(--light-x) var(--light-y), #000 0%, rgba(0,0,0,0.95) 48%, rgba(0,0,0,0.48) 76%, transparent 100%);
+      mask-image: radial-gradient(circle var(--light-r) at var(--light-x) var(--light-y), #000 0%, rgba(0,0,0,0.95) 48%, rgba(0,0,0,0.48) 76%, transparent 100%);
+    }
+    .scene-slot.no-darkness .layer-dark { filter: none !important; opacity: 1 !important; }
+    .scene-slot.no-darkness .layer-lit { opacity: 0 !important; }
+    body[data-fullbright="true"] #light-glow-overlay { opacity: 0 !important; }
+    body[data-fullbright="true"] #vignette { box-shadow: inset 0 0 50px 10px rgba(0,0,0,0.35); }
 
-    const water = new THREE.Mesh(new THREE.PlaneGeometry(6, 300), new THREE.MeshStandardMaterial({color: 0x226699, transparent: true, opacity: 0.8}));
-    water.rotation.x = -Math.PI/2; water.position.set(-40, -1.0, 0); water.matrixAutoUpdate = false; water.updateMatrix();
-    scene.add(water);
+    #light-glow-overlay {
+      position: absolute; inset: 0; z-index: 4; pointer-events: none; mix-blend-mode: screen;
+      opacity: calc(var(--light-alpha) * 0.42);
+      background: radial-gradient(circle var(--light-r) at var(--light-x) var(--light-y), rgba(255,180,80,0.38) 0%, rgba(225,115,35,0.14) 55%, transparent 90%);
+    }
+    #vignette { position: absolute; inset: 0; z-index: 5; pointer-events: none; box-shadow: inset 0 0 110px 25px rgba(0,0,0,0.85); }
 
-    const waterTrigger = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 300), new THREE.MeshBasicMaterial({visible: false}));
-    waterTrigger.position.set(-40, -0.5, 0);
-    addInteractable(waterTrigger, "💧", () => {
-        if (stateRef.current.ui.bottle === 1) { stateRef.current.ui.bottle = 2; playWaterSound(); }
-    });
-    scene.add(waterTrigger);
-
-    // ДЕРЕВЬЯ И КАМНИ
-    const rockMat = new THREE.MeshStandardMaterial({color: 0x777777, roughness: 0.9});
-    for (let i = 0; i < 70; i++) { 
-        const x = (Math.random() - 0.5) * 150; const z = (Math.random() - 0.5) * 150;
-        if (Math.abs(x) < 15 && Math.abs(z) < 15) continue; 
-        if (Math.abs(x - (-40)) < 6) continue; // Не растут в реке
-
-        if (Math.random() > 0.4) {
-            const treeGroup = new THREE.Group();
-            const height = 2 + Math.random() * 2.5;
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.25, height, 5), woodMat);
-            trunk.position.y = height/2; trunk.castShadow = true; treeGroup.add(trunk);
-            
-            for(let b=0; b<3; b++) {
-                const bLen = 1 + Math.random();
-                const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.1, bLen, 4), woodMat);
-                branch.position.y = height * (0.3 + Math.random()*0.5);
-                branch.rotation.z = Math.PI / 4; 
-                branch.rotation.y = (Math.PI * 2 / 3) * b + Math.random();
-                branch.position.x = Math.sin(branch.rotation.y) * 0.15;
-                branch.position.z = Math.cos(branch.rotation.y) * 0.15;
-                branch.castShadow = true; treeGroup.add(branch);
-            }
-
-            treeGroup.position.set(x, 0, z); treeGroup.updateMatrixWorld(true);
-            treeGroup.children.forEach(c => { c.matrixAutoUpdate = false; c.updateMatrix(); });
-            
-            const hit = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, height), new THREE.MeshBasicMaterial({visible: false}));
-            hit.position.y = height/2;
-            addInteractable(hit, "🪓", () => {
-                stateRef.current.ui.bigSticks += 1;
-                stateRef.current.ui.smallSticks += Math.floor(Math.random() * 3);
-                playAxeSound();
-                treeGroup.remove(hit); interactables.splice(interactables.indexOf(hit), 1);
-            });
-            treeGroup.add(hit); scene.add(treeGroup);
-        } else {
-            const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3 + Math.random()*0.5, 0), rockMat);
-            rock.position.set(x, 0.1, z); rock.rotation.set(Math.random(), Math.random(), Math.random()); 
-            rock.castShadow = true; rock.matrixAutoUpdate = false; rock.updateMatrix();
-            scene.add(rock);
-        }
+    /* СПРАЙТЫ NPC (БЕЗ ОБРЕЗКИ ВАЛЕНОК И БЕЗ БЕЛОГО ОРЕОЛА) */
+    #npc-layer {
+      position: absolute; inset: 0; z-index: 6; pointer-events: none;
+      display: none; align-items: flex-end; justify-content: center;
+    }
+    #npc-layer.visible { display: flex; }
+    #npc-sprite-box {
+      height: 93%; aspect-ratio: 0.565; width: auto; margin-bottom: 0.8%;
+      background-repeat: no-repeat;
+      filter: drop-shadow(0 14px 28px rgba(0,0,0,0.92));
     }
 
-    // КАКТУСЫ
-    for(let i=0; i<2; i++) {
-        const cx = (Math.random()>0.5?1:-1) * (30 + Math.random()*30);
-        const cz = (Math.random()>0.5?1:-1) * (30 + Math.random()*30);
-        const cactus = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 2, 5), new THREE.MeshStandardMaterial({color: 0x228b22, roughness: 0.8}));
-        cactus.position.set(cx, 1, cz); cactus.castShadow = true;
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1, 5), new THREE.MeshStandardMaterial({color: 0x228b22}));
-        arm.position.set(0.4, 0.5, 0); arm.rotation.z = Math.PI/4; cactus.add(arm);
-        
-        cactus.matrixAutoUpdate = false; cactus.updateMatrix(); arm.matrixAutoUpdate = false; arm.updateMatrix();
-        scene.add(cactus);
-        
-        const hit = new THREE.Mesh(new THREE.BoxGeometry(2,3,2), new THREE.MeshBasicMaterial({visible: false}));
-        cactus.add(hit);
-        const plantData = { type: 'cactus', mesh: cactus, daysWatered: 0, wateredToday: false, stage: 0 };
-        stateRef.current.plants.push(plantData);
-        
-        addInteractable(hit, "💧➡️🌵", () => {
-            if (plantData.stage === 2) {
-                stateRef.current.ui.cactusFruits++; plantData.stage = 0; plantData.wateredToday = false;
-                cactus.children.forEach(c => { if(c.name==='fruit') cactus.remove(c); });
-            } else if (stateRef.current.ui.bottle === 2 && !plantData.wateredToday) {
-                stateRef.current.ui.bottle = 1; plantData.wateredToday = true; playWaterSound();
-            }
-        });
+    /* ШКАФ С ПРИПАСАМИ */
+    #cabinet-items-layer { position: absolute; inset: 0; z-index: 8; pointer-events: none; display: none; }
+    #cabinet-items-layer.visible { display: block; }
+    .shelf-item {
+      position: absolute; transform: translate(-50%, -50%); pointer-events: auto;
+      background-repeat: no-repeat; cursor: pointer;
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,0.78));
+      transition: transform 0.16s ease, filter 0.16s ease;
+    }
+    .shelf-item:hover {
+      transform: translate(-50%, -53%) scale(1.05);
+      filter: drop-shadow(0 0 12px rgba(215,165,95,0.65));
     }
 
-    // --- ОГОРОД ---
-    const gardenGroup = new THREE.Group();
-    gardenGroup.position.set(-10, 0, 5); 
-    
-    for(let i=0; i<12; i++) {
-        const fence = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6), woodMat);
-        fence.position.set(Math.cos(i*Math.PI/6)*3, 0.3, Math.sin(i*Math.PI/6)*3);
-        fence.rotation.x = (Math.random()-0.5)*0.2; fence.castShadow = true; gardenGroup.add(fence);
+    /* ВЕРХНИЙ ТЕКСТ СОБЫТИЙ */
+    #top-event-box {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: min(820px, 83%); z-index: 12;
+      background: rgba(10,9,8,0.88); border: 1px solid rgba(165,135,95,0.38); border-radius: 5px; padding: 8px 18px;
+      backdrop-filter: blur(5px); text-align: center; pointer-events: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.85);
     }
-    const pole1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3), woodMat); pole1.position.set(-2, 1.5, -2); gardenGroup.add(pole1);
-    const pole2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3), woodMat); pole2.position.set(2, 1.5, -2); gardenGroup.add(pole2);
-    const pole3 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3), woodMat); pole3.position.set(0, 1.5, 2); gardenGroup.add(pole3);
-    const cross = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 4), woodMat); cross.position.set(0, 2.9, -2); cross.rotation.z = Math.PI/2; gardenGroup.add(cross);
+    #narrative-text { font-size: clamp(12px, 1.25vw, 15.5px); line-height: 1.35; color: #e8dfd1; }
 
-    const pumpPositions = [[-1, 0], [1, 0], [0, 1.5]];
-    pumpPositions.forEach(p => {
-        const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.6), leafMat);
-        bush.position.set(p[0], 0.3, p[1]); bush.castShadow = true;
-        
-        const pumpkinMesh = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), pumpkinMat);
-        pumpkinMesh.scale.setScalar(0.01); pumpkinMesh.position.set(0, -0.1, 0); pumpkinMesh.castShadow = true; bush.add(pumpkinMesh);
-        gardenGroup.add(bush);
-
-        const hit = new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.5), new THREE.MeshBasicMaterial({visible: false}));
-        bush.add(hit);
-
-        const plantData = { type: 'pumpkin', mesh: pumpkinMesh, stage: 0, wateredToday: false };
-        stateRef.current.plants.push(plantData);
-
-        addInteractable(hit, "💧➡️🎃", () => {
-            if (plantData.stage === 3) {
-                stateRef.current.ui.pumpkins++; plantData.stage = 0; plantData.wateredToday = false; pumpkinMesh.scale.setScalar(0.01);
-            } else if (stateRef.current.ui.bottle === 2 && !plantData.wateredToday) {
-                stateRef.current.ui.bottle = 1; plantData.wateredToday = true; playWaterSound();
-            }
-        });
-    });
-    
-    gardenGroup.updateMatrixWorld(true);
-    gardenGroup.children.forEach(c => { c.matrixAutoUpdate = false; c.updateMatrix(); });
-    scene.add(gardenGroup);
-
-    // --- ДОМ ---
-    const houseGroup = new THREE.Group();
-    const addWall = (w, h, d, x, y, z) => {
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), brickMat);
-        wall.position.set(x, y, z); wall.castShadow = true; wall.receiveShadow = true; 
-        wall.matrixAutoUpdate = false; wall.updateMatrix(); houseGroup.add(wall);
-    };
-
-    addWall(10, 4, 0.5, 0, 2, -5); addWall(0.5, 4, 10, 5, 2, 0); addWall(3.5, 4, 0.5, -3.25, 2, 5); addWall(3.5, 4, 0.5, 3.25, 2, 5);
-    addWall(0.5, 1.2, 10, -5, 0.6, 0); addWall(0.5, 1.2, 10, -5, 3.4, 0); addWall(0.5, 1.6, 3, -5, 2, -3.5); addWall(0.5, 1.6, 3, -5, 2, 3.5);
-
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(9.8, 9.8), woodMat);
-    floor.rotation.x = -Math.PI/2; floor.position.y = 0.05; floor.receiveShadow = true; 
-    floor.matrixAutoUpdate = false; floor.updateMatrix(); houseGroup.add(floor);
-
-    const roofGroup = new THREE.Group(); roofGroup.position.y = 4.25;
-    for(let i=0; i<3; i++) {
-        const size = 10.5 - i*2.5;
-        const step = new THREE.Mesh(new THREE.BoxGeometry(size, 0.5, size), new THREE.MeshStandardMaterial({color: 0x6b3232, roughness: 0.9}));
-        step.position.y = i * 0.5; step.castShadow = true; step.receiveShadow = true; 
-        step.matrixAutoUpdate = false; step.updateMatrix(); roofGroup.add(step);
+    /* СТРОГАЯ АТМОСФЕРНАЯ ИКОНКА ВЕЩМЕШКА (В ЕДИНОМ СТИЛЕ С КАРТОЧКАМИ) */
+    #backpack-btn {
+      position: absolute; top: 10px; right: 14px; z-index: 18;
+      width: clamp(44px, 4.3vw, 56px); height: clamp(44px, 4.3vw, 56px);
+      background: #12100e;
+      border: 1px solid rgba(168,138,98,0.48); border-radius: 5px;
+      padding: 6px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.92), inset 0 0 0 1px rgba(255,235,205,0.06);
+      transition: border-color 0.18s ease, transform 0.15s ease, background 0.18s ease;
     }
-    houseGroup.add(roofGroup);
-
-    // КАМИН
-    const fireplaceGroup = new THREE.Group(); fireplaceGroup.position.set(0, 0, -4.2); 
-    const fireplaceBody = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.5, 1.4), brickMat);
-    fireplaceBody.position.y = 1.25; fireplaceGroup.add(fireplaceBody);
-    const firePit = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 0.8), new THREE.MeshBasicMaterial({color: 0x111111}));
-    firePit.position.set(0, 0.5, 0.4); fireplaceGroup.add(firePit);
-    const chimney = new THREE.Mesh(new THREE.BoxGeometry(1, 6, 1), brickMat);
-    chimney.position.y = 4; fireplaceGroup.add(chimney);
-
-    const fireLight = new THREE.PointLight(0xff6600, 0, 25); 
-    fireLight.position.set(0, 1.5, 1.5); fireLight.castShadow = true; fireLight.shadow.bias = -0.005;
-    stateRef.current.fireLight = fireLight; fireplaceGroup.add(fireLight);
-
-    const fireParticlesMat = new THREE.SpriteMaterial({map: circleTex, color: 0xff4400, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false});
-    for(let i=0; i<15; i++) {
-        const p = new THREE.Sprite(fireParticlesMat);
-        p.position.set((Math.random()-0.5)*0.8, 0.5 + Math.random(), 0.4 + (Math.random()-0.5)*0.4);
-        p.scale.set(0.6, 0.6, 1); p.visible = false;
-        fireplaceGroup.add(p); stateRef.current.fireParticles.push(p);
+    #backpack-btn:hover {
+      border-color: #c9a368; background: #1b1714; transform: translateY(-1px);
     }
-    
-    fireplaceBody.matrixAutoUpdate = false; fireplaceBody.updateMatrix();
-    chimney.matrixAutoUpdate = false; chimney.updateMatrix();
-    firePit.matrixAutoUpdate = false; firePit.updateMatrix();
-    houseGroup.add(fireplaceGroup); scene.add(houseGroup);
+    #backpack-btn svg {
+      width: 100%; height: 100%; stroke: #b89f7d; fill: #26201a;
+      stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.85));
+      transition: stroke 0.18s ease;
+    }
+    #backpack-btn:hover svg { stroke: #dfd0b8; }
+    #backpack-badge {
+      position: absolute; bottom: -5px; right: -5px;
+      min-width: 18px; height: 18px; padding: 0 4px;
+      background: #1f1913; color: #d8c3a5;
+      font: bold 10.5px/16px 'Georgia', serif; text-align: center;
+      border: 1px solid #8c7352; border-radius: 3px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.95);
+    }
 
-    houseGroup.updateMatrixWorld(true);
-    houseGroup.children.forEach(c => { if(c.geometry?.type === "BoxGeometry" && c.position.y === 2) stateRef.current.colliders.push(new THREE.Box3().setFromObject(c)); });
-    fireplaceGroup.updateMatrixWorld(true); stateRef.current.colliders.push(new THREE.Box3().setFromObject(fireplaceBody));
+    /* ЕДИНЫЙ СТРОГИЙ СТИЛЬ КНОПОК (НАЗАД / СВЕРНУТЬ / ЗАКРЫТЬ) */
+    .grim-btn {
+      position: relative; cursor: pointer;
+      padding: 8px 24px;
+      background: #14110e;
+      color: #dfd3c0;
+      border: 1px solid #7a6345;
+      border-radius: 4px;
+      font: bold clamp(11.5px, 1.05vw, 14px) 'Georgia', serif;
+      letter-spacing: 0.4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.92), inset 0 0 0 2px #0b0908, inset 0 0 12px rgba(0,0,0,0.8);
+      transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease, transform 0.14s ease;
+    }
+    .grim-btn:hover {
+      background: #1e1914;
+      border-color: #c59b61;
+      color: #f5ebd9;
+    }
+    .grim-btn:active { transform: translateY(1px); }
 
-    const fireTrigger = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshBasicMaterial({visible: false}));
-    fireTrigger.position.set(0, 1, -2.5); 
-    addInteractable(fireTrigger, "🔥", () => { stateRef.current.isFireLit = !stateRef.current.isFireLit; });
-    scene.add(fireTrigger);
+    #scene-back-btn {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      z-index: 22; display: none;
+    }
+    #scene-back-btn.visible { display: block; }
+    #scene-back-btn:hover { transform: translateX(-50%) translateY(-1px); }
 
-    // СТОЛ И БУТЫЛКА (Левый дальний угол)
-    const tableTop = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 1), woodMat);
-    tableTop.position.set(-3.5, 1, -3.5); tableTop.castShadow = true; 
-    tableTop.matrixAutoUpdate = false; tableTop.updateMatrix(); scene.add(tableTop);
-    stateRef.current.colliders.push(new THREE.Box3().setFromObject(tableTop));
+    /* ОКНО НАХОДОК ПО ЦЕНТРУ ЭКРАНА */
+    #loot-center-modal {
+      position: absolute; inset: 0; z-index: 30;
+      background: rgba(5, 5, 6, 0.82); backdrop-filter: blur(4px);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px; padding: 20px;
+    }
+    #loot-center-modal.visible { display: flex; }
+    .loot-modal-title {
+      font-size: clamp(15px, 1.55vw, 20px); color: #dfd1b8; font-weight: normal;
+      font-style: italic; letter-spacing: 0.5px; text-shadow: 0 2px 10px #000;
+      border-bottom: 1px solid rgba(168,138,98,0.35); padding-bottom: 6px;
+    }
+    #loot-cards-row {
+      display: flex; align-items: stretch; justify-content: center;
+      gap: clamp(10px, 1.4vw, 18px); flex-wrap: wrap;
+    }
 
-    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.4), new THREE.MeshStandardMaterial({color: 0x4488ff, transparent: true, opacity: 0.6}));
-    bottle.position.set(-3.5, 1.25, -3.5); bottle.castShadow = true; scene.add(bottle);
-    addInteractable(bottle, "✋", () => {
-        stateRef.current.ui.bottle = 1; scene.remove(bottle); interactables.splice(interactables.indexOf(bottle), 1);
-    });
+    /* ПОЛНОЭКРАННЫЙ ИНВЕНТАРЬ (ВЕЩМЕШОК) */
+    #inventory-screen {
+      position: absolute; inset: 0; z-index: 35;
+      background: radial-gradient(circle at 50% 45%, #14110d 0%, #060504 100%);
+      display: none; flex-direction: column; align-items: center; justify-content: space-between;
+      padding: clamp(18px, 2.6vw, 34px);
+    }
+    #inventory-screen.visible { display: flex; }
+    .inv-header {
+      width: 100%; max-width: 960px; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid rgba(165,135,95,0.28); padding-bottom: 12px;
+    }
+    .inv-title-wrap {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .inv-title-wrap svg {
+      width: 24px; height: 24px; stroke: #b89f7d; fill: #26201a;
+      stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .inv-title {
+      font-size: clamp(16px, 1.65vw, 22px); color: #dfd1b8;
+      font-weight: normal; letter-spacing: 0.6px;
+    }
+    #inventory-grid {
+      width: 100%; max-width: 960px; flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      gap: clamp(12px, 1.4vw, 18px); flex-wrap: wrap; overflow-y: auto; padding: 14px 4px;
+    }
+    .inv-empty-msg { font-style: italic; color: rgba(215,200,178,0.45); font-size: 15px; }
+    .inv-item-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .inv-sub-btn {
+      width: 100%; padding: 4px 8px; font: 11px 'Georgia', serif;
+      background: #14110e; color: #d6c5aa;
+      border: 1px solid rgba(155,125,85,0.45); border-radius: 3px; cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .inv-sub-btn:hover { border-color: #c59b61; color: #fff; background: #211b15; }
+    #inventory-hint {
+      font-size: clamp(12px, 1.05vw, 14px); color: rgba(210,192,165,0.75); font-style: italic;
+      text-align: center; min-height: 1.5em; border-top: 1px solid rgba(165,135,95,0.18);
+      padding-top: 10px; width: 100%; max-width: 960px;
+    }
 
-    // КРЕСЛО-КАЧАЛКА (Справа, смотрит на камин)
-    const chairGroup = new THREE.Group(); 
-    chairGroup.position.set(2.5, 0, -1.0); 
-    chairGroup.rotation.y = -Math.PI/6; 
-    
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.8), woodMat); seat.position.y = 0.6; chairGroup.add(seat);
-    const back = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.1), woodMat); back.position.set(0, 1.2, -0.35); back.rotation.x = -0.15; chairGroup.add(back);
-    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.8), woodMat); armL.position.set(-0.45, 0.9, 0); chairGroup.add(armL);
-    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.8), woodMat); armR.position.set(0.45, 0.9, 0); chairGroup.add(armR);
-    const rockerGeo = new THREE.TorusGeometry(1.2, 0.05, 8, 20, Math.PI / 3);
-    const rL = new THREE.Mesh(rockerGeo, woodMat); rL.rotation.y = Math.PI/2; rL.rotation.z = -Math.PI/6 - Math.PI/2; rL.position.set(-0.4, 1.2, 0); chairGroup.add(rL);
-    const rR = new THREE.Mesh(rockerGeo, woodMat); rR.rotation.y = Math.PI/2; rR.rotation.z = -Math.PI/6 - Math.PI/2; rR.position.set(0.4, 1.2, 0); chairGroup.add(rR);
-    
-    const chairHitbox = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), new THREE.MeshBasicMaterial({visible: false}));
-    chairHitbox.position.y = 0.6;
-    addInteractable(chairHitbox, "🪑", () => {
-        const st = stateRef.current; st.isSitting = true;
-        st.isWalking = false; st.targetYaw = -Math.PI/6; st.targetPitch = 0; 
-    });
-    chairGroup.add(chairHitbox); scene.add(chairGroup);
+    /* МОДАЛКА ПАМЯТКИ ГО И ИНСТРУКЦИИ К КОСТЯМ */
+    #brochure-modal {
+      position: absolute; inset: 0; z-index: 40; background: rgba(5,5,6,0.68);
+      display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    #brochure-modal.visible { display: flex; }
+    .brochure-paper {
+      width: min(640px, 90%); max-height: 82%; overflow-y: auto;
+      background: linear-gradient(135deg, rgba(215,201,174,0.96) 0%, rgba(196,178,147,0.96) 100%); color: #1f1a16;
+      border: 2px solid #5c4b37; box-shadow: 0 20px 60px rgba(0,0,0,0.95); border-radius: 4px; padding: 20px 24px; font-family: 'Courier New', monospace;
+    }
+    .brochure-stamp { display: inline-block; border: 2px solid #7a231d; color: #7a231d; font-weight: bold; font-size: 11px; padding: 2px 8px; margin-bottom: 10px; text-transform: uppercase; }
+    .brochure-title { font-size: clamp(14px, 1.35vw, 18px); font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #3a2e21; padding-bottom: 8px; margin-bottom: 12px; }
+    .brochure-body p { font-size: clamp(12px, 1.05vw, 14px); line-height: 1.45; margin-bottom: 10px; font-weight: 600; }
+    .brochure-section-title { font-size: clamp(13px, 1.15vw, 15px); font-weight: bold; margin: 14px 0 6px 0; text-decoration: underline; }
+    .brochure-close-btn { margin-top: 12px; width: 100%; padding: 10px; background: #2b2219; color: #f0e6d6; border: 1px solid #6e563f; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
-    // ФАКЕЛА НА СТЕНАХ
-    const createTorch = (x, z, rotY) => {
-        const tGroup = new THREE.Group(); tGroup.position.set(x, 2.5, z); tGroup.rotation.y = rotY;
-        const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.02, 0.6, 4), woodMat); stick.rotation.x = Math.PI/4; tGroup.add(stick);
-        const light = new THREE.PointLight(0xff7700, 0, 15); light.position.set(0, 0.4, 0.2); tGroup.add(light);
-        const flame = new THREE.Sprite(new THREE.SpriteMaterial({map: circleTex, color: 0xff5500, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}));
-        flame.position.set(0, 0.4, 0.2); flame.scale.set(0.6, 0.8, 1); flame.visible = false; tGroup.add(flame);
-        scene.add(tGroup);
-        
-        const idx = stateRef.current.torches.length; stateRef.current.torches.push({lit: false, timer: 0, light, flame});
-        
-        const trigger = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), new THREE.MeshBasicMaterial({visible: false}));
-        trigger.position.copy(tGroup.position);
-        addInteractable(trigger, "🔥", () => {
-            if(stateRef.current.ui.bigSticks > 0) {
-                stateRef.current.ui.bigSticks--;
-                stateRef.current.torches[idx].lit = true; stateRef.current.torches[idx].timer = 80;
-            } else alert("Нужна 1 палка (🪵)");
-        });
-        scene.add(trigger);
-    };
-    createTorch(1.5, 5.2, 0); createTorch(-5.2, 0, -Math.PI/2); createTorch(5.2, 0, Math.PI/2); createTorch(0, -5.2, Math.PI);
+    /* ОВЕРЛЕЙ ПОДКЛЮЧЕНИЯ ОТДЕЛЬНОГО ФАЙЛА ОЧКО.HTML (БЕЗ ВЕРХНЕЙ ПЛАШКИ) */
+    #ochko-modal-wrap {
+      position: absolute; inset: 0; z-index: 50; background: #050403;
+      display: none; flex-direction: column;
+    }
+    #ochko-modal-wrap.visible { display: flex; }
+    #ochko-iframe { width: 100%; height: 100%; border: none; }
 
-    // ДВЕРЬ
-    const doorGroup = new THREE.Group(); doorGroup.position.set(-1.5, 0, 5); 
-    const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(3, 3.8, 0.2), woodMat); doorMesh.position.set(1.5, 2, 0); doorGroup.add(doorMesh);
-    scene.add(doorGroup); doorGroup.updateMatrixWorld(true); stateRef.current.doorCollider = new THREE.Box3().setFromObject(doorMesh);
+    /* НИЖНЯЯ ЗОНА КАРТОЧЕК */
+    #bottom-hud {
+      position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 15;
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 6px; pointer-events: none;
+    }
+    #bottom-hud.hidden-hud .deck-group { visibility: hidden !important; pointer-events: none !important; }
+    .deck-group {
+      display: flex; align-items: center; gap: 5px; pointer-events: auto;
+      flex: 0 1 auto; max-width: calc(50% - 48px);
+    }
+    .deck-cards {
+      display: flex; align-items: flex-end; gap: clamp(5px, 0.65vw, 9px);
+      min-height: clamp(92px, 10.5vw, 138px); perspective: 900px;
+    }
+    .scroll-arrow {
+      position: relative; z-index: 5; flex-shrink: 0;
+      width: clamp(20px, 1.9vw, 26px); height: clamp(76px, 8.2vw, 114px);
+      background: rgba(14,12,10,0.92); border: 1px solid rgba(185,155,115,0.48);
+      border-radius: 5px; color: #f2e9dc; font-size: clamp(11px, 1vw, 14px);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.85); transition: border-color 0.15s, transform 0.12s, background 0.15s;
+    }
+    .scroll-arrow:hover:not(:disabled) { border-color: #c59b61; background: rgba(30,24,18,0.96); transform: scale(1.05); }
+    .scroll-arrow:disabled { opacity: 0.22; cursor: default; }
 
-    const doorHitbox = new THREE.Mesh(new THREE.BoxGeometry(3, 3.8, 0.6), new THREE.MeshBasicMaterial({visible: false}));
-    doorHitbox.position.set(1.5, 2, 0); doorGroup.add(doorHitbox);
-    addInteractable(doorHitbox, "🚪", () => { stateRef.current.isDoorOpen = !stateRef.current.isDoorOpen; playWoodGroan(); });
+    /* КАРТОЧКИ */
+    .choice-card {
+      position: relative; width: clamp(68px, 7.6vw, 108px); flex-shrink: 0;
+      background: transparent; border: none; padding: 0; cursor: pointer;
+      font-family: inherit; perspective: 800px; transform-style: preserve-3d;
+      transition: transform 0.22s cubic-bezier(0.22, 1.3, 0.36, 1), filter 0.2s ease;
+    }
+    .choice-card.deal-anim {
+      animation: cardDeal 0.52s cubic-bezier(0.2, 1.22, 0.32, 1) backwards;
+      animation-delay: var(--deal-delay, 0ms);
+    }
+    .choice-card:hover:not(:disabled):not(.activating) {
+      transform: translateY(-9px) scale(1.05) rotateX(5deg);
+      filter: drop-shadow(0 12px 20px rgba(240,168,84,0.28));
+    }
+    .choice-card.activating {
+      animation: cardActivateFlip 0.42s cubic-bezier(0.22, 1.25, 0.36, 1) forwards !important;
+      pointer-events: none;
+    }
+    .choice-card:disabled:not(.activating) { opacity: 0.48; cursor: default; }
 
-    // --- ЗВУКИ ---
-    const initAudio = () => { if (!stateRef.current.audioCtx) stateRef.current.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (stateRef.current.audioCtx.state === 'suspended') stateRef.current.audioCtx.resume(); };
+    .card-inner {
+      position: relative; width: 100%; transform-style: preserve-3d;
+      background: linear-gradient(165deg, rgba(24,20,16,0.96) 0%, rgba(12,10,8,0.96) 100%);
+      border: 1px solid rgba(195,160,115,0.48); border-radius: 6px;
+      padding: 5px 5px 6px 5px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      box-shadow: 0 7px 18px rgba(0,0,0,0.88), inset 0 1px 0 rgba(255,230,190,0.12);
+      backface-visibility: hidden;
+    }
+    .choice-card:hover:not(:disabled) .card-inner {
+      border-color: #d6a45c;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.92), 0 0 12px rgba(220,160,80,0.28);
+    }
+    .card-back {
+      position: absolute; inset: 0; border-radius: 6px; backface-visibility: hidden;
+      transform: rotateY(180deg);
+      background: radial-gradient(circle at 50% 50%, #3a2b1c 0%, #17120d 85%);
+      border: 1.5px solid #a88455;
+      box-shadow: inset 0 0 0 4px #1f1811, inset 0 0 0 6px rgba(168,132,85,0.45);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card-back::after { content: "★"; font-size: clamp(18px, 2vw, 26px); color: rgba(215,175,115,0.55); }
 
-    const playStepSound = (isInside) => {
-        const ctx = stateRef.current.audioCtx; if (!ctx) return; const time = ctx.currentTime;
-        if (isInside) {
-            const osc = ctx.createOscillator(); const gain = ctx.createGain();
-            osc.type = 'sine'; osc.frequency.setValueAtTime(50, time); osc.frequency.exponentialRampToValueAtTime(10, time + 0.1);
-            gain.gain.setValueAtTime(0.2, time); gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
-            osc.connect(gain); gain.connect(ctx.destination); osc.start(time); osc.stop(time + 0.15);
-        } else {
-            const bSize = ctx.sampleRate * 0.1; const buffer = ctx.createBuffer(1, bSize, ctx.sampleRate); const data = buffer.getChannelData(0);
-            for (let i = 0; i < bSize; i++) data[i] = (Math.random() * 2 - 1);
-            const noise = ctx.createBufferSource(); noise.buffer = buffer;
-            const filter = ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 1200; filter.Q.value = 0.8;
-            const gain = ctx.createGain(); gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(0.02, time + 0.05); gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1); 
-            noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination); noise.start(time);
-        }
-    };
+    @keyframes cardDeal {
+      0% { opacity: 0; transform: translate3d(0, 68px, -60px) rotateY(180deg) rotateZ(-8deg) scale(0.72); }
+      65% { opacity: 1; transform: translate3d(0, -7px, 12px) rotateY(-10deg) rotateZ(1.5deg) scale(1.03); }
+      100% { opacity: 1; transform: translate3d(0, 0, 0) rotateY(0deg) rotateZ(0deg) scale(1); }
+    }
+    @keyframes cardActivateFlip {
+      0% { transform: translateY(-6px) scale(1.04) rotateY(0deg); }
+      45% { transform: translateY(-28px) scale(1.14) rotateY(180deg); filter: drop-shadow(0 0 18px rgba(255,190,95,0.75)); }
+      80% { transform: translateY(-16px) scale(1.08) rotateY(360deg); filter: drop-shadow(0 0 14px rgba(255,190,95,0.5)); }
+      100% { transform: translateY(0) scale(1) rotateY(360deg); }
+    }
 
-    const playWoodGroan = () => {
-        const ctx = stateRef.current.audioCtx; if (!ctx) return; const time = ctx.currentTime;
-        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, time); osc.frequency.exponentialRampToValueAtTime(50, time + 0.4);
-        gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(0.1, time + 0.1); gain.gain.linearRampToValueAtTime(0, time + 0.4);
-        osc.connect(gain); gain.connect(ctx.destination); osc.start(time); osc.stop(time + 0.4);
-    };
+    .card-icon-frame { width: 100%; aspect-ratio: 1/1; border-radius: 4px; overflow: hidden; background-color: #161412; background-repeat: no-repeat; }
+    .choice-caption {
+      font-size: clamp(8.5px, 0.82vw, 11.5px); line-height: 1.12; color: #f5ecdf;
+      text-align: center; font-weight: bold; min-height: 2.25em;
+      display: flex; align-items: center; justify-content: center; word-break: break-word;
+    }
 
-    const playWaterSound = () => {
-        const ctx = stateRef.current.audioCtx; if (!ctx) return; const time = ctx.currentTime;
-        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.type = 'sine'; osc.frequency.setValueAtTime(400, time); osc.frequency.exponentialRampToValueAtTime(600, time + 0.2);
-        gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(0.3, time + 0.1); gain.gain.linearRampToValueAtTime(0, time + 0.3);
-        osc.connect(gain); gain.connect(ctx.destination); osc.start(time); osc.stop(time + 0.3);
-    };
+    /* СПИЧКА И СВЕЧА */
+    #center-flame-canvas {
+      width: clamp(72px, 7.5vw, 112px); height: clamp(96px, 10.5vw, 152px);
+      pointer-events: auto; cursor: grab; flex-shrink: 0; margin: 0 2px;
+      touch-action: none; will-change: transform; z-index: 25;
+      transition: filter 0.15s ease;
+    }
+    #center-flame-canvas:hover { filter: drop-shadow(0 0 10px rgba(255,180,80,0.45)); }
+    #center-flame-canvas.dragging { cursor: grabbing; filter: drop-shadow(0 0 18px rgba(255,200,100,0.85)); }
+  </style>
+</head>
+<body data-lit="intro" data-fullbright="false">
 
-    const playAxeSound = () => {
-        const ctx = stateRef.current.audioCtx; if (!ctx) return; const time = ctx.currentTime;
-        const osc = ctx.createOscillator(); const gainOsc = ctx.createGain();
-        osc.type = 'triangle'; osc.frequency.setValueAtTime(150, time); osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
-        gainOsc.gain.setValueAtTime(1, time); gainOsc.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
-        osc.connect(gainOsc); gainOsc.connect(ctx.destination); osc.start(time); osc.stop(time + 0.15);
-        
-        const bSize = ctx.sampleRate * 0.1; const buffer = ctx.createBuffer(1, bSize, ctx.sampleRate); const data = buffer.getChannelData(0);
-        for(let i=0; i<bSize; i++) data[i] = Math.random() * 2 - 1;
-        const noise = ctx.createBufferSource(); noise.buffer = buffer;
-        const filter = ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 1000;
-        const gainNoise = ctx.createGain(); gainNoise.gain.setValueAtTime(0.5, time); gainNoise.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
-        noise.connect(filter); filter.connect(gainNoise); gainNoise.connect(ctx.destination); noise.start(time);
-    };
+  <div id="stage-16x9">
+    <div id="slot-a" class="scene-slot current"><div class="layer-dark"></div><div class="layer-lit"></div></div>
+    <div id="slot-b" class="scene-slot outgoing"><div class="layer-dark"></div><div class="layer-lit"></div></div>
 
-    // --- УПРАВЛЕНИЕ ---
-    const raycaster = new THREE.Raycaster(); raycaster.far = 3.5; const center = new THREE.Vector2(0, 0);
+    <div id="npc-layer"><div id="npc-sprite-box"></div></div>
+    <div id="cabinet-items-layer"></div>
 
-    const onPointerMove = (e) => {
-        if (e.pointerType === 'mouse' && e.buttons === 0) { 
-            const sens = 0.003; stateRef.current.targetYaw -= e.movementX * sens; stateRef.current.targetPitch -= e.movementY * sens;
-            stateRef.current.targetPitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, stateRef.current.targetPitch));
-        }
-    };
+    <!-- КНОПКА ВЕЩМЕШКА (ОТКРЫВАЕТ ПОЛНОЭКРАННЫЙ ИНВЕНТАРЬ) -->
+    <button id="backpack-btn" title="Вещмешок (Инвентарь)" onclick="openInventoryScreen()">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M11 7 C11 3.5, 21 3.5, 21 7" fill="none"/>
+        <path d="M7 11 C7 8, 25 8, 25 11 L26 26 C26 28, 24 29, 22 29 L10 29 C8 29, 6 28, 6 26 Z"/>
+        <path d="M6.5 13 C6.5 16, 25.5 16, 25.5 13"/>
+        <rect x="10" y="18" width="12" height="8" rx="1.2"/>
+        <line x1="12" y1="12" x2="12" y2="21"/>
+        <line x1="20" y1="12" x2="20" y2="21"/>
+        <rect x="11" y="15" width="2" height="2.2"/>
+        <rect x="19" y="15" width="2" height="2.2"/>
+      </svg>
+      <span id="backpack-badge">0</span>
+    </button>
 
-    let lastTouchX = null, lastTouchY = null;
-    const onTouchStart = (e) => { if (e.target.closest('button')) return; lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; };
-    const handleTouchRotate = (e) => {
-        if (e.target.closest('button')) return;
-        if (lastTouchX !== null) {
-            const touch = e.touches[0];
-            stateRef.current.targetYaw -= (touch.clientX - lastTouchX) * 0.005; stateRef.current.targetPitch -= (touch.clientY - lastTouchY) * 0.005;
-            stateRef.current.targetPitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, stateRef.current.targetPitch));
-            lastTouchX = touch.clientX; lastTouchY = touch.clientY;
-        }
-    };
-    const onTouchEnd = () => { lastTouchX = null; lastTouchY = null; };
+    <!-- КНОПКА «НАЗАД» (ДЛЯ ОКНА, ШКАФА И ДВЕРЕЙ КВАРТИР) -->
+    <button id="scene-back-btn" class="grim-btn" onclick="handleSceneBackBtn()">Отойти назад</button>
 
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('touchstart', onTouchStart, {passive: false});
-    window.addEventListener('touchmove', handleTouchRotate, {passive: false});
-    window.addEventListener('touchend', onTouchEnd);
+    <!-- ОКНО НАХОДОК ПО ЦЕНТРУ ЭКРАНА (ПРИ ПОИСКЕ В ХЛАМЕ) -->
+    <div id="loot-center-modal">
+      <div class="loot-modal-title" id="loot-modal-title">Вы нашли в коробках с хламом:</div>
+      <div id="loot-cards-row"></div>
+      <button class="grim-btn" onclick="closeLootModal()">Убрать в вещмешок</button>
+    </div>
 
-    // Локальные вызовы для UI
-    window.startWalking = () => { if(!stateRef.current.isSitting) { stateRef.current.isWalking = true; initAudio(); } };
-    window.stopWalking = () => { stateRef.current.isWalking = false; };
-    window.standUp = () => { stateRef.current.isSitting = false; };
-
-    window.craftHandTorch = () => {
-        const st = stateRef.current;
-        if (st.ui.bigSticks > 0 && st.ui.smallSticks > 0 && !st.isHandTorchLit) {
-            st.ui.bigSticks--; st.ui.smallSticks--; st.isHandTorchLit = true; st.handTorchTimer = 120; initAudio();
-        }
-    };
-
-    window.eatFood = (type) => {
-        const ui = stateRef.current.ui;
-        if (type === 'bread' && ui.bread > 0) { ui.bread--; ui.hunger = Math.min(100, ui.hunger + 50); playWaterSound(); }
-        if (type === 'pumpkin' && ui.pumpkins > 0) { ui.pumpkins--; ui.hunger = Math.min(100, ui.hunger + 40); ui.thirst = Math.min(100, ui.thirst + 20); playWaterSound(); }
-        if (type === 'cactus' && ui.cactusFruits > 0) { ui.cactusFruits--; ui.thirst = Math.min(100, ui.thirst + 30); playWaterSound(); }
-        if (type === 'water' && ui.bottle === 2) { ui.bottle = 1; ui.thirst = Math.min(100, ui.thirst + 50); playWaterSound(); }
-    };
-
-    const uiInterval = setInterval(() => {
-        const ui = stateRef.current.ui;
-        setUiData({...ui});
-        setIsSittingUI(stateRef.current.isSitting);
-    }, 200);
-
-    // --- ЦИКЛ АНИМАЦИИ ---
-    const clock = new THREE.Clock();
-    let animId;
-    const animate = () => {
-        animId = requestAnimationFrame(animate);
-        const delta = clock.getDelta();
-        const state = stateRef.current;
-
-        const prevHour = Math.floor(state.timeOfDay);
-        state.timeOfDay += (delta / 10); 
-        
-        if (Math.floor(state.timeOfDay) > prevHour || (prevHour === 23 && state.timeOfDay < 1)) {
-            state.ui.hunger = Math.max(0, state.ui.hunger - (80/24)); 
-            state.ui.thirst = Math.max(0, state.ui.thirst - (100/24)); 
-        }
-
-        if (state.timeOfDay >= 24) {
-            state.timeOfDay = 0; state.dayCount++;
-            moonSprite.material.map = moonTextures[state.dayCount % 8];
-            
-            state.plants.forEach(p => {
-                if (p.wateredToday) {
-                    if (p.type === 'pumpkin' && p.stage < 3) {
-                        p.stage++; p.mesh.scale.setScalar(p.stage === 0 ? 0.01 : p.stage * 0.33);
-                    }
-                    if (p.type === 'cactus' && p.stage < 2) {
-                        p.stage++;
-                        if (p.stage === 2) {
-                            const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.15), new THREE.MeshStandardMaterial({color: 0xff2222}));
-                            fruit.position.set(0, 1, 0); fruit.name = 'fruit'; p.mesh.add(fruit);
-                        }
-                    }
-                    p.wateredToday = false;
-                }
-            });
-        }
-
-        const sunAngle = ((state.timeOfDay - 6) / 24) * Math.PI * 2;
-        const elevation = Math.sin(sunAngle) * 90; 
-        const azimuth = 180 + Math.cos(sunAngle) * 45; 
-
-        sunVec.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - elevation), THREE.MathUtils.degToRad(azimuth));
-        uniforms['sunPosition'].value.copy(sunVec);
-        sunLight.position.copy(sunVec).multiplyScalar(100);
-
-        moonVec.copy(sunVec).multiplyScalar(-100); moonSprite.position.copy(moonVec); 
-
-        const isDay = elevation > 0;
-        sunLight.intensity = Math.max(0, Math.sin(sunAngle)) * 3.0;
-        
-        if (!isDay) {
-            starsMat.opacity = Math.min(1, -elevation / 10); moonSprite.material.opacity = Math.min(1, -elevation / 10);
-            scene.fog.color.setHex(0x020205); ambient.intensity = 0.02; 
-        } else {
-            starsMat.opacity = 0; moonSprite.material.opacity = 0; 
-            let t = Math.max(0, Math.sin(sunAngle));
-            const skyColor = new THREE.Color().lerpColors(new THREE.Color(0xff8844), new THREE.Color(0x66aaff), t);
-            scene.fog.color.copy(skyColor);
-            ambient.intensity = 0.3;
-        }
-
-        state.doorRot = THREE.MathUtils.lerp(state.doorRot, state.isDoorOpen ? -Math.PI/2 : 0, 0.1); doorGroup.rotation.y = state.doorRot;
-
-        if (state.isFireLit) {
-            state.fireLight.intensity = 5 + Math.random() * 2.0; 
-            state.fireParticles.forEach(p => {
-                p.visible = true; p.position.y += delta * 2;
-                if (p.position.y > 1.8) { p.position.y = 0.5; p.position.x = (Math.random()-0.5)*0.8; }
-                p.material.opacity = 1 - ((p.position.y - 0.5) / 1.3); 
-                p.material.color.setHSL(0.1 - ((p.position.y - 0.5) * 0.1), 1, 0.5);
-            });
-        } else {
-            state.fireLight.intensity = THREE.MathUtils.lerp(state.fireLight.intensity, 0, 0.1); state.fireParticles.forEach(p => p.visible = false);
-        }
-
-        state.torches.forEach(t => {
-            if (t.lit) {
-                t.timer -= delta; t.light.intensity = 3 + Math.random(); t.flame.visible = true; t.flame.scale.setScalar(0.5 + Math.random()*0.3);
-                if (t.timer <= 0) t.lit = false;
-            } else { t.light.intensity = 0; t.flame.visible = false; }
-        });
-
-        if (state.isHandTorchLit) {
-            state.handTorchTimer -= delta; state.handTorch.group.visible = true;
-            state.handTorch.light.intensity = 3 + Math.random(); state.handTorch.flame.scale.setScalar(0.4 + Math.random()*0.2);
-            if (state.handTorchTimer <= 0) state.isHandTorchLit = false;
-        } else { state.handTorch.group.visible = false; state.handTorch.light.intensity = 0; }
-
-        const isInside = Math.abs(camera.position.x) < 4.8 && Math.abs(camera.position.z) < 4.8;
-        if (!isDay) {
-            if (isInside && state.isFireLit) renderer.toneMappingExposure = 1.3;
-            else if (state.isHandTorchLit) renderer.toneMappingExposure = 0.8; 
-            else if (!isInside && state.torches.some(t => t.lit && camera.position.distanceTo(t.light.parent.position) < 8)) renderer.toneMappingExposure = 1.0;
-            else renderer.toneMappingExposure = 0.2; 
-        } else { renderer.toneMappingExposure = 1.0; }
-
-        // КРЕСЛО
-        if (state.isSitting) {
-            const tPos = new THREE.Vector3().copy(chairGroup.position); tPos.y += 1.3; tPos.x -= 0.2;
-            camera.position.lerp(tPos, 0.1);
-            
-            state.rockCycle += delta * 1.5; const rockAngle = Math.sin(state.rockCycle) * 0.15;
-            chairGroup.rotation.x = rockAngle;
-            
-            state.yaw = THREE.MathUtils.lerp(state.yaw, state.targetYaw, 0.15); 
-            state.pitch = THREE.MathUtils.lerp(state.pitch, state.targetPitch, 0.15); 
-            camera.rotation.order = 'YXZ'; camera.rotation.y = state.yaw; camera.rotation.x = state.pitch + rockAngle;
-
-            if (Math.sin(state.rockCycle) * Math.sin(state.rockCycle - delta*1.5) < 0) playWoodGroan();
-        } else {
-            chairGroup.rotation.x = THREE.MathUtils.lerp(chairGroup.rotation.x, 0, 0.1);
-            
-            state.yaw = THREE.MathUtils.lerp(state.yaw, state.targetYaw, 0.15); state.pitch = THREE.MathUtils.lerp(state.pitch, state.targetPitch, 0.15);
-            camera.rotation.order = 'YXZ'; camera.rotation.y = state.yaw; camera.rotation.x = state.pitch;
-
-            if (state.isWalking) {
-                const speedMult = (state.ui.hunger <= 0 || state.ui.thirst <= 0) ? 0.5 : 1.0;
-                
-                const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); dir.y = 0; dir.normalize();
-                const nextPos = camera.position.clone().addScaledVector(dir, 4.0 * delta * speedMult);
-                const playerBox = new THREE.Box3().setFromCenterAndSize(nextPos, new THREE.Vector3(1, 1.5, 1));
-                
-                let canMove = true;
-                for(let i=0; i<state.colliders.length; i++) if (state.colliders[i].intersectsBox(playerBox)) { canMove = false; break; }
-                if (canMove && !state.isDoorOpen && state.doorCollider.intersectsBox(playerBox)) canMove = false;
-
-                if (canMove) camera.position.copy(nextPos);
-
-                state.walkCycle += delta * 10 * speedMult; const currentSin = Math.sin(state.walkCycle); camera.position.y = 1.6 + currentSin * 0.06;
-
-                if ((state.lastSin < 0 && currentSin >= 0 || state.lastSin > 0 && currentSin <= 0) && canMove) playStepSound(isInside);
-                state.lastSin = currentSin;
-            } else { camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.6, 0.1); }
-        }
-
-        raycaster.setFromCamera(center, camera);
-        const intersects = raycaster.intersectObjects(interactables);
-        const hitData = intersects.length > 0 ? intersects[0].object.userData : null;
-        if (state.activeAction !== hitData?.action && !state.isSitting) { 
-            state.activeAction = hitData?.action; state.activeIcon = hitData?.icon;
-            setActionIcon(hitData && typeof hitData.icon === 'string' ? hitData.icon : null); 
-        }
-
-        renderer.render(scene, camera);
-    };
-
-    animate();
-
-    const handleResize = () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
-    window.addEventListener('resize', handleResize);
-
-    return () => { 
-        cancelAnimationFrame(animId);
-        clearInterval(uiInterval);
-        window.removeEventListener('resize', handleResize); window.removeEventListener('pointermove', onPointerMove);
-        window.removeEventListener('touchstart', onTouchStart); window.removeEventListener('touchmove', handleTouchRotate); window.removeEventListener('touchend', onTouchEnd);
-        containerRef.current?.removeChild(renderer.domElement); 
-    };
-  }, []);
-
-  const noSelect = { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', msUserSelect: 'none' };
-  const btnStyle = { background: 'rgba(0,0,0,0.7)', color: '#fff', border: '1px solid #aaa', borderRadius: '50%', width: '50px', height: '50px', fontSize: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', outline: 'none', ...noSelect };
-
-  return (
-    <div style={{ width: '100vw', height: '100vh', background: '#000', touchAction: 'none', overflow: 'hidden', ...noSelect }}>
-      <div ref={containerRef} style={{...noSelect}} />
-      
-      {/* HUD: Голод и Жажда */}
-      <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', flexDirection: 'column', gap: '5px', pointerEvents: 'none', ...noSelect }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,0,0,0.5)', padding: '5px', borderRadius: '15px' }}>
-              <span style={{fontSize: '20px'}}>🍖</span>
-              <div style={{ width: '100px', height: '10px', background: '#333', borderRadius: '5px', overflow: 'hidden' }}>
-                  <div style={{ width: `${uiData.hunger}%`, height: '100%', background: uiData.hunger > 20 ? '#ff4444' : '#ff0000', transition: '0.5s' }} />
-              </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,0,0,0.5)', padding: '5px', borderRadius: '15px' }}>
-              <span style={{fontSize: '20px'}}>💧</span>
-              <div style={{ width: '100px', height: '10px', background: '#333', borderRadius: '5px', overflow: 'hidden' }}>
-                  <div style={{ width: `${uiData.thirst}%`, height: '100%', background: uiData.thirst > 20 ? '#44aaff' : '#ff0000', transition: '0.5s' }} />
-              </div>
-          </div>
+    <!-- ПОЛНОЭКРАННЫЙ ИНВЕНТАРЬ -->
+    <div id="inventory-screen">
+      <div class="inv-header">
+        <div class="inv-title-wrap">
+          <svg viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M11 7 C11 3.5, 21 3.5, 21 7" fill="none"/>
+            <path d="M7 11 C7 8, 25 8, 25 11 L26 26 C26 28, 24 29, 22 29 L10 29 C8 29, 6 28, 6 26 Z"/>
+            <path d="M6.5 13 C6.5 16, 25.5 16, 25.5 13"/>
+            <rect x="10" y="18" width="12" height="8" rx="1.2"/>
+          </svg>
+          <div class="inv-title">Вещмешок</div>
+        </div>
+        <button class="grim-btn" onclick="closeInventoryScreen()">Вернуться к комнате</button>
       </div>
+      <div id="inventory-grid"></div>
+      <div id="inventory-hint">Нажмите на предмет, чтобы осмотреть его, прочитать документ или открыть ящик с костями.</div>
+    </div>
 
-      {/* ИНВЕНТАРЬ */}
-      <button onClick={() => setInvOpen(!invOpen)} style={{ position: 'absolute', top: '10px', right: '10px', pointerEvents: 'auto', ...btnStyle }}>🎒</button>
-      {invOpen && (
-          <div style={{ position: 'absolute', top: '70px', right: '10px', background: 'rgba(20,20,20,0.9)', border: '1px solid #555', borderRadius: '10px', padding: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', pointerEvents: 'auto', ...noSelect }}>
-              <div style={{ color: '#fff', fontSize: '18px' }}>🪵 {uiData.bigSticks}</div>
-              <div style={{ color: '#fff', fontSize: '18px' }}>🌿 {uiData.smallSticks}</div>
-              <button onClick={() => window.eatFood('water')} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '18px', textAlign: 'left', cursor: 'pointer' }}>{uiData.bottle === 0 ? '❌ 🫙' : (uiData.bottle === 1 ? '🫙 0' : '💧 1')}</button>
-              <button onClick={() => window.eatFood('bread')} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '18px', textAlign: 'left', cursor: 'pointer' }}>🫓 {uiData.bread}</button>
-              <button onClick={() => window.eatFood('pumpkin')} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '18px', textAlign: 'left', cursor: 'pointer' }}>🎃 {uiData.pumpkins}</button>
-              <button onClick={() => window.eatFood('cactus')} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '18px', textAlign: 'left', cursor: 'pointer' }}>🌵 {uiData.cactusFruits}</button>
-              <button onClick={() => window.craftHandTorch()} style={{ gridColumn: '1 / span 2', background: '#ff6600', color: '#fff', border: 'none', borderRadius: '5px', padding: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>🔥 ФАКЕЛ (120с)</button>
-          </div>
-      )}
-
-      {/* ПРИЦЕЛ */}
-      {!isSittingUI && <div style={{ position: 'absolute', top: '50%', left: '50%', width: '4px', height: '4px', background: actionIcon ? '#0f0' : '#fff', borderRadius: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', boxShadow: actionIcon ? '0 0 10px #0f0' : 'none' }} />}
-
-      {/* КНОПКИ УПРАВЛЕНИЯ */}
-      <div style={{ position: 'absolute', bottom: '20px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none', ...noSelect }}>
-          <div style={{ position: 'absolute', right: '30px', bottom: '10px', pointerEvents: 'auto' }}>
-            {actionIcon && typeof actionIcon === 'string' && !isSittingUI && (
-                <button onClick={() => stateRef.current.activeAction?.()} style={{ ...btnStyle, width: '70px', height: '70px', fontSize: '30px', background: 'rgba(0, 150, 0, 0.7)', border: '2px solid #0f0' }}>{actionIcon}</button>
-            )}
-            {isSittingUI && (
-                <button onClick={() => window.standUp()} style={{ ...btnStyle, width: '70px', height: '70px', fontSize: '30px', background: 'rgba(200, 0, 0, 0.7)', border: '2px solid #f00' }}>🏃‍♂️</button>
-            )}
-          </div>
-
-          {!isSittingUI && (
-              <button 
-                onMouseDown={() => window.startWalking()} onMouseUp={() => window.stopWalking()} onMouseLeave={() => window.stopWalking()}
-                onTouchStart={(e) => { e.preventDefault(); window.startWalking(); }} onTouchEnd={() => window.stopWalking()}
-                style={{ pointerEvents: 'auto', width: '90px', height: '90px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.1)', border: '3px solid rgba(255,255,255,0.4)', cursor: 'pointer', outline: 'none', backdropFilter: 'blur(2px)', display: 'flex', justifyContent: 'center', alignItems: 'center', ...noSelect }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.3)', pointerEvents: 'none' }}></div>
-              </button>
-          )}
+    <!-- МОДАЛКА ПАМЯТКИ ГО И ИНСТРУКЦИИ К ИГРЕ В КОСТИ -->
+    <div id="brochure-modal">
+      <div class="brochure-paper">
+        <div class="brochure-stamp" id="brochure-stamp">Гражданская оборона СССР • Памятка жильцу</div>
+        <div class="brochure-title" id="brochure-title">ПАМЯТКА НАСЕЛЕНИЮ</div>
+        <div class="brochure-body" id="brochure-content"></div>
+        <button class="brochure-close-btn" onclick="closeBrochure()">Убрать в карман</button>
       </div>
     </div>
-  );
-};
 
-export default App;
+    <!-- ОВЕРЛЕЙ ПОДКЛЮЧЕННОЙ ИГРЫ ОЧКО.HTML (БЕЗ ВЕРХНЕЙ ПЛАШКИ) -->
+    <div id="ochko-modal-wrap">
+      <iframe id="ochko-iframe" src="about:blank"></iframe>
+    </div>
+
+    <div id="light-glow-overlay"></div>
+    <div id="vignette"></div>
+
+    <div id="top-event-box">
+      <div id="narrative-text">Вы проснулись среди ночи со странным ощущением. Пересохло в горле — хочется пить и нужно в туалет.</div>
+    </div>
+
+    <div id="bottom-hud">
+      <div class="deck-group">
+        <button class="scroll-arrow" id="act-prev" title="Влево">&#9664;</button>
+        <div class="deck-cards" id="left-action-cards"></div>
+        <button class="scroll-arrow" id="act-next" title="Вправо">&#9654;</button>
+      </div>
+
+      <canvas id="center-flame-canvas" width="140" height="180" title="Зажмите и двигайте спичку/свечу по всему экрану"></canvas>
+
+      <div class="deck-group" id="right-move-group" style="visibility:hidden">
+        <button class="scroll-arrow" id="mov-prev" title="Влево">&#9664;</button>
+        <div class="deck-cards" id="right-move-cards"></div>
+        <button class="scroll-arrow" id="mov-next" title="Вправо">&#9654;</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ============================================================================
+       0. СБРОС ПРОГРЕССА КОСТЕЙ ПРИ НОВОМ ЗАПУСКЕ ИГРЫ INDEX.HTML
+    ============================================================================ */
+    try {
+      localStorage.setItem("ochko_owned_counts", JSON.stringify([6, 0, 0, 0, 0, 0, 0, 0]));
+      localStorage.setItem("ochko_player_skins", JSON.stringify([0, 0, 0, 0, 0, 0]));
+    } catch (e) {}
+
+    /* ============================================================================
+       1. КАРТА КАРТИНОК (ВКЛЮЧАЯ ЗАКРЫТЫЕ И ОТКРЫТЫЕ ДВЕРИ 16–24 И 16 КАДРОВ УЛИЦЫ)
+    ============================================================================ */
+    const SCENE_IMAGES = {
+      bedroom: "спальня.jpg", bedroom_rev: "спальня обратная.jpg",
+      corridor_room: "коридор комнаты.jpg", corridor_room_rev: "коридор комнаты обратная.jpg",
+      corridor_main: "коридор.jpg", corridor_main_rev: "коридор обратная.jpg",
+      kitchen: "кухня.jpg", kitchen_rev: "кухня обратная.jpg",
+      junkroom: "события/хлам с коврами.jpg", junkroom_empty: "комната с хламом.jpg",
+      junkroom_rev: "комната с хламом обратная.jpg",
+      toilet: "туалет.jpg", bath: "ванна.jpg", entrance: "вход.jpg",
+      cabinet: "шкаф еда.jpg", radio: "радио.jpg",
+      ev_switch: "события/выключатель.jpg", ev_flush: "события/смыв туалет.jpg",
+      ev_glass: "события/стакан.jpg", ev_thermometer: "события/термометр.jpg",
+      ev_robe: "события/халат.jpg",
+      ev_window_1: "события/окно.jpg",
+      ev_window_2: "события/окно 2.jpg",
+      ev_window_climb: "события/вылазит в окно.jpg",
+      ev_yard_window: "события/двор с окна.jpg",
+      ev_defense: "события/оборона.jpg",
+      ev_search_junk: "события/поиск хлам.jpg",
+      ev_peephole_empty_1: "события/глазок.jpg",
+      ev_peephole_empty_2: "события/глазок 3.jpg",
+      ev_peephole_lit_1: "события/глазок 1.jpg",
+      ev_peephole_lit_2: "события/глазок 2.jpg",
+      ev_tap: "события/кран.jpg",
+      ev_dress: "события/одеться.jpg", ev_shoes: "события/обуться.jpg",
+      ev_carpets_roll: "события/ковры скатаны.jpg", ev_carpets_wall: "события/только ковры.jpg",
+      ev_all_covered: "события/всё завешано.jpg", ev_bricks: "события/кирпичи.jpg",
+      ev_stove: "события/печка.jpg", ev_dumbbells: "события/гантели.jpg", ev_bed: "события/кровать.jpg",
+      ev_granny_cans: "события/бидоны.jpg"
+    };
+
+    for (let i = 1; i <= 10; i++) SCENE_IMAGES[`p1_${i}`] = `события/подъезд 1/${i}.jpg`;
+    for (let i = 1; i <= 8; i++) SCENE_IMAGES[`p2_${i}`] = `события/подъезд 2/${i}.jpg`;
+    for (let apt = 16; apt <= 24; apt++) {
+      SCENE_IMAGES[`door_${apt}`] = `события/двери/${apt}.jpg`;
+      SCENE_IMAGES[`door_${apt}_open`] = `события/двери/${apt} открытая.jpg`;
+    }
+    for (let u = 1; u <= 16; u++) SCENE_IMAGES[`street_${u}`] = `события/улица/${u}.jpg`;
+
+    const FULL_BRIGHT_SCENES = new Set([
+      "ev_yard_window", "ev_bricks", "ev_peephole_lit_2", "ev_peephole_empty_2"
+    ]);
+    for (let u = 1; u <= 16; u++) FULL_BRIGHT_SCENES.add(`street_${u}`);
+
+    /* ============================================================================
+       2. ЗВУКОВОЙ ДВИЖОК
+    ============================================================================ */
+    let stepBareToggle = 0, stepShoesToggle = 0, doorCreakToggle = 0, knockTimerId = null, knockToggle = 0, audioCtx = null;
+
+    function playCardSound(type) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const dur = type === "flip" ? 0.11 : (type === "deal" ? 0.065 : 0.03);
+        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) {
+          const t = i / data.length;
+          data[i] = (Math.random() * 2 - 1) * Math.sin(t * Math.PI) * Math.pow(1 - t, type === "flip" ? 1.15 : 2.2);
+        }
+        const src = audioCtx.createBufferSource(); src.buffer = buf;
+        const flt = audioCtx.createBiquadFilter(); flt.type = "bandpass";
+        flt.frequency.setValueAtTime(type === "flip" ? 650 : 950, audioCtx.currentTime);
+        flt.frequency.exponentialRampToValueAtTime(type === "flip" ? 1950 : 1400, audioCtx.currentTime + dur);
+        flt.Q.value = 1.4;
+        const gain = audioCtx.createGain(); gain.gain.value = type === "flip" ? 0.55 : 0.35;
+        src.connect(flt); flt.connect(gain); gain.connect(audioCtx.destination); src.start();
+      } catch (e) {}
+    }
+
+    function playAudioSmart(folders, names, vol = 0.85) {
+      const fList = Array.isArray(folders) ? folders : [folders];
+      const nList = Array.isArray(names) ? names : [names];
+      const queue = [];
+      for (const f of fList) {
+        for (const n of nList) {
+          const cap = n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
+          [n, n.toUpperCase(), n.toLowerCase(), cap].forEach((variant) => {
+            const path = `${f}/${variant}.mp3`;
+            if (!queue.includes(path)) queue.push(path);
+          });
+        }
+      }
+      return new Promise((res) => {
+        let idx = 0;
+        function tryNext() {
+          if (idx >= queue.length) return res(false);
+          const a = new Audio(encodeURI(queue[idx++]));
+          a.volume = vol;
+          a.onended = () => res(true);
+          a.onerror = () => tryNext();
+          a.play().catch(() => tryNext());
+        }
+        tryNext();
+      });
+    }
+
+    const playSnd1 = (n, v = 0.85) => playAudioSmart(["АУДИО", "АУДИО 2"], n, v);
+    const playSnd2 = (n, v = 0.85) => playAudioSmart(["АУДИО 2", "АУДИО"], n, v);
+
+    function playFootstepSound() {
+      if (state.logicalRoom === "landing") playSnd2(stepShoesToggle++ % 2 === 0 ? "ШАГИ ПОДЪЕЗД" : "ШАГИ ПОДЪЕЗД 2");
+      else if (state.hasShoes) playSnd1(stepShoesToggle++ % 2 === 0 ? "ШАГИ ОБУВЬ БЕЗ СКРИПА" : "ШАГИ ОБУВЬ СКРИП");
+      else playSnd1(stepBareToggle++ % 2 === 0 ? "ШАГИ БЕЗ ОБУВИ СКРИП" : "ШАГИ БЕЗ ОБУВИ СКРИП 2");
+    }
+
+    function playDoorCreakSound() {
+      const pick = doorCreakToggle++ % 2 === 0 ? ["СКРИП ДВЕРИ", "СКРИП ДВЕРИ 2"] : ["СКРИП ДВЕРИ 2", "СКРИП ДВЕРИ"];
+      return playAudioSmart(["АУДИО", "АУДИО 2"], pick, 0.85);
+    }
+
+    function startDoorKnockLoop() {
+      stopDoorKnockLoop(); state.isKnocking = true;
+      (async function loop() {
+        if (!state.isKnocking) return;
+        await playSnd2(knockToggle++ % 2 === 0 ? "СТУК" : "СТУК 2", 0.78);
+        if (state.isKnocking) knockTimerId = setTimeout(loop, 2500);
+      })();
+    }
+    function stopDoorKnockLoop() {
+      state.isKnocking = false;
+      if (knockTimerId) { clearTimeout(knockTimerId); knockTimerId = null; }
+    }
+
+    /* ============================================================================
+       3. ЛИСТЫ ИКОНОК 1–5
+    ============================================================================ */
+    const ICON_SHEETS = { 1: "ИКОНКИ.jpg", 2: "ИКОНКИ 2.jpg", 3: "ИКОНКИ 3.jpg", 4: "иконки 4.jpg", 5: "иконки 5.jpg" };
+    const SHEET_METRICS = {
+      1: { colX: [1.8, 21.4, 41.0, 60.6, 80.2], rowY: [7.2, 38.8, 70.3], boxW: 18.0, boxH: 25.0 },
+      2: { colX: [2.0, 21.8, 41.8, 61.8, 81.6], rowY: [7.5, 39.0, 70.5], boxW: 16.4, boxH: 22.0 },
+      3: { colX: [2.1, 21.9, 41.8, 61.7, 81.6], rowY: [7.4, 39.0, 70.6], boxW: 16.2, boxH: 21.8 },
+      4: { colX: [2.0, 21.8, 41.6, 61.5, 81.3], rowY: [6.4, 38.0, 69.8], boxW: 16.6, boxH: 22.2 },
+      5: { colX: [2.0, 21.8, 41.6, 61.5, 81.3], rowY: [6.4, 38.0, 69.8], boxW: 16.6, boxH: 22.2 }
+    };
+    function applyIconSprite(el, sheetNum, iconNum) {
+      const idx = (iconNum || 1) - 1, col = idx % 5, row = (idx / 5) | 0;
+      const m = SHEET_METRICS[sheetNum] || SHEET_METRICS[1];
+      const scaleX = (100 / m.boxW) * 100, scaleY = (100 / m.boxH) * 100;
+      const posX = (m.colX[col] / (100 - m.boxW)) * 100, posY = (m.rowY[row] / (100 - m.boxH)) * 100;
+      el.style.backgroundImage = `url("${encodeURI(ICON_SHEETS[sheetNum])}")`;
+      el.style.backgroundSize = `${scaleX.toFixed(2)}% ${scaleY.toFixed(2)}%`;
+      el.style.backgroundPosition = `${posX.toFixed(2)}% ${posY.toFixed(2)}%`;
+    }
+
+    /* ============================================================================
+       4. СПРАЙТЫ СОСЕДЕЙ (СОСЕД.PNG И СОСЕДКА.PNG БЕЗ БЕЛОГО ФОНА И ОБРЕЗКИ ВАЛЕНОК)
+    ============================================================================ */
+    const NPC_FILES = { neighbor: "сосед.png", woman: "соседка.png" };
+    const npcCutoutCache = { neighbor: {}, woman: {} };
+    let npcTalkInterval = null;
+
+    function preloadNpcSprites() {
+      ["neighbor", "woman"].forEach((k) => {
+        const img = new Image();
+        img.onload = () => {
+          for (let p = 1; p <= 8; p++) {
+            try { npcCutoutCache[k][p] = cutoutNpcPose(img, p); } catch (e) { break; }
+          }
+        };
+        img.src = encodeURI(NPC_FILES[k]);
+      });
+    }
+
+    function cutoutNpcPose(img, pose) {
+      const idx = pose - 1, col = idx % 4, row = (idx / 4) | 0;
+      const cw = (img.naturalWidth / 4) | 0, ch = (img.naturalHeight / 2) | 0;
+      const c = document.createElement("canvas"); c.width = cw; c.height = ch;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img, col * cw, row * ch, cw, ch, 0, 0, cw, ch);
+      const imgData = ctx.getImageData(0, 0, cw, ch), d = imgData.data;
+
+      // Если PNG уже с прозрачным фоном по углам, оставляем чистый срез кадра (и убираем возможную белую кайму)
+      if (d[3] < 30 && d[(cw - 1) * 4 + 3] < 30) {
+        return c.toDataURL("image/png");
+      }
+
+      const bgR = d[0], bgG = d[1], bgB = d[2];
+      const vis = new Uint8Array(cw * ch), q = new Int32Array(cw * ch);
+      let head = 0, tail = 0;
+      function push(x, y) {
+        const p = y * cw + x; if (vis[p]) return;
+        const i = p * 4, r = d[i], g = d[i+1], b = d[i+2];
+        const diff = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
+        const sat = Math.max(r, g, b) - Math.min(r, g, b);
+        if ((diff < 95 && sat < 38) || (r > 235 && g > 235 && b > 235)) {
+          vis[p] = 1; q[tail++] = p;
+        }
+      }
+      for (let x = 0; x < cw; x++) { push(x, 0); push(x, ch - 1); }
+      for (let y = 0; y < ch; y++) { push(0, y); push(cw - 1, y); }
+      while (head < tail) {
+        const p = q[head++]; d[p * 4 + 3] = 0;
+        const x = p % cw, y = (p / cw) | 0;
+        if (x > 0) push(x - 1, y); if (x < cw - 1) push(x + 1, y);
+        if (y > 0) push(x, y - 1); if (y < ch - 1) push(x, y + 1);
+      }
+      ctx.putImageData(imgData, 0, 0);
+      return c.toDataURL("image/png");
+    }
+
+    function setNpcPose(npcKey, pose) {
+      const layer = document.getElementById("npc-layer"), box = document.getElementById("npc-sprite-box");
+      if (!npcKey) { layer.classList.remove("visible"); return; }
+      layer.classList.add("visible");
+      const cached = npcCutoutCache[npcKey]?.[pose];
+      if (cached) {
+        box.style.backgroundImage = `url("${cached}")`;
+        box.style.backgroundSize = "contain";
+        box.style.backgroundPosition = "center bottom";
+      } else {
+        const idx = pose - 1, col = idx % 4, row = (idx / 4) | 0;
+        box.style.backgroundImage = `url("${encodeURI(NPC_FILES[npcKey])}")`;
+        box.style.backgroundSize = "400% 200%";
+        box.style.backgroundPosition = `${((col / 3) * 100).toFixed(2)}% ${(row * 100).toFixed(2)}%`;
+      }
+    }
+
+    async function playNpcSpeech(npcKey, audioName, seqOverride = null) {
+      if (npcTalkInterval) clearInterval(npcTalkInterval);
+      const seq = seqOverride || (npcKey === "neighbor" ? [1, 4, 6, 7, 8] : [1, 2, 4, 7]);
+      let s = 0; setNpcPose(npcKey, 1);
+      npcTalkInterval = setInterval(() => { s = (s + 1) % seq.length; setNpcPose(npcKey, seq[s]); }, 420);
+      await Promise.race([playSnd2(audioName, 0.95), new Promise((r) => setTimeout(r, 3400))]);
+      clearInterval(npcTalkInterval); npcTalkInterval = null; setNpcPose(npcKey, 1);
+    }
+    function hideNpc() { if (npcTalkInterval) { clearInterval(npcTalkInterval); npcTalkInterval = null; } setNpcPose(null); }
+
+    /* ============================================================================
+       5. ШКАФ С ПРИПАСАМИ (ТУШЁНКА И КАРТОШКА)
+    ============================================================================ */
+    const STEW_CROP = { rx: 0.048, ry: 0.082, rw: 0.148, rh: 0.368, aspect: 0.72 };
+    const POTATO_CROPS = {
+      5: { rx: 0.018, ry: 0.065, rw: 0.362, rh: 0.355, aspect: 1.81 },
+      4: { rx: 0.384, ry: 0.065, rw: 0.252, rh: 0.355, aspect: 1.26 },
+      3: { rx: 0.652, ry: 0.060, rw: 0.186, rh: 0.365, aspect: 0.91 },
+      2: { rx: 0.502, ry: 0.490, rw: 0.275, rh: 0.195, aspect: 2.50 },
+      1: { rx: 0.535, ry: 0.755, rw: 0.222, rh: 0.180, aspect: 2.19 }
+    };
+    const shelfLayout = {
+      stew1:{x:25.0,y:29.0,w:5.5}, stew2:{x:31.2,y:29.0,w:5.5}, stew3:{x:37.4,y:29.0,w:5.5},
+      stew4:{x:25.0,y:20.5,w:5.5}, stew5:{x:31.2,y:20.5,w:5.5}, stew6:{x:37.4,y:20.5,w:5.5},
+      potato5:{x:31.5,y:54.0,w:17.5}, potato4:{x:31.5,y:53.5,w:13.5},
+      potato3:{x:31.5,y:53.0,w:10.5}, potato2:{x:31.5,y:56.5,w:15.0}, potato1:{x:31.5,y:57.0,w:13.0}
+    };
+    function applySpriteCropToDiv(div, url, c) {
+      div.style.backgroundImage = `url("${url}")`;
+      div.style.backgroundSize = `${(100/c.rw).toFixed(2)}% ${(100/c.rh).toFixed(2)}%`;
+      div.style.backgroundPosition = `${((c.rx/(1-c.rw))*100).toFixed(2)}% ${((c.ry/(1-c.rh))*100).toFixed(2)}%`;
+      div.style.aspectRatio = `${c.aspect}`;
+    }
+
+    function renderCabinetItems() {
+      const container = document.getElementById("cabinet-items-layer");
+      const show = state.currentScene === "cabinet" && !state.isWalking;
+      container.classList.toggle("visible", show);
+      container.innerHTML = "";
+      if (!show) return;
+
+      for (let i = 1; i <= state.stewCount; i++) {
+        const pos = shelfLayout[`stew${i}`]; if (!pos) continue;
+        const d = document.createElement("div");
+        d.className = "shelf-item";
+        d.title = "Нажмите, чтобы взять банку тушёнки в вещмешок";
+        d.style.left = `${pos.x}%`; d.style.top = `${pos.y}%`; d.style.width = `${pos.w}%`;
+        applySpriteCropToDiv(d, encodeURI("тушенка.png"), STEW_CROP);
+        d.onclick = () => {
+          if (state.stewCount <= 0) return;
+          state.stewCount--;
+          state.invStew++;
+          playCardSound("deal");
+          updateBackpackBadge();
+          renderCabinetItems();
+          setEventText(`Вы взяли банку тушёнки в вещмешок (в вещмешке: ${state.invStew} шт.).`);
+          renderUI(false);
+        };
+        container.appendChild(d);
+      }
+
+      const pCrop = POTATO_CROPS[state.potatoStage], pPos = shelfLayout[`potato${state.potatoStage}`];
+      if (state.potatoStage > 0 && pCrop && pPos) {
+        const d = document.createElement("div");
+        d.className = "shelf-item";
+        d.title = "Нажмите, чтобы отсыпать порцию картошки в вещмешок";
+        d.style.left = `${pPos.x}%`; d.style.top = `${pPos.y}%`; d.style.width = `${pos.w}%`;
+        applySpriteCropToDiv(d, encodeURI("картошка.png"), pCrop);
+        d.onclick = () => {
+          if (state.potatoStage <= 0) return;
+          state.potatoStage--;
+          state.invPotato++;
+          playCardSound("deal");
+          updateBackpackBadge();
+          renderCabinetItems();
+          setEventText(`Вы взяли порцию картошки в вещмешок (в вещмешке: ${state.invPotato} порц.).`);
+          renderUI(false);
+        };
+        container.appendChild(d);
+      }
+    }
+
+    /* ============================================================================
+       6. ТЕКСТЫ ПАМЯТОК ГО (С ВКЛЮЧЕНИЕМ КАРТИНКИ ОБОРОНА.JPG) И ИНСТРУКЦИИ К КОСТЯМ
+    ============================================================================ */
+    const BROCHURE_TEXTS = {
+      1: `<p>В случае падения температуры ниже +12°C жильцам надлежит незамедлительно приступить к герметизации дверных и оконных проемов ветошью и малярным скотчем.</p><div class="brochure-section-title">РАЗДЕЛ I. Защита от сквозняков и таганок</div><p>Первым делом плотно подоткните щель под входной дверью. В стенках пустой консервной емкости пробиваются вентиляционные отверстия, внутрь ставится свеча («таганок»).</p>`,
+      2: `<div class="brochure-section-title">РАЗДЕЛ II. Обогрев помещения и теплоаккумулятор</div><p>Оклейте стыки оконных рам малярным скотчем. Над зоной горения свечи обязательно устанавливается керамический элемент (строительный кирпич) как теплоаккумулятор.</p>`,
+      dice: `<div class="brochure-section-title">ПРАВИЛА ИГРЫ «КОСТЯНОЕ ОЧКО» (21)</div><p>1. У каждого игрока в наборе ровно 6 костей. В начале кона проводится жеребьёвка первого хода броском по 2 кости.</p><p>2. Игроки ходят по очереди, бросая по 1 или по 2 кости на доску. Очки всех выброшенных граней суммируются.</p><p>3. Цель — набрать сумму как можно ближе к 21 очку. Перебор (больше 21) означает немедленное поражение в коне. Партия идёт до 3 побед.</p>`
+    };
+
+    async function openBrochure(part) {
+      if (part === 1 || part === 2) {
+        await showActionCloseup("ev_defense", false, false);
+      }
+      if (part === 1) {
+        state.readBrochure1 = true;
+        removeStoryCard("read_brochure_1");
+        if (!state.doorSealed) addStoryCard("seal_door", true);
+      }
+      if (part === 2) state.readBrochure2 = true;
+
+      const stampEl = document.getElementById("brochure-stamp");
+      const titleEl = document.getElementById("brochure-title");
+      const contentEl = document.getElementById("brochure-content");
+
+      if (part === "dice") {
+        stampEl.textContent = "Правила настольной игры • Кольский полуостров";
+        titleEl.textContent = "ИНСТРУКЦИЯ: ИГРА «КОСТЯНОЕ ОЧКО»";
+        contentEl.innerHTML = BROCHURE_TEXTS.dice;
+      } else {
+        stampEl.textContent = "Гражданская оборона СССР • Памятка жильцу";
+        titleEl.textContent = "ПАМЯТКА НАСЕЛЕНИЮ: Действия при аварии теплосети";
+        contentEl.innerHTML = part === 2 ? BROCHURE_TEXTS[1] + BROCHURE_TEXTS[2] : BROCHURE_TEXTS[1];
+      }
+      document.getElementById("brochure-modal").classList.add("visible");
+      renderUI(false);
+    }
+
+    async function closeBrochure() {
+      document.getElementById("brochure-modal").classList.remove("visible");
+      if (!state.isWalking && state.currentScene === "ev_defense") {
+        await crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
+      }
+      renderUI(false);
+    }
+
+    /* ============================================================================
+       7. СОСТОЯНИЕ ИГРЫ, ТАЙМЕР СОСЕДА (С УЧЁТОМ НАХОЖДЕНИЯ В ПОДЪЕЗДЕ) И ИНВЕНТАРЬ
+    ============================================================================ */
+    const MATCH_DURATION = 30000;
+    const CANDLE_DURATION = 360000;
+    const NEIGHBOR_ARRIVAL_DELAY = 180000;
+
+    const state = {
+      logicalRoom: "bedroom", currentScene: "bedroom",
+      lightMode: "intro",
+      matchStart: 0, candleStart: 0, candleIgniteStart: 0, candleWickLitTime: 0, candleIgniteEnd: 0,
+
+      // Начальная последовательность:
+      robeDone: false, waterDone: false, toiletUsed: false, radiatorTouched: false,
+      basicNavUnlocked: false,
+      roomNavUnlocked: false,
+
+      wentOutside: false,
+      neighborVisited: false,
+      neighborPendingArrival: false,
+      neighborReturnTimer: null,
+
+      hasCandle: false, hasDiceSet: false, hasBrochure1: false, hasDiceRules: false,
+      hasBrochure2: false, hasTape: false, hasEmptyCan: false,
+      hasGrannyCans: false, grannyCansFilled: false, grannyHelped: false,
+      hasBricks: false,
+      readBrochure1: false, readBrochure2: false,
+      doorSealed: false, windowsTaped: false,
+
+      hasShoes: false, hasCoat: false,
+      carpetsTaken: false, carpetsHung: false, stoveBuilt: false,
+      junkSearches: 0,
+      landingFloor: 3, landingDir: "down",
+      activeDoorApt: null,
+      activeOpponentId: 1,
+      oppProgress: { 1: 1, 2: 1, 3: 1, 4: 1 },
+      opp3Beaten: false,
+
+      isWalking: false, isKnocking: false, activeSlot: "a",
+
+      stewCount: 3, potatoStage: 5,
+      invStew: 0, invPotato: 0,
+
+      actOffset: 0, movOffset: 0,
+      autoReturnTimer: null,
+      backBtnTarget: null,
+      storyCardIds: ["check_switch"]
+    };
+
+    function triggerNeighborArrivalNow() {
+      if (state.neighborVisited || state.wentOutside) return;
+      if (state.logicalRoom === "landing" || state.isWalking) {
+        state.neighborPendingArrival = true;
+        return;
+      }
+      state.neighborPendingArrival = false;
+      startDoorKnockLoop();
+      setEventText("В тишине квартиры раздался настойчивый стук во входную дверь! Подойдите к выходу и посмотрите в глазок.");
+    }
+
+    setTimeout(() => {
+      triggerNeighborArrivalNow();
+    }, NEIGHBOR_ARRIVAL_DELAY);
+
+    const setEventText = (t) => { document.getElementById("narrative-text").textContent = t; };
+    function addStoryCard(id, front = false) {
+      if (state.storyCardIds.includes(id)) return;
+      front ? state.storyCardIds.unshift(id) : state.storyCardIds.push(id);
+    }
+    function removeStoryCard(id) { state.storyCardIds = state.storyCardIds.filter((x) => x !== id); }
+
+    function checkInitialStepsProgress() {
+      if (state.robeDone && state.waterDone && state.toiletUsed && !state.radiatorTouched) {
+        addStoryCard("touch_radiator", true);
+        setEventText("Вы надели халат, попили воды и сходили в туалет. В квартире стоит ледяной холод — потрогайте батарею.");
+      }
+      if (state.robeDone && state.waterDone && state.toiletUsed && state.radiatorTouched && state.hasCandle) {
+        state.roomNavUnlocked = true;
+      }
+    }
+
+    function totalStewAvailable() {
+      return state.invStew + state.stewCount;
+    }
+    function spendOneStew() {
+      if (state.invStew > 0) { state.invStew--; updateBackpackBadge(); return true; }
+      if (state.stewCount > 0) { state.stewCount--; return true; }
+      return false;
+    }
+
+    /* ИКОНКИ В ИНВЕНТАРЕ: ТУШЁНКА (ЛИСТ 2, №3), КУБИКИ (ЛИСТ 2, №11), КАРТОШКА (ЛИСТ 2, №14) */
+    function getInventoryItemsList() {
+      const list = [];
+      if (state.invStew > 0) list.push({ key: "stew", sheet: 2, icon: 3, caption: `Тушёнка (${state.invStew} шт.)` });
+      if (state.invPotato > 0) list.push({ key: "potato", sheet: 2, icon: 14, caption: `Картошка (${state.invPotato} порц.)` });
+      if (state.hasCandle) list.push({ key: "candle", sheet: 1, icon: 7, caption: "Восковая свеча" });
+      if (state.hasDiceSet) list.push({ key: "dice_set", sheet: 2, icon: 11, caption: "Набор 6 кубиков" });
+      if (state.hasBrochure1) list.push({ key: "brochure_1", sheet: 3, icon: 4, caption: "Памятка ГО (Ч. I)" });
+      if (state.hasDiceRules) list.push({ key: "dice_rules", sheet: 3, icon: 4, caption: "Правила «Очко»" });
+      if (state.hasBrochure2) list.push({ key: "brochure_2", sheet: 3, icon: 4, caption: "Памятка ГО (Ч. II)" });
+      if (state.hasTape && !state.windowsTaped) list.push({ key: "tape", sheet: 3, icon: 5, caption: "Малярный скотч" });
+      if (state.hasEmptyCan && !state.stoveBuilt) list.push({ key: "empty_can", sheet: 3, icon: 9, caption: "Пустая банка" });
+      if (state.hasGrannyCans) {
+        list.push({
+          key: "granny_cans", sheet: 1, icon: 2,
+          caption: state.grannyCansFilled ? "Бидоны с водой (кв. 17)" : "Пустые бидоны (кв. 17)"
+        });
+      }
+      if (state.hasBricks && !state.stoveBuilt) list.push({ key: "bricks", sheet: 3, icon: 10, caption: "Кирпичи" });
+      return list;
+    }
+
+    function updateBackpackBadge() {
+      const count = getInventoryItemsList().length;
+      document.getElementById("backpack-badge").textContent = count;
+    }
+
+    /* МОДАЛКА НАХОДОК ПО ЦЕНТРУ ЭКРАНА */
+    function showLootModal(titleText, cardsArray) {
+      const modal = document.getElementById("loot-center-modal");
+      const row = document.getElementById("loot-cards-row");
+      document.getElementById("loot-modal-title").textContent = titleText;
+      row.innerHTML = "";
+
+      cardsArray.forEach((c, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "choice-card deal-anim";
+        btn.style.setProperty("--deal-delay", `${idx * 85}ms`);
+        const inner = document.createElement("div");
+        inner.className = "card-inner";
+        const iconDiv = document.createElement("div");
+        iconDiv.className = "card-icon-frame";
+        applyIconSprite(iconDiv, c.sheet, c.icon);
+        const cap = document.createElement("div");
+        cap.className = "choice-caption";
+        cap.textContent = c.caption;
+        inner.appendChild(iconDiv);
+        inner.appendChild(cap);
+        btn.appendChild(inner);
+        btn.onclick = () => {
+          playCardSound("click");
+          setEventText(c.desc || c.caption);
+        };
+        row.appendChild(btn);
+      });
+
+      playCardSound("deal");
+      modal.classList.add("visible");
+    }
+
+    function closeLootModal() {
+      document.getElementById("loot-center-modal").classList.remove("visible");
+      updateBackpackBadge();
+      if (!state.isWalking && state.currentScene === "ev_search_junk") {
+        crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
+      }
+      renderUI(true);
+    }
+
+    /* ПОЛНОЭКРАННЫЙ ИНВЕНТАРЬ */
+    function openInventoryScreen() {
+      renderInventoryGrid();
+      document.getElementById("inventory-screen").classList.add("visible");
+      playCardSound("click");
+    }
+    function closeInventoryScreen() {
+      document.getElementById("inventory-screen").classList.remove("visible");
+      renderCabinetItems();
+      renderUI(false);
+    }
+
+    function renderInventoryGrid() {
+      const grid = document.getElementById("inventory-grid");
+      const hint = document.getElementById("inventory-hint");
+      const items = getInventoryItemsList();
+      grid.innerHTML = "";
+      updateBackpackBadge();
+
+      if (items.length === 0) {
+        grid.innerHTML = `<div class="inv-empty-msg">Ваш вещмешок пока пуст.</div>`;
+        return;
+      }
+
+      const inKitchenOrCabinet = (state.logicalRoom === "kitchen" || state.currentScene === "cabinet");
+
+      items.forEach((item) => {
+        const wrap = document.createElement("div");
+        wrap.className = "inv-item-wrap";
+
+        const btn = document.createElement("button");
+        btn.className = "choice-card";
+        const inner = document.createElement("div");
+        inner.className = "card-inner";
+        const iconDiv = document.createElement("div");
+        iconDiv.className = "card-icon-frame";
+        applyIconSprite(iconDiv, item.sheet, item.icon);
+        const cap = document.createElement("div");
+        cap.className = "choice-caption";
+        cap.textContent = item.caption;
+        inner.appendChild(iconDiv);
+        inner.appendChild(cap);
+        btn.appendChild(inner);
+
+        btn.onclick = () => {
+          playCardSound("click");
+          if (item.key === "brochure_1") { closeInventoryScreen(); openBrochure(1); }
+          else if (item.key === "brochure_2") { closeInventoryScreen(); openBrochure(2); }
+          else if (item.key === "dice_rules") { closeInventoryScreen(); openBrochure("dice"); }
+          else if (item.key === "dice_set") { openOchkoBoxOnly(); }
+          else if (item.key === "candle") {
+            igniteCandle();
+            hint.textContent = "Вы зажгли восковую свечу.";
+          } else if (item.key === "stew") {
+            hint.textContent = "Банка мясной тушёнки в вещмешке. Можно съесть, поставить на кон в кости или выложить обратно в шкаф.";
+          } else if (item.key === "potato") {
+            hint.textContent = "Сырая картошка из шкафа. Можно высыпать обратно в мешок на полке.";
+          } else if (item.key === "granny_cans") {
+            hint.textContent = state.grannyCansFilled
+              ? "Полные бидоны с водой для бабушки из кв. 17. Отнесите их ей на 1-й этаж!"
+              : "Пустые бидоны бабушки из кв. 17. Наберите в них воды на уличной колонке.";
+          } else {
+            hint.textContent = item.caption;
+          }
+        };
+        wrap.appendChild(btn);
+
+        if (item.key === "stew") {
+          const eatBtn = document.createElement("button");
+          eatBtn.className = "inv-sub-btn";
+          eatBtn.textContent = "Съесть";
+          eatBtn.onclick = () => {
+            if (state.invStew <= 0) return;
+            state.invStew--;
+            playSnd1("ОТКРЫВАЕТ КОНСЕРВУ", 0.95);
+            hint.textContent = "Вы открыли и съели банку тушёнки. Стало немного теплее.";
+            renderInventoryGrid();
+          };
+          wrap.appendChild(eatBtn);
+
+          if (inKitchenOrCabinet && state.stewCount < 6) {
+            const putBtn = document.createElement("button");
+            putBtn.className = "inv-sub-btn";
+            putBtn.textContent = "На полку шкафа";
+            putBtn.onclick = () => {
+              if (state.invStew <= 0 || state.stewCount >= 6) return;
+              state.invStew--; state.stewCount++;
+              playCardSound("deal");
+              hint.textContent = "Вы вернули банку тушёнки обратно на полку шкафа.";
+              renderInventoryGrid();
+            };
+            wrap.appendChild(putBtn);
+          }
+        }
+
+        if (item.key === "potato" && inKitchenOrCabinet && state.potatoStage < 5) {
+          const putPotBtn = document.createElement("button");
+          putPotBtn.className = "inv-sub-btn";
+          putPotBtn.textContent = "В мешок на полке";
+          putPotBtn.onclick = () => {
+            if (state.invPotato <= 0 || state.potatoStage >= 5) return;
+            state.invPotato--; state.potatoStage++;
+            playCardSound("deal");
+            hint.textContent = "Вы вернули порцию картошки обратно в мешок на полке.";
+            renderInventoryGrid();
+          };
+          wrap.appendChild(putPotBtn);
+        }
+
+        grid.appendChild(wrap);
+      });
+    }
+
+    /* ============================================================================
+       8. СВЯЗКА С ОЧКО.HTML (ОТКРЫТИЕ ТОЛЬКО ЯЩИКА И МАТЧА С 4 СОПЕРНИКАМИ)
+    ============================================================================ */
+    function openOchkoBoxOnly() {
+      const wrap = document.getElementById("ochko-modal-wrap");
+      const iframe = document.getElementById("ochko-iframe");
+      iframe.src = `Очко.html?mode=box&t=${Date.now()}`;
+      wrap.classList.add("visible");
+    }
+
+    function openOchkoMatch(opponentId = 1) {
+      if (state.invStew <= 0) {
+        setEventText("«На твои простые карболитовые кости мне играть резона нет! Иди возьми с полки банку тушёнки в рюкзак, чтобы было что на кон поставить».");
+        return;
+      }
+      state.activeOpponentId = opponentId;
+      const gameNum = state.oppProgress[opponentId] || 1;
+      const bgFile = SCENE_IMAGES[state.currentScene] || "вход.jpg";
+      const wrap = document.getElementById("ochko-modal-wrap");
+      const iframe = document.getElementById("ochko-iframe");
+      iframe.src = `Очко.html?mode=match&opponent=${opponentId}&game=${gameNum}&bg=${encodeURIComponent(bgFile)}&t=${Date.now()}`;
+      wrap.classList.add("visible");
+    }
+
+    window.addEventListener("message", (e) => {
+      const data = e.data;
+      if (!data || typeof data !== "object") return;
+
+      if (data.type === "OCHKO_BOX_CLOSED") {
+        if (Array.isArray(data.playerSkins)) {
+          try { localStorage.setItem("ochko_player_skins", JSON.stringify(data.playerSkins)); } catch (err) {}
+        }
+        const wrap = document.getElementById("ochko-modal-wrap");
+        const iframe = document.getElementById("ochko-iframe");
+        wrap.classList.remove("visible");
+        iframe.src = "about:blank";
+        renderInventoryGrid();
+      } else if (data.type === "OCHKO_MATCH_FINISHED") {
+        if (data.ownedCounts) {
+          try { localStorage.setItem("ochko_owned_counts", JSON.stringify(data.ownedCounts)); } catch (err) {}
+        }
+        if (Array.isArray(data.playerSkins)) {
+          try { localStorage.setItem("ochko_player_skins", JSON.stringify(data.playerSkins)); } catch (err) {}
+        }
+
+        const wrap = document.getElementById("ochko-modal-wrap");
+        const iframe = document.getElementById("ochko-iframe");
+        wrap.classList.remove("visible");
+        iframe.src = "about:blank";
+
+        const oppId = Number(data.opponentId) || state.activeOpponentId || 1;
+        if (data.won) {
+          state.oppProgress[oppId] = 2;
+          if (oppId === 3) state.opp3Beaten = true;
+          setEventText("Вы выиграли партию в «Костяное Очко»! Банка тушёнки в вещмешке остаётся при вас, а вы забираете 2 трофейные кости соперника в свой ящик!");
+        } else {
+          state.invStew = Math.max(0, state.invStew - 1);
+          updateBackpackBadge();
+          setEventText("Вы уступили в партии в «Костяное Очко» и отдали поставленную на кон банку тушёнки из вещмешка.");
+        }
+
+        if (state.storyCardIds.includes("agree_trade") || state.storyCardIds.includes("play_dice_neighbor")) {
+          removeStoryCard("agree_trade");
+          removeStoryCard("play_dice_neighbor");
+          removeStoryCard("refuse_trade");
+          addStoryCard("check_tap", true);
+          addStoryCard("put_coat", true);
+          addStoryCard("put_shoes", true);
+          hideNpc();
+          if (state.currentScene === "ev_peephole_lit_2") {
+            crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
+          }
+        }
+        renderUI(true);
+      }
+    });
+
+    /* ============================================================================
+       9. СПИЧКА, СВЕЧА (ЗВУК СПИЧКИ СРАБАТЫВАЕТ ДО ЗАЖИГАНИЯ СВЕЧИ) И ПЕРЕХОДЫ
+    ============================================================================ */
+    function igniteMatch(playSoundAlreadyDone = false) {
+      if (!playSoundAlreadyDone) playSnd1("СПИЧКА", 0.9);
+      state.lightMode = "match";
+      state.matchStart = performance.now();
+      document.body.setAttribute("data-lit", "true");
+    }
+
+    function igniteCandle(playSoundAlreadyDone = false) {
+      if (!playSoundAlreadyDone) playSnd1("СПИЧКА", 0.9);
+      state.hasCandle = true;
+      state.lightMode = "candle";
+      const now = performance.now();
+      state.candleIgniteStart = now;
+      state.candleWickLitTime = now + 720; // Сначала чиркает и подносится спичка, затем вспыхивает фитиль свечи
+      state.candleStart = now + 720;
+      state.candleIgniteEnd = now + 2200;
+      document.body.setAttribute("data-lit", "true");
+      updateBackpackBadge();
+    }
+
+    function resolveRoomSceneKey(roomKey) {
+      if (roomKey === "bedroom") return state.stoveBuilt ? "ev_stove" : (state.carpetsHung ? "ev_all_covered" : "bedroom");
+      if (roomKey === "junkroom") return state.carpetsTaken ? "junkroom_empty" : "junkroom";
+      if (roomKey === "landing") {
+        if (state.landingDir === "down") return `p1_${{3:1, 2:5, 1:9}[state.landingFloor] || 1}`;
+        return `p2_${{1:2, 2:5, 3:8}[state.landingFloor] || 8}`;
+      }
+      return roomKey;
+    }
+
+    function buildApartmentRoute(from, to) {
+      if (!from || from === to) return [];
+      const targetKey = resolveRoomSceneKey(to);
+      if (from === "kitchen") {
+        if (to === "entrance") return ["kitchen_rev", "corridor_main_rev", "entrance"];
+        if (to === "bedroom" || to === "junkroom") return ["kitchen_rev", "corridor_main_rev", "corridor_room_rev", targetKey];
+        return ["kitchen_rev", "corridor_main_rev", targetKey];
+      }
+      if (from === "junkroom") {
+        if (to === "bedroom") return ["junkroom_rev", targetKey];
+        if (to === "entrance") return ["junkroom_rev", "corridor_room", "entrance"];
+        return ["junkroom_rev", "corridor_room", "corridor_main", targetKey];
+      }
+      if (from === "bedroom") {
+        if (to === "junkroom") return ["bedroom_rev", targetKey];
+        if (to === "entrance") return ["bedroom_rev", "corridor_room", "entrance"];
+        return ["bedroom_rev", "corridor_room", "corridor_main", targetKey];
+      }
+      if (from === "entrance") {
+        if (to === "bedroom" || to === "junkroom") return ["corridor_room_rev", targetKey];
+        return ["corridor_main", targetKey];
+      }
+      if (from === "toilet" || from === "bath") {
+        if (to === "kitchen" || to === "toilet" || to === "bath") return ["corridor_main", targetKey];
+        if (to === "entrance") return ["corridor_main_rev", "entrance"];
+        return ["corridor_main_rev", "corridor_room_rev", targetKey];
+      }
+      return [targetKey];
+    }
+
+    function buildStairwellFrames(fromFloor, toFloorOrStreet) {
+      const seq = [];
+      if (toFloorOrStreet === "street") {
+        const start = { 3: 2, 2: 6, 1: 10 }[fromFloor] || 2;
+        for (let i = start; i <= 10; i++) seq.push(`p1_${i}`);
+        return seq;
+      }
+      const tf = Number(toFloorOrStreet);
+      if (tf < fromFloor) {
+        const s = { 3: 2, 2: 6 }[fromFloor], e = { 2: 5, 1: 9 }[tf];
+        for (let i = s; i <= e; i++) seq.push(`p1_${i}`);
+      } else if (tf > fromFloor) {
+        const s = { 1: 3, 2: 6 }[fromFloor], e = { 2: 5, 3: 8 }[tf];
+        for (let i = s; i <= e; i++) seq.push(`p2_${i}`);
+      }
+      return seq;
+    }
+
+    const slotA = document.getElementById("slot-a"), slotB = document.getElementById("slot-b");
+    let walkBobIntensity = 0;
+
+    function setBackButtonTarget(sceneKeyOrNull, label = "Отойти назад") {
+      state.backBtnTarget = sceneKeyOrNull;
+      const btn = document.getElementById("scene-back-btn");
+      const hud = document.getElementById("bottom-hud");
+      btn.textContent = label;
+      btn.classList.toggle("visible", Boolean(sceneKeyOrNull));
+      hud.classList.toggle("hidden-hud", Boolean(sceneKeyOrNull));
+    }
+
+    async function handleSceneBackBtn() {
+      if (state.isWalking || !state.backBtnTarget) return;
+      const target = state.backBtnTarget;
+      state.activeDoorApt = null;
+      removeStoryCard("play_dice_door");
+      removeStoryCard("leave_door_view");
+      setBackButtonTarget(null);
+      hideNpc();
+      await crossfadeToScene(target, false);
+      renderCabinetItems();
+      renderUI(true);
+    }
+
+    function clearAutoReturn() {
+      if (state.autoReturnTimer) { clearTimeout(state.autoReturnTimer); state.autoReturnTimer = null; }
+    }
+
+    /* ЧИСТЫЙ ФОЛБЭК ПУТЕЙ БЕЗ ПЕРЕКРЫТИЯ КАДРОВ УЛИЦЫ И ДВЕРЕЙ ДЕФОЛТНЫМ ФОНОМ КОМНАТЫ */
+    function buildFallbackBgUrls(rawPath, sceneKey = "") {
+      const parts = rawPath.split("/");
+      const file = parts.pop();
+      const capFile = file.charAt(0).toUpperCase() + file.slice(1);
+      const dir = parts.length ? parts.join("/") + "/" : "";
+      const candidates = [`${dir}${file}`, `${dir}${capFile}`];
+
+      if (sceneKey.startsWith("door_")) {
+        const isOpen = sceneKey.endsWith("_open");
+        const apt = sceneKey.replace("door_", "").replace("_open", "");
+        if (isOpen) {
+          candidates.push(
+            `события/двери/${apt} открытая.jpg`,
+            `двери/${apt} открытая.jpg`,
+            `события/двери/${apt} открыта.jpg`,
+            `двери/${apt} открыта.jpg`,
+            `события/двери/${apt}.jpg`,
+            `двери/${apt}.jpg`
+          );
+        } else {
+          candidates.push(`двери/${file}`, `события/кв ${apt}.jpg`, `кв ${apt}.jpg`);
+        }
+      } else if (sceneKey.startsWith("street_")) {
+        candidates.push(`улица/${file}`, `события/улица ${file}`);
+      } else if (!dir) {
+        candidates.push(`события/${file}`, `события/${capFile}`);
+      }
+
+      return [...new Set(candidates)].map((p) => `url("${encodeURI(p)}")`).join(", ");
+    }
+
+    function applyBackgroundToSlot(slot, key) {
+      const rawPath = SCENE_IMAGES[key] || SCENE_IMAGES.bedroom;
+      const bgVal = buildFallbackBgUrls(rawPath, key);
+      const isFullBright = FULL_BRIGHT_SCENES.has(key);
+      slot.classList.toggle("no-darkness", isFullBright);
+      document.body.setAttribute("data-fullbright", isFullBright ? "true" : "false");
+      slot.querySelector(".layer-dark").style.backgroundImage = bgVal;
+      slot.querySelector(".layer-lit").style.backgroundImage = bgVal;
+    }
+
+    function crossfadeToScene(sceneKey, playStep = true) {
+      clearAutoReturn();
+      return new Promise((resolve) => {
+        const inc = state.activeSlot === "a" ? slotB : slotA;
+        const out = state.activeSlot === "a" ? slotA : slotB;
+        document.getElementById("cabinet-items-layer").classList.remove("visible");
+        applyBackgroundToSlot(inc, sceneKey);
+        inc.className = "scene-slot incoming-prep" + (FULL_BRIGHT_SCENES.has(sceneKey) ? " no-darkness" : "");
+        void inc.offsetWidth;
+        inc.className = "scene-slot current" + (FULL_BRIGHT_SCENES.has(sceneKey) ? " no-darkness" : "");
+        out.className = "scene-slot outgoing" + (out.classList.contains("no-darkness") ? " no-darkness" : "");
+        state.activeSlot = state.activeSlot === "a" ? "b" : "a";
+        state.currentScene = sceneKey;
+        if (playStep) playFootstepSound();
+        setTimeout(resolve, 860);
+      });
+    }
+
+    async function showActionCloseup(sceneKey, playStep = false, holdReturn = true) {
+      clearAutoReturn();
+      if (state.currentScene !== sceneKey) {
+        await crossfadeToScene(sceneKey, playStep);
+      } else if (playStep) {
+        playFootstepSound();
+      }
+      const baseScene = resolveRoomSceneKey(state.logicalRoom);
+      const nonAutoReturn = new Set([baseScene, "cabinet", "ev_peephole_lit_2", "ev_peephole_empty_2", "ev_yard_window", "ev_defense"]);
+      if (holdReturn && !nonAutoReturn.has(sceneKey) && !sceneKey.startsWith("door_")) {
+        state.autoReturnTimer = setTimeout(async () => {
+          state.autoReturnTimer = null;
+          if (!state.isWalking && state.currentScene === sceneKey && !state.backBtnTarget) {
+            await crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
+            renderCabinetItems();
+          }
+        }, 2800);
+      }
+    }
+
+    const ROOMS_WITH_DOORS = new Set(["bedroom", "junkroom", "toilet", "bath", "kitchen"]);
+
+    async function walkToRoom(targetRoom) {
+      if (state.isWalking) return;
+      clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
+      state.activeDoorApt = null;
+      removeStoryCard("play_dice_door");
+      removeStoryCard("leave_door_view");
+      if (state.logicalRoom === targetRoom) {
+        const sc = resolveRoomSceneKey(targetRoom);
+        if (state.currentScene !== sc) await crossfadeToScene(sc, false);
+        return;
+      }
+      const fromRoom = state.logicalRoom;
+      const frames = buildApartmentRoute(fromRoom, targetRoom);
+      state.isWalking = true; renderUI(false); walkBobIntensity = 1;
+
+      if (ROOMS_WITH_DOORS.has(fromRoom)) playDoorCreakSound();
+      for (const frameKey of frames) {
+        await crossfadeToScene(frameKey, true);
+      }
+      if (ROOMS_WITH_DOORS.has(targetRoom)) playDoorCreakSound();
+
+      state.logicalRoom = targetRoom;
+      state.actOffset = 0; state.movOffset = 0;
+      walkBobIntensity = 0; state.isWalking = false;
+      renderCabinetItems();
+      renderUI(true);
+    }
+
+    async function playStairwellSequence(frames) {
+      clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
+      state.activeDoorApt = null;
+      removeStoryCard("play_dice_door");
+      removeStoryCard("leave_door_view");
+      state.isWalking = true; renderUI(false); walkBobIntensity = 1;
+      for (const f of frames) {
+        await crossfadeToScene(f, true);
+      }
+      walkBobIntensity = 0; state.isWalking = false;
+      state.actOffset = 0; state.movOffset = 0;
+      renderUI(true);
+    }
+
+    /* ============================================================================
+       10. ПЕРЕМЕЩЕНИЯ СПРАВА (КВАРТИРА + ПОДЪЕЗД + 16 КАДРОВ УЛИЦЫ)
+    ============================================================================ */
+    const APARTMENT_MOVE_CARDS = [
+      { room: "kitchen",  sheet: 5, icon: 1, caption: "Кухня" },
+      { room: "bedroom",  sheet: 5, icon: 2, caption: "Спальня" },
+      { room: "junkroom", sheet: 5, icon: 3, caption: "Комната с хламом" },
+      { room: "toilet",   sheet: 5, icon: 4, caption: "Туалет" },
+      { room: "bath",     sheet: 5, icon: 5, caption: "Ванна" },
+      { room: "entrance", sheet: 5, icon: 6, caption: "Выход" }
+    ];
+
+    async function navigateToRoomFromPanel(targetRoom) {
+      if (state.isWalking) return;
+      if (state.lightMode === "none") {
+        setEventText("В кромешной темноте не пройти — сначала зажгите спичку или свечу!");
+        addStoryCard(state.hasCandle ? "light_candle" : "light_match", true);
+        renderUI(true);
+        return;
+      }
+      await walkToRoom(targetRoom);
+
+      if (targetRoom === "toilet") {
+        if (!state.toiletUsed) {
+          state.toiletUsed = true; removeStoryCard("go_toilet");
+          playSnd1("СМЫВ", 0.9);
+          await showActionCloseup("ev_flush", false, true);
+          setEventText("Вы сходили в туалет и смыли воду. По ногам тянет ледяным сквозняком.");
+          checkInitialStepsProgress();
+        } else {
+          setEventText("Вы в туалете. Вода в бачке пустая.");
+        }
+      } else if (targetRoom === "bath") setEventText("Вы заглянули в ванную комнату. Здесь сыро и холодно.");
+      else if (targetRoom === "kitchen") setEventText("Вы на кухне.");
+      else if (targetRoom === "bedroom") setEventText("Вы в спальне.");
+      else if (targetRoom === "junkroom") setEventText("Вы в комнате с хламом. Поройтесь в коробках, чтобы найти свечку.");
+      else if (targetRoom === "entrance") setEventText("Вы у входной двери в прихожей.");
+      renderUI(true);
+    }
+
+    function getRightMoveDeck() {
+      if (!state.basicNavUnlocked && !state.roomNavUnlocked) return [];
+
+      // До выполнения всех стартовых условий (халат, вода, туалет, батарея, свеча) открыты переходы к базовым комнатам
+      if (!state.roomNavUnlocked) {
+        const earlyRooms = new Set(["bedroom", "kitchen", "toilet", "junkroom"]);
+        return APARTMENT_MOVE_CARDS
+          .filter((m) => earlyRooms.has(m.room) && m.room !== state.logicalRoom)
+          .map((m) => ({
+            id: `move_${m.room}`, sheet: m.sheet, icon: m.icon, caption: m.caption,
+            action: () => navigateToRoomFromPanel(m.room)
+          }));
+      }
+
+      if (state.logicalRoom !== "landing") {
+        return APARTMENT_MOVE_CARDS
+          .filter((m) => m.room !== state.logicalRoom)
+          .map((m) => ({
+            id: `move_${m.room}`, sheet: m.sheet, icon: m.icon, caption: m.caption,
+            action: () => navigateToRoomFromPanel(m.room)
+          }));
+      }
+
+      if (state.activeDoorApt) return [];
+
+      const moves = [];
+      if (state.landingFloor < 3) {
+        moves.push({
+          id: "move_up", sheet: 4, icon: 1, caption: `На ${state.landingFloor + 1} этаж`,
+          action: async () => {
+            const nextF = state.landingFloor + 1;
+            state.landingDir = "up";
+            const seq = buildStairwellFrames(state.landingFloor, nextF);
+            state.landingFloor = nextF;
+            await playStairwellSequence(seq);
+            setEventText(`Вы поднялись на ${state.landingFloor}-й этаж подъезда.`);
+          }
+        });
+      }
+      if (state.landingFloor > 1) {
+        moves.push({
+          id: "move_down", sheet: 4, icon: 2, caption: `На ${state.landingFloor - 1} этаж`,
+          action: async () => {
+            const nextF = state.landingFloor - 1;
+            state.landingDir = "down";
+            const seq = buildStairwellFrames(state.landingFloor, nextF);
+            state.landingFloor = nextF;
+            await playStairwellSequence(seq);
+            setEventText(`Вы спустились на ${state.landingFloor}-й этаж подъезда.`);
+          }
+        });
+      }
+      moves.push({
+        id: "move_outside", sheet: 4, icon: 4, caption: "Выйти на улицу",
+        action: async () => {
+          state.landingDir = "down";
+          const seq = buildStairwellFrames(state.landingFloor, "street");
+          await playStairwellSequence(seq);
+
+          state.isWalking = true; renderUI(false); walkBobIntensity = 1;
+          playSnd2("ШАГИ СНЕГ", 0.9); playSnd2("СИЛЬНАЯ МЕТЕЛЬ", 0.85);
+          setEventText("Вы выходите из подъезда в слепящую метель и пробираетесь сквозь сугробы к уличной колонке...");
+
+          for (let u = 1; u <= 16; u++) {
+            if (u === 8) {
+              playSnd2("колонка", 0.9);
+              setEventText("Вы качаете обледеневший рычаг колонки и набираете ледяную воду...");
+            }
+            if (u === 12) {
+              playSnd2("ШАГИ СНЕГ 2", 0.85);
+              setEventText("С полными ёмкостями воды вы спешите обратно к спасительному подъезду...");
+            }
+            await crossfadeToScene(`street_${u}`, false);
+          }
+
+          const firstTrip = !state.wentOutside;
+          state.wentOutside = true;
+          if (state.hasGrannyCans) state.grannyCansFilled = true;
+          updateBackpackBadge();
+
+          state.landingFloor = 1; state.landingDir = "up";
+          await playStairwellSequence(["p2_1", "p2_2"]);
+
+          if (firstTrip) {
+            addStoryCard("collect_carpets", true);
+            setEventText(
+              state.grannyCansFilled
+                ? "Вы вернулись с улицы на 1-й этаж с водой и полными бидонами бабушки! Занесите воду в кв. 17 или поднимитесь домой."
+                : "Вы набрали воды на улице и вернулись в подъезд (1-й этаж). Поднимитесь на 3-й этаж домой!"
+            );
+          } else {
+            setEventText("Вы вернулись с морозной улицы на 1-й этаж подъезда.");
+          }
+          renderUI(true);
+        }
+      });
+      return moves;
+    }
+
+    /* ============================================================================
+       11. БАЗА КАРТОЧЕК ДЕЙСТВИЙ (СЛЕВА)
+    ============================================================================ */
+    const CARDS_DB = {
+      check_switch: {
+        sheet: 1, icon: 3, caption: "Включить свет",
+        action: async () => {
+          removeStoryCard("check_switch"); playSnd1("ВЫКЛЮЧАТЕЛЬ", 0.9);
+          await showActionCloseup("ev_switch", false, true);
+          setEventText("Вы щёлкаете выключателем — электричества нет. Нужно зажечь спичку.");
+          addStoryCard("light_match", true); renderUI(true);
+        }
+      },
+      light_match: {
+        sheet: 2, icon: 7, caption: "Зажечь спичку",
+        instantSound: () => playSnd1("СПИЧКА", 0.9),
+        action: async () => {
+          const wasIntro = state.lightMode === "intro";
+          removeStoryCard("light_match");
+          igniteMatch(true);
+          if (wasIntro) {
+            state.basicNavUnlocked = true;
+            await showActionCloseup(resolveRoomSceneKey("bedroom"), false, false);
+            addStoryCard("put_robe");
+            addStoryCard("water");
+            addStoryCard("go_toilet");
+            addStoryCard("room_search_junk");
+            setEventText("Спичка быстро сгорает! Наденьте халат, выпейте воды, сходите в туалет и поройтесь в хламе, чтобы найти свечку.");
+          }
+          renderUI(true);
+        }
+      },
+      put_robe: {
+        sheet: 2, icon: 1, caption: "Надеть халат",
+        action: async () => {
+          removeStoryCard("put_robe");
+          await walkToRoom("bedroom");
+          playSnd2("одежда", 0.9);
+          await showActionCloseup("ev_robe", false, true);
+          state.robeDone = true;
+          setEventText("Вы надели тёплый махровый халат. В комнате очень холодно — не забудьте найти свечку в комнате с хламом.");
+          checkInitialStepsProgress();
+          renderUI(true);
+        }
+      },
+      water: {
+        sheet: 1, icon: 2, caption: "Выпить воды",
+        action: async () => {
+          removeStoryCard("water");
+          await walkToRoom("kitchen");
+          playSnd1("СТАКАН С ВОДОЙ", 0.9);
+          await showActionCloseup("ev_glass", false, true);
+          state.waterDone = true;
+          setEventText("Вы выпили стакан ледяной воды на кухне.");
+          checkInitialStepsProgress();
+          renderUI(true);
+        }
+      },
+      go_toilet: {
+        sheet: 5, icon: 4, caption: "Сходить в туалет",
+        action: async () => {
+          removeStoryCard("go_toilet");
+          await walkToRoom("toilet");
+          state.toiletUsed = true;
+          playSnd1("СМЫВ", 0.9);
+          await showActionCloseup("ev_flush", false, true);
+          setEventText("Вы сходили в туалет и смыли воду.");
+          checkInitialStepsProgress();
+          renderUI(true);
+        }
+      },
+      touch_radiator: {
+        sheet: 1, icon: 3, caption: "Потрогать батарею",
+        action: async () => {
+          removeStoryCard("touch_radiator");
+          state.radiatorTouched = true;
+          playFootstepSound();
+          checkInitialStepsProgress();
+          if (!state.hasCandle) {
+            setEventText("Батарея абсолютно ледяная — отопление отключили! Идите в комнату с хламом и найдите свечку.");
+          } else {
+            setEventText("Батарея абсолютно ледяная — отопление отключили! Теперь в квартире доступны все действия.");
+          }
+          renderUI(true);
+        }
+      },
+
+      /* ПОИСК В ХЛАМЕ (ДОСТУПЕН С САМОГО НАЧАЛА ДЛЯ НАХОДКИ СВЕЧКИ, ИКОНКА КУБИКОВ — ЛИСТ 2, №11) */
+      room_search_junk: {
+        sheet: 1, icon: 6, caption: "Порыться в хламе",
+        action: async () => {
+          if (state.logicalRoom !== "junkroom") await walkToRoom("junkroom");
+          playSnd1("ХЛАМ", 0.9);
+          await showActionCloseup("ev_search_junk", false, false);
+          state.junkSearches++;
+
+          if (state.junkSearches === 1) {
+            state.hasCandle = true;
+            state.hasDiceSet = true;
+            state.hasBrochure1 = true;
+            state.hasDiceRules = true;
+            addStoryCard("light_candle", true);
+            checkInitialStepsProgress();
+
+            showLootModal("Вы нашли в коробках с хламом:", [
+              { sheet: 1, icon: 7, caption: "Восковая свеча", desc: "Длинная восковая свеча. Зажгите её, чтобы не жечь спички!" },
+              { sheet: 2, icon: 11, caption: "Набор 6 кубиков", desc: "Шесть карболитовых кубиков для игры в «Костяное Очко»." },
+              { sheet: 3, icon: 4, caption: "Памятка ГО (Ч. I)", desc: "Первая часть брошюры Гражданской Обороны. Прочитайте её!" },
+              { sheet: 3, icon: 4, caption: "Инструкция к кубикам", desc: "Правила игры в «Костяное Очко» (доступны в вещмешке)." }
+            ]);
+            setEventText(
+              state.roomNavUnlocked
+                ? "Вы нашли свечу, набор из 6 кубиков, памятку ГО и инструкцию! Теперь открыты все комнаты и действия."
+                : "Вы нашли восковую свечу и полезные вещи! Зажгите свечу и завершите утренние дела (халат, вода, туалет, батарея)."
+            );
+          } else if (state.junkSearches === 2) {
+            state.hasBrochure2 = true;
+            state.hasTape = true;
+            state.hasEmptyCan = true;
+            addStoryCard("tape_windows", true);
+
+            showLootModal("При повторном поиске в хламе вы нашли:", [
+              { sheet: 3, icon: 4, caption: "Памятка ГО (Ч. II)", desc: "Вторая часть памятки ГО о сборке печки с кирпичом." },
+              { sheet: 3, icon: 5, caption: "Малярный скотч", desc: "Плотный рулон скотча — теперь можно заклеить окна на кухне!" },
+              { sheet: 3, icon: 9, caption: "Пустая банка", desc: "Пустая консервная банка для изготовления таганка/печки." }
+            ]);
+            setEventText("Вы нашли вторую памятку ГО, малярный скотч и пустую консервную банку! Теперь можно заклеить окно скотчем.");
+          } else {
+            await showActionCloseup("ev_search_junk", false, true);
+            setEventText("Вы ещё раз перебрали полки с хламом, но больше ничего полезного не осталось.");
+            renderUI(false);
+          }
+        }
+      },
+
+      light_candle: {
+        sheet: 1, icon: 7, caption: "Зажечь свечу",
+        instantSound: () => playSnd1("СПИЧКА", 0.9),
+        action: async () => {
+          removeStoryCard("light_candle"); removeStoryCard("light_match");
+          igniteCandle(true);
+          setEventText("Вы чиркнули спичкой и зажгли восковую свечу! Зажимайте её мышью и водите по экрану для освещения.");
+          renderUI(true);
+        }
+      },
+
+      /* ОКНО НА КУХНЕ: ОКНО 2 -> ВЫЛАЗИТ В ОКНО -> ДВОР С ОКНА (БЕЗ СБРОСА НА КУХНЮ ПОСЕРЕДИНЕ) */
+      room_look_window: {
+        sheet: 1, icon: 4, caption: "Посмотреть в окно",
+        action: async () => {
+          if (state.logicalRoom !== "kitchen") await walkToRoom("kitchen");
+          clearAutoReturn();
+          state.isWalking = true; renderUI(false);
+
+          // 1. Задник меняется сразу на Окно 2 + звук табуретки
+          await crossfadeToScene("ev_window_2", false);
+          setEventText("Сквозь замёрзшее стекло ничего не разглядеть — вы подставляете табуретку к окну...");
+          await Promise.race([
+            playAudioSmart(["АУДИО", "АУДИО 2"], ["ТАБУРЕТКА", "табуретка"], 0.95),
+            new Promise((r) => setTimeout(r, 1700))
+          ]);
+
+          // 2. Сразу же, не возвращаясь на кухню, включается Вылазит в окно + звук форточки
+          await crossfadeToScene("ev_window_climb", false);
+          setEventText("Вы открываете примерзшую форточку и высовываетесь наружу...");
+          await Promise.race([
+            playAudioSmart(["АУДИО", "АУДИО 2"], ["ФОРТОЧКА", "форточка"], 0.95),
+            new Promise((r) => setTimeout(r, 1700))
+          ]);
+
+          // 3. Двор с окна + звук метели + кнопка Назад
+          await crossfadeToScene("ev_yard_window", false);
+          playAudioSmart(["АУДИО 2", "АУДИО"], ["МЕТЕЛЬ", "метель"], 0.85);
+          state.isWalking = false;
+          setEventText("За окном бушует ледяная метель. Весь двор занесён снегом, ни в одном окне нет света.");
+          setBackButtonTarget("kitchen", "Назад на кухню");
+        }
+      },
+
+      room_supplies: {
+        sheet: 1, icon: 9, caption: "Припасы",
+        action: async () => {
+          playSnd1("ШКАФ С ЕДОЙ", 0.9);
+          await showActionCloseup("cabinet", false, false);
+          setEventText("Шкафчик с припасами: нажимайте на банки тушёнки и мешок с картошкой, чтобы забрать их в вещмешок.");
+          renderCabinetItems();
+          setBackButtonTarget("kitchen", "Закрыть шкафчик");
+        }
+      },
+
+      room_radio: {
+        sheet: 1, icon: 5, caption: "Включить радио",
+        action: async () => {
+          playSnd1("РАДИО", 0.9);
+          await showActionCloseup("radio", false, true);
+          setEventText("По радио сквозь треск помех передают экстренную сводку об аварии на теплосетях.");
+          renderUI(false);
+        }
+      },
+
+      room_thermometer: {
+        sheet: 2, icon: 2, caption: "Термометр",
+        action: async () => {
+          await walkToRoom("bedroom");
+          await showActionCloseup("ev_thermometer", true, true);
+          setEventText("Столбик комнатного термометра стремительно падает к нулю.");
+          renderUI(false);
+        }
+      },
+
+      room_bed: {
+        sheet: 1, icon: 12, caption: "Полежать",
+        action: async () => {
+          await walkToRoom("bedroom");
+          playSnd2("одежда", 0.7);
+          await showActionCloseup("ev_bed", true, true);
+          setEventText("Вы прилегли на кровать под одеяло, пытаясь согреться собственным дыханием.");
+          renderUI(false);
+        }
+      },
+
+      room_dumbbells: {
+        sheet: 4, icon: 3, caption: "Потягать гантели",
+        action: async () => {
+          playFootstepSound();
+          await showActionCloseup("ev_dumbbells", false, true);
+          setEventText("Вы делаете несколько подходов с тяжёлыми гантелями — кровь разгоняется, становится теплее!");
+          renderUI(false);
+        }
+      },
+
+      read_brochure_1: {
+        sheet: 3, icon: 4, caption: "Прочитать памятку ГО",
+        action: async () => {
+          await openBrochure(1);
+          setEventText("Вы изучаете памятку Гражданской Обороны. Теперь можно плотно подоткнуть входную дверь от сквозняка!");
+          renderUI(true);
+        }
+      },
+
+      seal_door: {
+        sheet: 2, icon: 10, caption: "Подоткнуть дверь",
+        action: async () => {
+          removeStoryCard("seal_door");
+          state.doorSealed = true;
+          await walkToRoom("entrance");
+          playDoorCreakSound();
+          setEventText("Вы плотно подоткнули щель под входной дверью ветошью, как указано в памятке ГО.");
+          renderUI(true);
+        }
+      },
+
+      tape_windows: {
+        sheet: 3, icon: 5, caption: "Заклеить окно",
+        action: async () => {
+          removeStoryCard("tape_windows");
+          state.windowsTaped = true;
+          updateBackpackBadge();
+          await walkToRoom("kitchen");
+          playSnd1("СКОТЧ", 0.95);
+          await showActionCloseup("ev_window_2", false, true);
+          setEventText("Вы намертво заклеили стыки кухонного окна найденным малярным скотчем.");
+          renderUI(true);
+        }
+      },
+
+      /* ГЛАЗОК И ДИАЛОГ С ПЕРВЫМ СОСЕДОМ (ИКОНКА КОСТЯШЕК — ЛИСТ 2, №11) */
+      room_peephole: {
+        sheet: 3, icon: 15, caption: "Посмотреть в глазок",
+        action: async () => {
+          const someoneKnocking = state.isKnocking || !state.neighborVisited;
+          stopDoorKnockLoop();
+          state.isWalking = true; renderUI(false);
+
+          const firstImg = someoneKnocking ? "ev_peephole_lit_1" : "ev_peephole_empty_1";
+          const secondImg = someoneKnocking ? "ev_peephole_lit_2" : "ev_peephole_empty_2";
+
+          await showActionCloseup(firstImg, false, false);
+          const slot = state.activeSlot === "a" ? slotA : slotB;
+          slot.classList.add("peephole-zoom");
+          await new Promise((r) => setTimeout(r, 1050));
+          slot.classList.remove("peephole-zoom");
+
+          await showActionCloseup(secondImg, false, false);
+          state.isWalking = false;
+
+          if (someoneKnocking && !state.neighborVisited) {
+            state.neighborVisited = true;
+            setEventText("За дверью сосед из кв. 20: «Сосед, выручай банкой тушёнки за свечи! Или давай перекинемся в костяшки — ставь тушёнку на кон!»");
+            addStoryCard("refuse_trade", true);
+            addStoryCard("agree_trade", true);
+            addStoryCard("play_dice_neighbor", true);
+            renderUI(true);
+            await playNpcSpeech("neighbor", "голос мужской");
+          } else {
+            setEventText("Вы посмотрели в дверной глазок — на лестничной площадке тихо.");
+            setBackButtonTarget("entrance", "Отойти от глазка");
+          }
+        }
+      },
+
+      agree_trade: {
+        sheet: 1, icon: 13, caption: "Дать тушёнку",
+        action: async () => {
+          if (totalStewAvailable() <= 0) {
+            setEventText("У вас не осталось ни одной банки тушёнки!");
+            return;
+          }
+          removeStoryCard("agree_trade"); removeStoryCard("play_dice_neighbor"); removeStoryCard("refuse_trade");
+          spendOneStew();
+          hideNpc();
+          playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
+          await showActionCloseup("ev_peephole_lit_2", false, false);
+          addStoryCard("check_tap", true); addStoryCard("put_coat", true); addStoryCard("put_shoes", true);
+          setEventText("Сосед дал свечи и сказал: «Воду перекрыли, пошли на колонку! И зайди в 17-ю квартиру на 1-м этаже — там бабушка живёт, помоги ей воды принести!»");
+          renderUI(true);
+          await playNpcSpeech("neighbor", "голос мужской 2");
+          hideNpc(); await crossfadeToScene("entrance", false);
+        }
+      },
+
+      play_dice_neighbor: {
+        sheet: 2, icon: 11, caption: "Сыграть в костяшки",
+        action: async () => {
+          openOchkoMatch(1);
+        }
+      },
+
+      refuse_trade: {
+        sheet: 2, icon: 8, caption: "Отказаться",
+        action: async () => {
+          removeStoryCard("agree_trade"); removeStoryCard("play_dice_neighbor"); removeStoryCard("refuse_trade");
+          addStoryCard("check_tap", true); addStoryCard("put_coat", true); addStoryCard("put_shoes", true);
+          setEventText("Сосед вздохнул: «Ладно, можешь потом зайти ко мне в 20-ю квартиру сыграть в костяшки. Воду отключили — иди на колонку и загляни к бабушке в 17-ю!»");
+          renderUI(true);
+          await playNpcSpeech("neighbor", "голос мужской 2", [1, 5, 4, 7, 8]);
+          hideNpc(); await crossfadeToScene("entrance", false);
+        }
+      },
+
+      check_tap: {
+        sheet: 3, icon: 6, caption: "Проверить кран",
+        action: async () => {
+          removeStoryCard("check_tap");
+          await walkToRoom("kitchen");
+          await showActionCloseup("ev_tap", true, true);
+          setEventText("В кране сухо и глухо гудят замёрзшие трубы — воды действительно нет.");
+          renderUI(true);
+        }
+      },
+
+      put_coat: {
+        sheet: 3, icon: 7, caption: "Одеться",
+        action: async () => {
+          removeStoryCard("put_coat");
+          await walkToRoom("entrance");
+          playSnd2("одежда", 0.9);
+          await showActionCloseup("ev_dress", false, true);
+          state.hasCoat = true;
+          setEventText("Вы надели тёплую зимнюю куртку и шапку.");
+          renderUI(true);
+        }
+      },
+
+      put_shoes: {
+        sheet: 2, icon: 15, caption: "Обуться",
+        action: async () => {
+          removeStoryCard("put_shoes");
+          await walkToRoom("entrance");
+          playSnd2("ботинки", 0.9);
+          await showActionCloseup("ev_shoes", false, true);
+          state.hasShoes = true;
+          setEventText("Вы обули зимние ботинки. Теперь на Выходе можно выйти в подъезд.");
+          renderUI(true);
+        }
+      },
+
+      room_exit_door: {
+        sheet: 3, icon: 12, caption: "Выйти в подъезд",
+        action: async () => {
+          if (!state.hasCoat || !state.hasShoes) {
+            addStoryCard("put_coat", true); addStoryCard("put_shoes", true);
+            setEventText("В таком виде в промёрзший подъезд нельзя — сначала оденьтесь и обуйтесь!");
+            renderUI(true); return;
+          }
+          playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
+          state.logicalRoom = "landing"; state.landingFloor = 3; state.landingDir = "down";
+          state.actOffset = 0; state.movOffset = 0;
+          await crossfadeToScene("p1_1", true);
+          setEventText("Вы на площадке 3-го этажа (кв. 22, 23, 24). Справа — переход между этажами и выход на улицу.");
+          renderUI(true);
+        }
+      },
+
+      landing_back_home: {
+        sheet: 5, icon: 6, caption: "В кв. 22 (Домой)",
+        action: async () => {
+          hideNpc(); setBackButtonTarget(null);
+          state.activeDoorApt = null;
+          removeStoryCard("play_dice_door");
+          removeStoryCard("leave_door_view");
+          playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
+          state.logicalRoom = "entrance"; state.actOffset = 0; state.movOffset = 0;
+          await crossfadeToScene("entrance", true);
+          setEventText("Вы вернулись в свою квартиру №22.");
+          renderUI(true);
+
+          // Если 3-минутный таймер соседа истёк, пока игрок был в подъезде — сосед стучит через 15 секунд после возвращения домой
+          if (state.neighborPendingArrival && !state.neighborVisited && !state.wentOutside) {
+            if (state.neighborReturnTimer) clearTimeout(state.neighborReturnTimer);
+            state.neighborReturnTimer = setTimeout(() => {
+              state.neighborReturnTimer = null;
+              triggerNeighborArrivalNow();
+            }, 15000);
+          }
+        }
+      },
+
+      /* КАРТОЧКИ ВЗАИМОДЕЙСТВИЯ У ОТКРЫТОЙ ДВЕРИ В ПОДЪЕЗДЕ */
+      play_dice_door: {
+        sheet: 2, icon: 11, caption: "Сыграть в костяшки (ставка: 1 тушёнка)",
+        action: async () => {
+          const apt = state.activeDoorApt || 20;
+          let oppId = 1;
+          if (apt === 20) oppId = 1;
+          else if (apt === 18) oppId = 2;
+          else if (apt === 23) oppId = state.opp3Beaten ? 4 : 3;
+          else if (apt === 24) oppId = 4;
+          openOchkoMatch(oppId);
+        }
+      },
+
+      leave_door_view: {
+        sheet: 5, icon: 6, caption: "Отойти от двери",
+        action: async () => {
+          state.activeDoorApt = null;
+          removeStoryCard("play_dice_door");
+          removeStoryCard("leave_door_view");
+          removeStoryCard("take_granny_cans");
+          removeStoryCard("give_granny_water");
+          await crossfadeToScene(resolveRoomSceneKey("landing"), false);
+          setEventText(`Вы на лестничной площадке ${state.landingFloor}-го этажа.`);
+          renderUI(true);
+        }
+      },
+
+      /* КВ. 17: ПОМОЩЬ БАБУШКЕ С БИДОНАМИ ДЛЯ ВОДЫ */
+      take_granny_cans: {
+        sheet: 1, icon: 2, caption: "Взять бидоны бабушки",
+        action: async () => {
+          removeStoryCard("take_granny_cans");
+          removeStoryCard("leave_door_view");
+          state.activeDoorApt = null;
+          state.hasGrannyCans = true;
+          updateBackpackBadge();
+          await crossfadeToScene("ev_granny_cans", false);
+          setEventText("Вы взяли у бабушки из 17-й квартиры пустую тару для воды. Теперь выходите из подъезда на уличную колонку!");
+          setBackButtonTarget(resolveRoomSceneKey("landing"), "Отойти от кв. 17");
+        }
+      },
+
+      give_granny_water: {
+        sheet: 1, icon: 2, caption: "Отдать воду бабушке",
+        action: async () => {
+          removeStoryCard("give_granny_water");
+          removeStoryCard("leave_door_view");
+          state.activeDoorApt = null;
+          state.hasGrannyCans = false;
+          state.grannyHelped = true;
+          state.invStew++;
+          updateBackpackBadge();
+          await crossfadeToScene("ev_granny_cans", false);
+          setEventText("Бабушка из кв. 17 со слезами благодарит вас за принесённую воду и даёт вам из запасов банку тушёнки!");
+          setBackButtonTarget(resolveRoomSceneKey("landing"), "Отойти от кв. 17");
+        }
+      },
+
+      collect_carpets: {
+        sheet: 1, icon: 6, caption: "Собрать ковры",
+        action: async () => {
+          removeStoryCard("collect_carpets");
+          await walkToRoom("junkroom");
+          playSnd2("ковер", 0.95);
+          await showActionCloseup("ev_carpets_roll", false, true);
+          state.carpetsTaken = true;
+          addStoryCard("hang_carpets", true);
+          setEventText("Ковры скатаны! Теперь завесьте ими ледяные стены в спальне.");
+          renderUI(true);
+        }
+      },
+
+      hang_carpets: {
+        sheet: 1, icon: 12, caption: "Завесить стены",
+        action: async () => {
+          removeStoryCard("hang_carpets");
+          await walkToRoom("bedroom");
+          playSnd2("ковёр прибить", 0.95);
+          await showActionCloseup("ev_carpets_wall", false, false);
+          await new Promise((r) => setTimeout(r, 850));
+          playSnd1("СКОТЧ", 0.9);
+          state.carpetsHung = true;
+          await showActionCloseup("ev_all_covered", false, false);
+          addStoryCard("find_bricks", true);
+          setEventText("Спальня утеплена коврами! Осталось найти кирпичи в подъезде и собрать печку.");
+          renderUI(true);
+        }
+      },
+
+      find_bricks: {
+        sheet: 3, icon: 12, caption: "Найти кирпичи",
+        action: async () => {
+          removeStoryCard("find_bricks");
+          if (state.logicalRoom !== "landing") {
+            await walkToRoom("entrance");
+            state.logicalRoom = "landing"; state.landingFloor = 3; state.landingDir = "down";
+            await crossfadeToScene("p1_1", true);
+          }
+          setEventText("В подъезде замёрзшая соседка просит помочь едой...");
+          addStoryCard("take_bricks", true);
+          if (totalStewAvailable() > 0) addStoryCard("help_woman", true);
+          renderUI(true);
+          await playNpcSpeech("woman", "женщина голос");
+        }
+      },
+
+      help_woman: {
+        sheet: 1, icon: 13, caption: "Дать банку",
+        action: async () => {
+          removeStoryCard("help_woman");
+          spendOneStew();
+          setEventText("Соседка горячо благодарит вас и показывает, где сложены целые огнеупорные кирпичи.");
+          renderUI(true);
+          await playNpcSpeech("woman", "женщина голос");
+        }
+      },
+
+      take_bricks: {
+        sheet: 3, icon: 9, caption: "Взять кирпичи",
+        action: async () => {
+          removeStoryCard("take_bricks");
+          if (state.storyCardIds.includes("help_woman")) {
+            removeStoryCard("help_woman");
+            await playNpcSpeech("woman", "женщина недовольный голос");
+          }
+          hideNpc(); playSnd2("кирпичи", 0.95);
+          state.hasBricks = true;
+          updateBackpackBadge();
+          await showActionCloseup("ev_bricks", false, true);
+          addStoryCard("build_stove", true);
+          setEventText("Кирпичи у вас! Вернитесь в квартиру (кв. 22) в спальню и соберите печку.");
+          renderUI(true);
+        }
+      },
+
+      build_stove: {
+        sheet: 3, icon: 10, caption: "Собрать печку",
+        action: async () => {
+          removeStoryCard("build_stove");
+          if (state.logicalRoom === "landing") {
+            state.logicalRoom = "entrance"; await crossfadeToScene("entrance", true);
+          }
+          await walkToRoom("bedroom");
+          playSnd2("кирпичи", 0.9); playSnd1("СПИЧКА", 0.9);
+          state.stoveBuilt = true; state.hasCandle = true; state.lightMode = "kerosene";
+          updateBackpackBadge();
+          document.body.setAttribute("data-lit", "true");
+          await showActionCloseup("ev_stove", false, false);
+          if (totalStewAvailable() > 0) addStoryCard("heat_stew", true);
+          setEventText("Печка из консервной банки, свечи и кирпичей собрана! В спальне наконец-то стало тепло.");
+          renderUI(true);
+        }
+      },
+
+      heat_stew: {
+        sheet: 1, icon: 14, caption: "Греть тушёнку",
+        action: async () => {
+          removeStoryCard("heat_stew");
+          spendOneStew();
+          playSnd1("ОТКРЫВАЕТ КОНСЕРВУ", 0.95);
+          setEventText("Вы разогрели ароматную тушёнку на раскалённых кирпичах самодельной печки.");
+          renderUI(true);
+        }
+      }
+    };
+
+    /* ============================================================================
+       12. ДВЕРИ ВСЕХ 9 КВАРТИР (16–24): ЗАКРЫТАЯ ДВЕРЬ -> ОТКРЫТАЯ ДВЕРЬ ДЛЯ ЖИЛЫХ
+    ============================================================================ */
+    const APT_DESCRIPTIONS = {
+      16: {
+        inhabited: false,
+        type: "creepy",
+        text: "Вы подошли к двери кв. 16 и постучали. За обшивкой раздались странные тяжёлые хрипы и глухое шарканье, но дверь никто не открыл..."
+      },
+      17: {
+        inhabited: true,
+        type: "granny",
+        text: "Дверь кв. 17 приоткрылась. Старенькая бабушка слабым голосом говорит: «Сынок, мне по гололёду до колонки не дойти... Возьми мои бидоны, принеси водички Христа ради!»"
+      },
+      18: {
+        inhabited: true,
+        type: "dice",
+        oppId: 2,
+        text: "Дверь кв. 18 открывается: «Азартный человек? Заходи за стол, перекинемся в Костяное Очко на банку тушёнки!»"
+      },
+      19: {
+        inhabited: false,
+        type: "go_away",
+        text: "На ваш стук в кв. 19 из-за двери грубо рявкнули: «Уходи отсюда! Никому не открываем, проваливай!»"
+      },
+      20: {
+        inhabited: true,
+        type: "dice",
+        oppId: 1,
+        text: "Дверь кв. 20 открывает ваш знакомый сосед с фонарём: «Зашёл перекинуться в костяшки? Доставай кубики, сыграем на тушёнку!»"
+      },
+      21: {
+        inhabited: false,
+        type: "silent",
+        text: "Вы долго стучите в обледеневшую дверь кв. 21, но внутри стоит мёртвая тишина — похоже, хозяева давно уехали."
+      },
+      23: {
+        inhabited: true,
+        type: "dice",
+        oppId: 3,
+        text: "Дверь кв. 23 открывается — на пороге хмурый сосед с резными костями: «В очко сыграть хочешь? Ставь банку тушёнки на кон!»"
+      },
+      24: {
+        inhabited: true,
+        type: "dice_4",
+        oppId: 4,
+        text: "Дверь кв. 24 приоткрывается — хозяин квартиры готов сыграть с вами в «Костяное Очко» на банку тушёнки!"
+      }
+    };
+
+    [16, 17, 18, 19, 20, 21, 23, 24].forEach((apt) => {
+      CARDS_DB[`knock_${apt}`] = {
+        sheet: 3, icon: 12, caption: `Постучать в кв. ${apt}`,
+        action: async () => {
+          state.isWalking = true; renderUI(false);
+          // 1. Сначала показываем закрытую дверь крупным планом и стучим
+          await crossfadeToScene(`door_${apt}`, false);
+          await playSnd2(knockToggle++ % 2 === 0 ? "СТУК" : "СТУК 2", 0.85);
+
+          const info = APT_DESCRIPTIONS[apt];
+
+          // 2. Если квартира жилая — открывается дверь (картинка «... открытая.jpg») со скрипом двери
+          if (info.inhabited) {
+            playDoorCreakSound();
+            await crossfadeToScene(`door_${apt}_open`, false);
+          }
+          state.isWalking = false;
+          setEventText(info.text);
+
+          if (apt === 20) state.neighborVisited = true;
+
+          if (info.type === "granny") {
+            state.activeDoorApt = apt;
+            removeStoryCard("play_dice_door");
+            addStoryCard("leave_door_view", true);
+            if (!state.hasGrannyCans && !state.grannyHelped) {
+              addStoryCard("take_granny_cans", true);
+            } else if (state.hasGrannyCans && state.grannyCansFilled && !state.grannyHelped) {
+              addStoryCard("give_granny_water", true);
+              setEventText("Бабушка из кв. 17 радостно всплеснула руками: «Принёс водички! Дай Бог тебе здоровья, передавай бидоны!»");
+            }
+            state.actOffset = 0;
+            renderUI(true);
+          } else if (info.type === "dice" || info.type === "dice_4") {
+            state.activeDoorApt = apt;
+            addStoryCard("leave_door_view", true);
+            addStoryCard("play_dice_door", true); // Ставится на 1-е место в левой колоде!
+            state.actOffset = 0;
+            renderUI(true);
+          } else {
+            setBackButtonTarget(resolveRoomSceneKey("landing"), "Отойти от двери");
+          }
+        }
+      };
+    });
+
+    /* СЮЖЕТНЫЕ КАРТОЧКИ ВСЕГДА ИДУТ В НАЧАЛЕ ЛЕВОЙ КОЛОДЫ ПЕРЕД БЫТОВЫМИ ДЕЙСТВИЯМИ */
+    function getLeftActionDeck() {
+      const ids = [];
+
+      // Если мы стоим перед открытой дверью квартиры в подъезде — показываем только действия у двери
+      if (state.logicalRoom === "landing" && state.activeDoorApt) {
+        state.storyCardIds.forEach((id) => {
+          if (["play_dice_door", "take_granny_cans", "give_granny_water", "leave_door_view"].includes(id)) {
+            ids.push(id);
+          }
+        });
+        return ids.map((id) => CARDS_DB[id] ? { id, ...CARDS_DB[id] } : null).filter(Boolean);
+      }
+
+      // 1. Сначала ставим сюжетные карточки (storyCardIds), чтобы они никогда не уезжали за стрелку прокрутки!
+      state.storyCardIds.forEach((id) => {
+        if (!ids.includes(id)) ids.push(id);
+      });
+
+      if (state.hasBrochure1 && !state.readBrochure1 && !ids.includes("read_brochure_1")) {
+        ids.unshift("read_brochure_1");
+      }
+
+      // Пока не выполнены стартовые действия (халат, вода, туалет, батарея, свеча), гарантируем наличие поиска в хламе
+      if (!state.roomNavUnlocked) {
+        if (state.basicNavUnlocked && state.junkSearches === 0 && !ids.includes("room_search_junk")) {
+          ids.push("room_search_junk");
+        }
+        return ids.map((id) => CARDS_DB[id] ? { id, ...CARDS_DB[id] } : null).filter(Boolean);
+      }
+
+      // 2. Бытовые действия текущей комнаты добавляем после сюжетных карточек
+      const r = state.logicalRoom;
+      if (r === "landing") {
+        if (state.landingFloor === 3) ["landing_back_home", "knock_23", "knock_24"].forEach(k => { if (!ids.includes(k)) ids.push(k); });
+        else if (state.landingFloor === 2) ["knock_19", "knock_20", "knock_21"].forEach(k => { if (!ids.includes(k)) ids.push(k); });
+        else if (state.landingFloor === 1) ["knock_16", "knock_17", "knock_18"].forEach(k => { if (!ids.includes(k)) ids.push(k); });
+      } else if (r === "kitchen") {
+        ["room_supplies", "room_look_window", "room_radio"].forEach(k => { if (!ids.includes(k)) ids.push(k); });
+      } else if (r === "bedroom") {
+        ["room_thermometer", "room_bed"].forEach(k => { if (!ids.includes(k)) ids.push(k); });
+      } else if (r === "junkroom") {
+        if (!ids.includes("room_search_junk")) ids.push("room_search_junk");
+        if (state.wentOutside && !ids.includes("room_dumbbells")) ids.push("room_dumbbells");
+      } else if (r === "entrance") {
+        ["room_peephole", "room_exit_door"].forEach(k => { if (!ids.includes(k)) ids.push(k); });
+      }
+
+      return ids.map((id) => CARDS_DB[id] ? { id, ...CARDS_DB[id] } : null).filter(Boolean);
+    }
+
+    /* ============================================================================
+       13. РЕНДЕР ДВУХ КАРУСЕЛЕЙ КАРТОЧЕК
+    ============================================================================ */
+    const leftCardsEl = document.getElementById("left-action-cards");
+    const rightCardsEl = document.getElementById("right-move-cards");
+    const rightGroupEl = document.getElementById("right-move-group");
+    const actPrevBtn = document.getElementById("act-prev"), actNextBtn = document.getElementById("act-next");
+    const movPrevBtn = document.getElementById("mov-prev"), movNextBtn = document.getElementById("mov-next");
+    let cardActivatingLock = false;
+
+    function renderDeckSlice(container, items, offset, animateDeal = false) {
+      container.innerHTML = "";
+      items.slice(offset, offset + 3).forEach((card, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "choice-card" + (animateDeal ? " deal-anim" : "");
+        if (animateDeal) btn.style.setProperty("--deal-delay", `${idx * 75}ms`);
+        btn.disabled = state.isWalking;
+
+        const inner = document.createElement("div");
+        inner.className = "card-inner";
+        const iconDiv = document.createElement("div");
+        iconDiv.className = "card-icon-frame";
+        applyIconSprite(iconDiv, card.sheet, card.icon);
+        const cap = document.createElement("div");
+        cap.className = "choice-caption";
+        cap.textContent = card.caption;
+        inner.appendChild(iconDiv);
+        inner.appendChild(cap);
+
+        const back = document.createElement("div");
+        back.className = "card-back";
+
+        btn.appendChild(inner);
+        btn.appendChild(back);
+
+        btn.onclick = () => {
+          if (state.isWalking || cardActivatingLock) return;
+          cardActivatingLock = true;
+          playCardSound("flip");
+          if (typeof card.instantSound === "function") card.instantSound();
+          btn.classList.remove("deal-anim");
+          btn.classList.add("activating");
+          setTimeout(() => {
+            cardActivatingLock = false;
+            card.action();
+          }, 360);
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function renderUI(animateDeal = false) {
+      if (animateDeal && !state.isWalking) playCardSound("deal");
+      const leftDeck = getLeftActionDeck();
+      const maxLeftOffset = Math.max(0, leftDeck.length - 3);
+      if (state.actOffset > maxLeftOffset) state.actOffset = maxLeftOffset;
+      renderDeckSlice(leftCardsEl, leftDeck, state.actOffset, animateDeal);
+      actPrevBtn.disabled = state.isWalking || state.actOffset <= 0;
+      actNextBtn.disabled = state.isWalking || state.actOffset + 3 >= leftDeck.length;
+
+      const rightDeck = getRightMoveDeck();
+      rightGroupEl.style.visibility = rightDeck.length > 0 ? "visible" : "hidden";
+      const maxRightOffset = Math.max(0, rightDeck.length - 3);
+      if (state.movOffset > maxRightOffset) state.movOffset = maxRightOffset;
+      renderDeckSlice(rightCardsEl, rightDeck, state.movOffset, animateDeal);
+      movPrevBtn.disabled = state.isWalking || state.movOffset <= 0;
+      movNextBtn.disabled = state.isWalking || state.movOffset + 3 >= rightDeck.length;
+    }
+
+    actPrevBtn.onclick = () => { if (state.actOffset > 0) { state.actOffset--; playCardSound("click"); renderUI(false); } };
+    actNextBtn.onclick = () => { const d = getLeftActionDeck(); if (state.actOffset + 3 < d.length) { state.actOffset++; playCardSound("click"); renderUI(false); } };
+    movPrevBtn.onclick = () => { if (state.movOffset > 0) { state.movOffset--; playCardSound("click"); renderUI(false); } };
+    movNextBtn.onclick = () => { const d = getRightMoveDeck(); if (state.movOffset + 3 < d.length) { state.movOffset++; playCardSound("click"); renderUI(false); } };
+
+    /* ============================================================================
+       14. СПИЧКА И СВЕЧА: ТАСКАНИЕ ПО ВСЕМУ ЭКРАНУ + КРУГ СВЕТА ВОКРУГ ПЛАМЕНИ + АВТОВОЗВРАТ
+    ============================================================================ */
+    const stageEl = document.getElementById("stage-16x9");
+    const flameCanvas = document.getElementById("center-flame-canvas");
+    const fCtx = flameCanvas.getContext("2d");
+
+    let isDraggingTorch = false;
+    let dragStartX = 0, dragStartY = 0;
+    let torchOffsetX = 0, torchOffsetY = 0;
+    let smoothTorchX = 0, smoothTorchY = 0;
+    let lastFlameCanvasY = 65;
+
+    flameCanvas.addEventListener("pointerdown", (e) => {
+      if (state.lightMode !== "match" && state.lightMode !== "candle" && state.lightMode !== "kerosene") return;
+      isDraggingTorch = true;
+      flameCanvas.classList.add("dragging");
+      dragStartX = e.clientX - torchOffsetX;
+      dragStartY = e.clientY - torchOffsetY;
+      if (flameCanvas.setPointerCapture) flameCanvas.setPointerCapture(e.pointerId);
+    });
+
+    window.addEventListener("pointermove", (e) => {
+      if (!isDraggingTorch) return;
+      const stRect = stageEl.getBoundingClientRect();
+      const maxX = stRect.width * 0.48;
+      const maxYUp = stRect.height * 0.88;
+      const maxYDown = stRect.height * 0.08;
+      const rawX = e.clientX - dragStartX;
+      const rawY = e.clientY - dragStartY;
+      torchOffsetX = Math.max(-maxX, Math.min(maxX, rawX));
+      torchOffsetY = Math.max(-maxYUp, Math.min(maxYDown, rawY));
+    });
+
+    function stopTorchDrag() {
+      if (!isDraggingTorch) return;
+      isDraggingTorch = false;
+      flameCanvas.classList.remove("dragging");
+      torchOffsetX = 0;
+      torchOffsetY = 0;
+    }
+    window.addEventListener("pointerup", stopTorchDrag);
+    window.addEventListener("pointercancel", stopTorchDrag);
+
+    function drawRealisticFlame(ctx, x, y, scale, t) {
+      const sway = Math.sin(t * 13) * 2.2 + Math.cos(t * 21) * 1.1;
+      const h = (24 + Math.sin(t * 18) * 2.8) * scale;
+
+      const glow = ctx.createRadialGradient(x, y - 9 * scale, 2, x, y - 9 * scale, 40 * scale);
+      glow.addColorStop(0, "rgba(255, 195, 85, 0.55)");
+      glow.addColorStop(0.5, "rgba(255, 110, 20, 0.2)");
+      glow.addColorStop(1, "rgba(255, 70, 0, 0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(x, y - 9 * scale, 40 * scale, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = "#ff8514";
+      ctx.beginPath();
+      ctx.moveTo(x - 6 * scale, y);
+      ctx.quadraticCurveTo(x - 8.5 * scale, y - h * 0.5, x + sway, y - h);
+      ctx.quadraticCurveTo(x + 8.5 * scale, y - h * 0.5, x + 6 * scale, y);
+      ctx.closePath(); ctx.fill();
+
+      ctx.fillStyle = "#fff5b8";
+      ctx.beginPath();
+      ctx.moveTo(x - 3 * scale, y);
+      ctx.quadraticCurveTo(x - 4.2 * scale, y - h * 0.35, x + sway * 0.6, y - h * 0.7);
+      ctx.quadraticCurveTo(x + 4.2 * scale, y - h * 0.35, x + 3 * scale, y);
+      ctx.closePath(); ctx.fill();
+    }
+
+    function renderCenterMatchAndCandle(now) {
+      const t = now * 0.001;
+      fCtx.clearRect(0, 0, flameCanvas.width, flameCanvas.height);
+      const cx = flameCanvas.width / 2;
+
+      if (state.lightMode === "match") {
+        const p = Math.min(1, (now - state.matchStart) / MATCH_DURATION);
+        if (p >= 1) {
+          state.lightMode = "none";
+          stopTorchDrag();
+          document.body.setAttribute("data-lit", "false");
+          addStoryCard(state.hasCandle ? "light_candle" : "light_match", true);
+          renderUI(true);
+          return;
+        }
+        const botY = 174, fullLen = 110, topY = botY - fullLen;
+        const burnY = topY + p * (fullLen - 20);
+        lastFlameCanvasY = burnY - 12;
+
+        const woodGrad = fCtx.createLinearGradient(cx - 3.5, burnY, cx + 3.5, burnY);
+        woodGrad.addColorStop(0, "#b8864c"); woodGrad.addColorStop(0.5, "#e0b478"); woodGrad.addColorStop(1, "#9c6d36");
+        fCtx.fillStyle = woodGrad;
+        fCtx.fillRect(cx - 3.5, burnY, 7, botY - burnY);
+
+        const charTopY = topY + p * 34;
+        fCtx.strokeStyle = "#171412";
+        fCtx.lineWidth = 5; fCtx.lineCap = "round";
+        fCtx.beginPath();
+        fCtx.moveTo(cx, burnY);
+        fCtx.quadraticCurveTo(cx + 5 * p, (burnY + charTopY) * 0.5, cx + 8 * p, charTopY);
+        fCtx.stroke();
+
+        fCtx.fillStyle = "#29221e";
+        fCtx.beginPath(); fCtx.arc(cx + 8 * p, charTopY, 3.8, 0, Math.PI * 2); fCtx.fill();
+
+        fCtx.fillStyle = "#f94125";
+        fCtx.fillRect(cx - 3.5, burnY - 3, 7, 4);
+
+        drawRealisticFlame(fCtx, cx, burnY - 2, 0.95, t);
+      } else if (state.lightMode === "candle" || state.lightMode === "kerosene") {
+        const elapsedCandle = Math.max(0, now - state.candleStart);
+        const p = state.lightMode === "candle" ? Math.min(1, elapsedCandle / CANDLE_DURATION) : 0.15;
+        if (p >= 1) {
+          state.lightMode = "none";
+          stopTorchDrag();
+          document.body.setAttribute("data-lit", "false");
+          addStoryCard("light_candle", true);
+          renderUI(true);
+          return;
+        }
+        const botY = 174, maxH = 102, minH = 24;
+        const curH = maxH - p * (maxH - minH);
+        const topY = botY - curH;
+        lastFlameCanvasY = topY - 16;
+
+        const waxGrad = fCtx.createLinearGradient(cx - 14, topY, cx + 14, topY);
+        waxGrad.addColorStop(0, "#cbbba0"); waxGrad.addColorStop(0.45, "#f7f2e6"); waxGrad.addColorStop(1, "#a8987e");
+        fCtx.fillStyle = waxGrad;
+        fCtx.fillRect(cx - 14, topY, 28, curH);
+
+        fCtx.fillStyle = "#eee7d8";
+        fCtx.beginPath();
+        fCtx.arc(cx - 9, topY + 12 + p * 10, 2.8, 0, Math.PI * 2);
+        fCtx.arc(cx + 8, topY + 19 + p * 8, 2.5, 0, Math.PI * 2);
+        fCtx.fill();
+
+        fCtx.strokeStyle = "#1c1917"; fCtx.lineWidth = 2;
+        fCtx.beginPath(); fCtx.moveTo(cx, topY); fCtx.lineTo(cx, topY - 7); fCtx.stroke();
+
+        // Пламя самой свечи загорается только когда поднесённая спичка коснулась фитиля (now >= state.candleWickLitTime)
+        if (state.lightMode === "kerosene" || now >= state.candleWickLitTime) {
+          const wickGrow = state.lightMode === "kerosene" ? 1 : Math.min(1, (now - state.candleWickLitTime) / 380);
+          drawRealisticFlame(fCtx, cx, topY - 6, 1.12 * wickGrow, t);
+        }
+
+        if (now < state.candleIgniteEnd) {
+          const totalIgnite = state.candleIgniteEnd - state.candleIgniteStart || 2200;
+          const prog = Math.min(1, (now - state.candleIgniteStart) / totalIgnite);
+          // Спичка приближается к фитилю (0..0.35), зажигает его и отводится (0.35..1.0)
+          const approach = prog < 0.35 ? (prog / 0.35) : (1 - (prog - 0.35) / 0.65);
+          const mx = cx + 34 - approach * 28;
+          const my = topY - 6;
+          fCtx.save();
+          fCtx.translate(mx, my); fCtx.rotate(-0.42);
+          fCtx.fillStyle = "#d6a76c"; fCtx.fillRect(0, -2.2, 38, 4.5);
+          fCtx.fillStyle = "#1c1917"; fCtx.fillRect(-6, -2.6, 7, 5.2);
+          fCtx.restore();
+          drawRealisticFlame(fCtx, mx - 4, my, 0.78, t);
+        }
+      }
+    }
+
+    /* ============================================================================
+       15. ГЛАВНЫЙ ЦИКЛ: ШАР СВЕТА ЧЁТКО ПРИВЯЗАН К КОНЧИКУ СПИЧКИ/СВЕЧИ
+    ============================================================================ */
+    let currentLightRadius = 0;
+
+    function animateLoop(ts) {
+      const t = ts * 0.001;
+      const lerpSpeed = isDraggingTorch ? 0.28 : 0.14;
+      smoothTorchX += (torchOffsetX - smoothTorchX) * lerpSpeed;
+      smoothTorchY += (torchOffsetY - smoothTorchY) * lerpSpeed;
+
+      const tiltDeg = Math.max(-14, Math.min(14, smoothTorchX * 0.035));
+      flameCanvas.style.transform = `translate3d(${smoothTorchX.toFixed(1)}px, ${smoothTorchY.toFixed(1)}px, 0) rotate(${tiltDeg.toFixed(2)}deg)`;
+
+      renderCenterMatchAndCandle(ts);
+
+      const stRect = stageEl.getBoundingClientRect();
+      const cvRect = flameCanvas.getBoundingClientRect();
+      const flameRatioY = Math.max(0.1, Math.min(0.9, lastFlameCanvasY / flameCanvas.height));
+      const flameScreenX = cvRect.left + cvRect.width * 0.5;
+      const flameScreenY = cvRect.top + cvRect.height * flameRatioY;
+
+      const lx = ((flameScreenX - stRect.left) / (stRect.width || 1)) * 100 + Math.sin(t * 3.1) * 0.25;
+      const ly = ((flameScreenY - stRect.top) / (stRect.height || 1)) * 100 + Math.cos(t * 2.6) * 0.25;
+
+      const normX = (lx - 50) / 50;
+      const normY = (ly - 50) / 50;
+
+      const isStatic = (state.currentScene === "cabinet" || FULL_BRIGHT_SCENES.has(state.currentScene)) && !state.isWalking;
+      const px = isStatic ? 0 : -normX * 10;
+      const py = isStatic ? 0 : -normY * 7;
+      const bobX = isStatic ? 0 : (walkBobIntensity ? Math.sin(t * 7.5) * 8 : Math.sin(t * 1.4) * 1.5);
+      const bobY = isStatic ? 0 : (walkBobIntensity ? Math.abs(Math.cos(t * 7.5)) * 10 : Math.cos(t * 1.8) * 2);
+      const fl = Math.sin(t * 6.3) * 0.4 + Math.sin(t * 14.7) * 0.35 + Math.cos(t * 23.1) * 0.25;
+      const sw = stRect.width || window.innerWidth;
+
+      let tr = 0;
+      if (state.lightMode === "match") tr = sw * 0.26 + fl * (sw * 0.015);
+      else if (state.lightMode === "candle") {
+        const wickLit = ts >= state.candleWickLitTime;
+        tr = (wickLit ? sw * 0.44 : sw * 0.26) + fl * (sw * 0.018);
+      }
+      else if (state.lightMode === "kerosene") tr = sw * 0.58 + fl * (sw * 0.012);
+      currentLightRadius += (tr - currentLightRadius) * 0.1;
+
+      const isLit = state.lightMode === "match" || state.lightMode === "candle" || state.lightMode === "kerosene";
+      const alpha = isLit ? Math.min(1, 0.94 + fl * 0.04) : 0;
+
+      const root = document.documentElement.style;
+      root.setProperty("--parallax-x", `${px.toFixed(1)}px`);
+      root.setProperty("--parallax-y", `${py.toFixed(1)}px`);
+      root.setProperty("--bob-x", `${bobX.toFixed(1)}px`);
+      root.setProperty("--bob-y", `${bobY.toFixed(1)}px`);
+      root.setProperty("--light-x", `${lx.toFixed(2)}%`);
+      root.setProperty("--light-y", `${ly.toFixed(2)}%`);
+      root.setProperty("--light-r", `${Math.max(0, currentLightRadius).toFixed(1)}px`);
+      root.setProperty("--light-alpha", alpha.toFixed(3));
+
+      requestAnimationFrame(animateLoop);
+    }
+
+    applyBackgroundToSlot(slotA, "bedroom");
+    updateBackpackBadge();
+    renderUI(true);
+    preloadNpcSprites();
+    requestAnimationFrame(animateLoop);
+  </script>
+</body>
+</html>
