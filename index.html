@@ -2,21 +2,27 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>KOLA PATHOGEN — Холодная Осень</title>
   <style>
-    :root {
-      --light-x: 50%; --light-y: 82%; --light-r: 0px; --light-alpha: 0;
-      --parallax-x: 0px; --parallax-y: 0px; --bob-x: 0px; --bob-y: 0px; --step-zoom: 1.03;
-    }
     * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; -webkit-user-drag: none; }
-    body, html {
-      width: 100%; height: 100%; overflow: hidden; background: #020305;
+    html, body {
+      width: 100%; height: 100dvh; min-height: 100dvh; overflow: hidden; background: #020305;
       font-family: 'Georgia', serif; color: #e6dccb; display: flex; align-items: center; justify-content: center;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+    }
+    body.pseudo-fullscreen {
+      position: fixed; inset: 0; width: 100%; height: 100dvh;
     }
     #stage-16x9 {
-      position: relative; width: 100vw; height: 56.25vw; max-height: 100vh; max-width: 177.78vh;
+      --light-x: 50%; --light-y: 82%; --light-r: 0px; --light-alpha: 0;
+      --parallax-x: 0px; --parallax-y: 0px; --bob-x: 0px; --bob-y: 0px; --step-zoom: 1.03;
+      position: relative; width: 1280px; height: 720px; flex-shrink: 0;
       overflow: hidden; background: #040507; box-shadow: 0 0 60px rgba(0,0,0,0.95);
+      transform-origin: center center;
     }
 
     /* ==========================================================================
@@ -26,7 +32,7 @@
       position: absolute; inset: 0; z-index: 100;
       background: #020406; overflow: hidden;
       display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-      padding-bottom: clamp(18px, 3.2vw, 42px);
+      padding-bottom: 41px;
       transition: opacity 0.65s ease, visibility 0.65s ease;
     }
     #main-menu.hidden {
@@ -46,16 +52,16 @@
     .menu-content {
       position: relative; z-index: 3;
       display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-      width: 100%; max-width: 780px; gap: clamp(14px, 2vw, 26px);
+      width: 100%; max-width: 780px; gap: 26px;
     }
     .menu-items {
       display: flex; flex-direction: column; align-items: center;
-      gap: clamp(8px, 1.15vw, 15px); margin-bottom: clamp(2px, 0.5vw, 8px);
+      gap: 15px; margin-bottom: 6px;
     }
     .menu-item-btn {
       background: transparent; border: none; outline: none; cursor: pointer;
       font-family: 'Georgia', serif; font-weight: bold;
-      font-size: clamp(16px, 1.85vw, 27px); letter-spacing: 1.6px;
+      font-size: 24px; letter-spacing: 1.6px;
       text-transform: uppercase; color: rgba(214, 224, 222, 0.62);
       padding: 4px 22px;
       transform: scale(0.88);
@@ -78,7 +84,7 @@
     }
     #menu-sub-toast {
       min-height: 1.4em;
-      font-size: clamp(11px, 1vw, 14px);
+      font-size: 13px;
       color: rgba(45, 212, 191, 0.88);
       font-style: italic;
       letter-spacing: 0.4px;
@@ -89,8 +95,8 @@
     #menu-sub-toast.show { opacity: 1; }
 
     .menu-logo-wrap {
-      width: min(560px, 64vw);
-      height: clamp(64px, 9.5vw, 136px);
+      width: 560px;
+      height: 122px;
       display: flex; align-items: center; justify-content: center;
       transform: translateY(6px);
       pointer-events: none;
@@ -106,7 +112,7 @@
     }
     #menu-logo-fallback-text {
       display: none;
-      font-size: clamp(24px, 3.6vw, 52px);
+      font-size: 46px;
       font-weight: bold; letter-spacing: 5px;
       color: #5ea8a7;
       text-shadow: 0 0 22px rgba(45, 212, 191, 0.5), 0 6px 18px #000;
@@ -122,7 +128,7 @@
     }
     #preloader-overlay.visible { display: flex; }
     .preloader-title {
-      font-size: clamp(14px, 1.45vw, 20px);
+      font-size: 18.5px;
       color: #2dd4bf; letter-spacing: 2px; text-transform: uppercase;
       text-shadow: 0 0 16px rgba(45, 212, 191, 0.45);
     }
@@ -140,7 +146,7 @@
       transition: width 0.15s ease;
     }
     #preloader-status {
-      font-size: clamp(11px, 1vw, 13.5px);
+      font-size: 13px;
       color: rgba(214, 224, 222, 0.72);
       font-style: italic;
     }
@@ -220,22 +226,22 @@
 
     /* ВЕРХНИЙ ТЕКСТ СОБЫТИЙ */
     #top-event-box {
-      position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: min(820px, 83%); z-index: 12;
-      background: rgba(10,9,8,0.88); border: 1px solid rgba(165,135,95,0.38); border-radius: 5px; padding: 8px 18px;
-      backdrop-filter: blur(5px); text-align: center; pointer-events: none;
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 820px; z-index: 12;
+      background: rgba(10, 9, 8, 0.94); border: 1px solid rgba(165,135,95,0.38); border-radius: 5px; padding: 8px 18px;
+      text-align: center; pointer-events: none;
       box-shadow: 0 8px 24px rgba(0,0,0,0.85);
     }
-    #narrative-text { font-size: clamp(12px, 1.25vw, 15.5px); line-height: 1.35; color: #e8dfd1; }
+    #narrative-text { font-size: 15.5px; line-height: 1.35; color: #e8dfd1; }
 
     /* ПОДСКАЗКА ОБУЧАЮЩЕГО ПРОЛЁТА СПИЧКИ */
     #match-tutorial-hint {
-      position: absolute; bottom: clamp(150px, 16vw, 210px); left: 50%; transform: translateX(-50%);
+      position: absolute; bottom: 205px; left: 50%; transform: translateX(-50%);
       z-index: 26; pointer-events: none;
       background: rgba(10, 16, 18, 0.92);
       border: 1px solid rgba(45, 212, 191, 0.65);
       border-radius: 6px; padding: 9px 18px;
-      color: #e6f7f5; font-size: clamp(11.5px, 1.1vw, 14.5px);
-      text-align: center; max-width: min(560px, 84%);
+      color: #e6f7f5; font-size: 14px;
+      text-align: center; max-width: 560px;
       box-shadow: 0 8px 26px rgba(0,0,0,0.9), 0 0 18px rgba(45, 212, 191, 0.28);
       opacity: 0; visibility: hidden;
       transition: opacity 0.35s ease, visibility 0.35s ease;
@@ -247,7 +253,7 @@
     /* ИКОНКА ВЕЩМЕШКА */
     #backpack-btn {
       position: absolute; top: 10px; right: 14px; z-index: 18;
-      width: clamp(44px, 4.3vw, 56px); height: clamp(44px, 4.3vw, 56px);
+      width: 55px; height: 55px;
       background: #12100e;
       border: 1px solid rgba(168,138,98,0.48); border-radius: 5px;
       padding: 6px; cursor: pointer;
@@ -274,6 +280,27 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.95);
     }
 
+    /* КНОПКА ПОЛНОЭКРАННОГО РЕЖИМА (ДОСТУПНА В МЕНЮ И В ИГРЕ) */
+    #fullscreen-btn {
+      position: absolute; top: 10px; right: 78px; z-index: 120;
+      width: 55px; height: 55px;
+      background: #12100e;
+      border: 1px solid rgba(168,138,98,0.48); border-radius: 5px;
+      padding: 10px; cursor: pointer; touch-action: manipulation;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.92), inset 0 0 0 1px rgba(255,235,205,0.06);
+      transition: border-color 0.18s ease, transform 0.15s ease, background 0.18s ease;
+    }
+    #fullscreen-btn:hover {
+      border-color: #c9a368; background: #1b1714; transform: translateY(-1px);
+    }
+    #fullscreen-btn svg {
+      width: 100%; height: 100%; stroke: #b89f7d; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+      transition: stroke 0.18s ease;
+    }
+    #fullscreen-btn:hover svg { stroke: #dfd0b8; }
+
     /* ЕДИНЫЙ СТРОГИЙ СТИЛЬ КНОПОК */
     .grim-btn {
       position: relative; cursor: pointer;
@@ -282,7 +309,7 @@
       color: #dfd3c0;
       border: 1px solid #7a6345;
       border-radius: 4px;
-      font: bold clamp(11.5px, 1.05vw, 14px) 'Georgia', serif;
+      font: bold 13.5px 'Georgia', serif;
       letter-spacing: 0.4px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.92), inset 0 0 0 2px #0b0908, inset 0 0 12px rgba(0,0,0,0.8);
       transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease, transform 0.14s ease;
@@ -305,7 +332,7 @@
     #neighbor-choice-overlay {
       position: absolute; inset: 0; z-index: 28;
       display: none; align-items: center; justify-content: center;
-      gap: clamp(12px, 1.6vw, 22px); flex-wrap: wrap;
+      gap: 20px; flex-wrap: wrap;
       padding: 20px; pointer-events: none;
     }
     #neighbor-choice-overlay.visible {
@@ -313,25 +340,25 @@
     }
     #neighbor-choice-overlay .choice-card {
       pointer-events: auto;
-      width: clamp(82px, 9.2vw, 128px);
+      width: 118px;
     }
 
     /* ОКНО НАХОДОК ПО ЦЕНТРУ ЭКРАНА */
     #loot-center-modal {
       position: absolute; inset: 0; z-index: 30;
-      background: rgba(5, 5, 6, 0.82); backdrop-filter: blur(4px);
+      background: rgba(5, 5, 6, 0.92);
       display: none; flex-direction: column; align-items: center; justify-content: center;
       gap: 18px; padding: 20px;
     }
     #loot-center-modal.visible { display: flex; }
     .loot-modal-title {
-      font-size: clamp(15px, 1.55vw, 20px); color: #dfd1b8; font-weight: normal;
+      font-size: 20px; color: #dfd1b8; font-weight: normal;
       font-style: italic; letter-spacing: 0.5px; text-shadow: 0 2px 10px #000;
       border-bottom: 1px solid rgba(168,138,98,0.35); padding-bottom: 6px;
     }
     #loot-cards-row {
       display: flex; align-items: stretch; justify-content: center;
-      gap: clamp(10px, 1.4vw, 18px); flex-wrap: wrap;
+      gap: 18px; flex-wrap: wrap;
     }
 
     /* ПОЛНОЭКРАННЫЙ ИНВЕНТАРЬ (ВЕЩМЕШОК) */
@@ -339,7 +366,7 @@
       position: absolute; inset: 0; z-index: 35;
       background: radial-gradient(circle at 50% 45%, #14110d 0%, #060504 100%);
       display: none; flex-direction: column; align-items: center; justify-content: space-between;
-      padding: clamp(18px, 2.6vw, 34px);
+      padding: 33px;
     }
     #inventory-screen.visible { display: flex; }
     .inv-header {
@@ -354,13 +381,13 @@
       stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
     }
     .inv-title {
-      font-size: clamp(16px, 1.65vw, 22px); color: #dfd1b8;
+      font-size: 21px; color: #dfd1b8;
       font-weight: normal; letter-spacing: 0.6px;
     }
     #inventory-grid {
       width: 100%; max-width: 960px; flex: 1;
       display: flex; align-items: center; justify-content: center;
-      gap: clamp(12px, 1.4vw, 18px); flex-wrap: wrap; overflow-y: auto; padding: 14px 4px;
+      gap: 18px; flex-wrap: wrap; overflow-y: auto; padding: 14px 4px;
     }
     .inv-empty-msg { font-style: italic; color: rgba(215,200,178,0.45); font-size: 15px; }
     .inv-item-wrap {
@@ -374,7 +401,7 @@
     }
     .inv-sub-btn:hover { border-color: #c59b61; color: #fff; background: #211b15; }
     #inventory-hint {
-      font-size: clamp(12px, 1.05vw, 14px); color: rgba(210,192,165,0.75); font-style: italic;
+      font-size: 13.5px; color: rgba(210,192,165,0.75); font-style: italic;
       text-align: center; min-height: 1.5em; border-top: 1px solid rgba(165,135,95,0.18);
       padding-top: 10px; width: 100%; max-width: 960px;
     }
@@ -391,9 +418,9 @@
       border: 2px solid #5c4b37; box-shadow: 0 20px 60px rgba(0,0,0,0.95); border-radius: 4px; padding: 20px 24px; font-family: 'Courier New', monospace;
     }
     .brochure-stamp { display: inline-block; border: 2px solid #7a231d; color: #7a231d; font-weight: bold; font-size: 11px; padding: 2px 8px; margin-bottom: 10px; text-transform: uppercase; }
-    .brochure-title { font-size: clamp(14px, 1.35vw, 18px); font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #3a2e21; padding-bottom: 8px; margin-bottom: 12px; }
-    .brochure-body p { font-size: clamp(12px, 1.05vw, 14px); line-height: 1.45; margin-bottom: 10px; font-weight: 600; }
-    .brochure-section-title { font-size: clamp(13px, 1.15vw, 15px); font-weight: bold; margin: 14px 0 6px 0; text-decoration: underline; }
+    .brochure-title { font-size: 17.5px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #3a2e21; padding-bottom: 8px; margin-bottom: 12px; }
+    .brochure-body p { font-size: 13.5px; line-height: 1.45; margin-bottom: 10px; font-weight: 600; }
+    .brochure-section-title { font-size: 14.5px; font-weight: bold; margin: 14px 0 6px 0; text-decoration: underline; }
     .brochure-close-btn { margin-top: 12px; width: 100%; padding: 10px; background: #2b2219; color: #f0e6d6; border: 1px solid #6e563f; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
     /* ОВЕРЛЕЙ ПОДКЛЮЧЕНИЯ ОТДЕЛЬНОГО ФАЙЛА ОЧКО.HTML (БЕЗ ПЕРЕЗАГРУЗКИ IFRAME) */
@@ -416,18 +443,20 @@
     }
     #bottom-hud.hidden-hud .deck-group { visibility: hidden !important; pointer-events: none !important; }
     .deck-group {
+      position: relative; z-index: 20;
       display: flex; align-items: center; gap: 5px; pointer-events: auto;
-      flex: 0 1 auto; max-width: calc(50% - 48px);
+      flex: 0 1 auto; max-width: calc(50% - 54px);
     }
     .deck-cards {
-      display: flex; align-items: flex-end; gap: clamp(5px, 0.65vw, 9px);
-      min-height: clamp(92px, 10.5vw, 138px); perspective: 900px;
+      display: flex; align-items: flex-end; gap: 8px;
+      min-height: 134px; perspective: 900px;
     }
     .scroll-arrow {
       position: relative; z-index: 5; flex-shrink: 0;
-      width: clamp(20px, 1.9vw, 26px); height: clamp(76px, 8.2vw, 114px);
+      width: 24px; height: 105px;
       background: rgba(14,12,10,0.92); border: 1px solid rgba(185,155,115,0.48);
-      border-radius: 5px; color: #f2e9dc; font-size: clamp(11px, 1vw, 14px);
+      border-radius: 5px; color: #f2e9dc; font-size: 13px;
+      pointer-events: auto; touch-action: manipulation;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       box-shadow: 0 4px 12px rgba(0,0,0,0.85); transition: border-color 0.15s, transform 0.12s, background 0.15s;
     }
@@ -436,8 +465,8 @@
 
     /* КАРТОЧКИ И ПРИОРИТЕТНАЯ ПОДСВЕТКА (.priority-card) */
     .choice-card {
-      position: relative; width: clamp(68px, 7.6vw, 108px); flex-shrink: 0;
-      background: transparent; border: none; padding: 0; cursor: pointer;
+      position: relative; width: 97px; flex-shrink: 0;
+      background: transparent; border: none; padding: 0; cursor: pointer; touch-action: manipulation;
       font-family: inherit; perspective: 800px; transform-style: preserve-3d;
       transition: transform 0.22s cubic-bezier(0.22, 1.3, 0.36, 1), filter 0.2s ease;
     }
@@ -451,6 +480,7 @@
     }
     .choice-card.activating {
       animation: cardActivateFlip 0.42s cubic-bezier(0.22, 1.25, 0.36, 1) forwards !important;
+      filter: none !important;
       pointer-events: none;
     }
     .choice-card:disabled:not(.activating) { opacity: 0.48; cursor: default; }
@@ -508,7 +538,7 @@
       box-shadow: inset 0 0 0 4px #1f1811, inset 0 0 0 6px rgba(168,132,85,0.45);
       display: flex; align-items: center; justify-content: center;
     }
-    .card-back::after { content: "★"; font-size: clamp(18px, 2vw, 26px); color: rgba(215,175,115,0.55); }
+    .card-back::after { content: "★"; font-size: 25px; color: rgba(215,175,115,0.55); }
 
     @keyframes cardDeal {
       0% { opacity: 0; transform: translate3d(0, 68px, -60px) rotateY(180deg) rotateZ(-8deg) scale(0.72); }
@@ -517,27 +547,25 @@
     }
     @keyframes cardActivateFlip {
       0% { transform: translateY(-6px) scale(1.04) rotateY(0deg); }
-      45% { transform: translateY(-28px) scale(1.14) rotateY(180deg); filter: drop-shadow(0 0 18px rgba(255,190,95,0.75)); }
-      80% { transform: translateY(-16px) scale(1.08) rotateY(360deg); filter: drop-shadow(0 0 14px rgba(255,190,95,0.5)); }
+      45% { transform: translateY(-28px) scale(1.14) rotateY(180deg); }
+      80% { transform: translateY(-16px) scale(1.08) rotateY(360deg); }
       100% { transform: translateY(0) scale(1) rotateY(360deg); }
     }
 
     .card-icon-frame { width: 100%; aspect-ratio: 1/1; border-radius: 4px; overflow: hidden; background-color: #161412; background-repeat: no-repeat; }
     .choice-caption {
-      font-size: clamp(8.5px, 0.82vw, 11.5px); line-height: 1.12; color: #f5ecdf;
+      font-size: 10.5px; line-height: 1.12; color: #f5ecdf;
       text-align: center; font-weight: bold; min-height: 2.25em;
       display: flex; align-items: center; justify-content: center; word-break: break-word;
     }
 
     /* СПИЧКА И СВЕЧА */
     #center-flame-canvas {
-      width: clamp(72px, 7.5vw, 112px); height: clamp(96px, 10.5vw, 152px);
+      width: 96px; height: 134px;
       pointer-events: auto; cursor: grab; flex-shrink: 0; margin: 0 2px;
       touch-action: none; will-change: transform; z-index: 25;
-      transition: filter 0.15s ease;
     }
-    #center-flame-canvas:hover { filter: drop-shadow(0 0 10px rgba(255,180,80,0.45)); }
-    #center-flame-canvas.dragging { cursor: grabbing; filter: drop-shadow(0 0 18px rgba(255,200,100,0.85)); }
+    #center-flame-canvas.dragging { cursor: grabbing; filter: none; }
   </style>
 </head>
 <body data-lit="intro" data-fullbright="false">
@@ -577,6 +605,22 @@
 
     <div id="npc-layer"><div id="npc-sprite-box"></div></div>
     <div id="cabinet-items-layer"></div>
+
+    <!-- КНОПКА ПОЛНОЭКРАННОГО РЕЖИМА -->
+    <button type="button" id="fullscreen-btn" title="На весь экран" aria-label="На весь экран" onclick="toggleFullscreenMode()">
+      <svg id="fullscreen-icon-enter" viewBox="0 0 24 24" aria-hidden="true">
+        <polyline points="4 9 4 4 9 4"/>
+        <polyline points="15 4 20 4 20 9"/>
+        <polyline points="20 15 20 20 15 20"/>
+        <polyline points="9 20 4 20 4 15"/>
+      </svg>
+      <svg id="fullscreen-icon-exit" viewBox="0 0 24 24" aria-hidden="true" style="display:none">
+        <polyline points="9 4 9 9 4 9"/>
+        <polyline points="15 4 15 9 20 9"/>
+        <polyline points="20 15 15 15 15 20"/>
+        <polyline points="4 15 9 15 9 20"/>
+      </svg>
+    </button>
 
     <!-- КНОПКА ВЕЩМЕШКА -->
     <button id="backpack-btn" title="Вещмешок (Инвентарь)" onclick="openInventoryScreen()">
@@ -963,19 +1007,22 @@
         if (statusEl) statusEl.textContent = `Подготовка сцен и игровых ресурсов (${pct}%)`;
       }
 
+      window.__preloadedImages = [];
       const imagePromises = uniqueUrls.map((rawUrl) => new Promise((res) => {
         const img = new Image();
+        window.__preloadedImages.push(img);
         let settled = false;
+        const safetyTimer = setTimeout(() => done(), 15000);
         const done = () => {
           if (settled) return;
           settled = true;
+          clearTimeout(safetyTimer);
           updateProgress();
           res();
         };
         img.onload = done;
         img.onerror = done;
         img.src = encodeURI(rawUrl);
-        setTimeout(done, 1200);
       }));
 
       const iframePromise = setupOchkoIframePreload().then(() => updateProgress());
@@ -1729,9 +1776,8 @@
           return;
         }
         const p = Math.min(1, (now - sweepStart) / sweepDuration);
-        const stRect = stageEl.getBoundingClientRect();
-        const ampX = (stRect.width || window.innerWidth) * 0.28;
-        const ampY = (stRect.height || window.innerHeight) * 0.22;
+        const ampX = STAGE_W * 0.28;
+        const ampY = STAGE_H * 0.22;
 
         // Плавный пролёт влево -> вправо -> возврат в центр
         const env = Math.sin(p * Math.PI);
@@ -1888,7 +1934,11 @@
     function updateFlameVisibility() {
       const hasActiveFlame = state.lightMode === "match" || state.lightMode === "candle" || state.lightMode === "kerosene";
       const hideByScene = isSceneHidingTorch(state.currentScene);
-      flameCanvas.style.display = (hasActiveFlame && !hideByScene) ? "block" : "none";
+      const nextDisplay = (hasActiveFlame && !hideByScene) ? "block" : "none";
+      if (flameCanvas.style.display !== nextDisplay) {
+        flameCanvas.style.display = nextDisplay;
+        if (nextDisplay === "block") cacheFlameBasePosition();
+      }
     }
 
     function setBackButtonTarget(sceneKeyOrNull, label = "Отойти назад") {
@@ -1922,57 +1972,9 @@
       if (state.autoReturnTimer) { clearTimeout(state.autoReturnTimer); state.autoReturnTimer = null; }
     }
 
-    /* ФОЛБЭК ПУТЕЙ: ПРОВЕРКА В СОБЫТИЯ/ И В КОРНЕВОЙ ПАПКЕ + ВАРИАНТЫ Ё И Е */
+    /* ЕДИНСТВЕННЫЙ ФОНОВЫЙ СЛОЙ БЕЗ МНОЖЕСТВЕННЫХ ВАРИАНТОВ */
     function buildFallbackBgUrls(rawPath, sceneKey = "") {
-      const parts = rawPath.split("/");
-      const file = parts.pop();
-      const capFile = file.charAt(0).toUpperCase() + file.slice(1);
-      const dir = parts.length ? parts.join("/") + "/" : "";
-
-      const baseNames = [file, capFile];
-      // Добавляем варианты с заменой ё <-> е
-      [...baseNames].forEach((n) => {
-        if (n.includes("ё") || n.includes("Ё")) {
-          baseNames.push(n.replace(/ё/g, "е").replace(/Ё/g, "Е"));
-        }
-        if (n.includes("е") || n.includes("Е")) {
-          // Для известных слов («всё завешано», «ковёр») добавим и вариант с «ё»
-          baseNames.push(n.replace(/все /gi, "всё ").replace(/ковер/gi, "ковёр"));
-        }
-      });
-
-      const candidates = [];
-      // Проверяем как в указанной папке, так и в события/ и в корневой папке
-      baseNames.forEach((bn) => {
-        if (dir) {
-          candidates.push(`${dir}${bn}`);
-          candidates.push(bn); // в корневой папке
-        } else {
-          candidates.push(bn);
-          candidates.push(`события/${bn}`); // в папке события/
-        }
-      });
-
-      if (sceneKey.startsWith("door_")) {
-        const isOpen = sceneKey.endsWith("_open");
-        const apt = sceneKey.replace("door_", "").replace("_open", "");
-        if (isOpen) {
-          candidates.push(
-            `события/двери/${apt} открытая.jpg`,
-            `двери/${apt} открытая.jpg`,
-            `события/двери/${apt} открыта.jpg`,
-            `двери/${apt} открыта.jpg`,
-            `события/двери/${apt}.jpg`,
-            `двери/${apt}.jpg`
-          );
-        } else {
-          candidates.push(`двери/${file}`, `события/кв ${apt}.jpg`, `кв ${apt}.jpg`);
-        }
-      } else if (sceneKey.startsWith("street_")) {
-        candidates.push(`улица/${file}`, `события/улица ${file}`);
-      }
-
-      return [...new Set(candidates)].map((p) => `url("${encodeURI(p)}")`).join(", ");
+      return `url("${encodeURI(rawPath)}")`;
     }
 
     function applyBackgroundToSlot(slot, key) {
@@ -3250,11 +3252,13 @@
 
       const rightDeck = getRightMoveDeck();
       rightGroupEl.style.visibility = rightDeck.length > 0 ? "visible" : "hidden";
+      rightGroupEl.style.pointerEvents = rightDeck.length > 0 ? "auto" : "none";
       const maxRightOffset = Math.max(0, rightDeck.length - 3);
       if (state.movOffset > maxRightOffset) state.movOffset = maxRightOffset;
       renderDeckSlice(rightCardsEl, rightDeck, state.movOffset, animateDeal);
       movPrevBtn.disabled = state.isWalking || state.movOffset <= 0;
       movNextBtn.disabled = state.isWalking || state.movOffset + 3 >= rightDeck.length;
+      cacheFlameBasePosition();
     }
 
     actPrevBtn.onclick = () => { if (state.actOffset > 0) { state.actOffset--; playCardSound("click"); renderUI(false); } };
@@ -3263,11 +3267,152 @@
     movNextBtn.onclick = () => { const d = getRightMoveDeck(); if (state.movOffset + 3 < d.length) { state.movOffset++; playCardSound("click"); renderUI(false); } };
 
     /* ============================================================================
-       14. СПИЧКА И СВЕЧА: ТАСКАНИЕ ПО ЭКРАНУ + ОГАРОК СВЕЧИ (candleBurnedMs)
+       14. МАСШТАБИРОВАНИЕ 1280×720, ПОЛНОЭКРАННЫЙ РЕЖИМ И ТАСКАНИЕ СПИЧКИ/СВЕЧИ
     ============================================================================ */
     const stageEl = document.getElementById("stage-16x9");
     const flameCanvas = document.getElementById("center-flame-canvas");
     const fCtx = flameCanvas.getContext("2d");
+
+    const STAGE_W = 1280;
+    const STAGE_H = 720;
+    let stageScale = 1;
+    const cachedFlameBase = {
+      centerX: STAGE_W * 0.5,
+      top: STAGE_H - 10 - 134,
+      width: 96,
+      height: 134
+    };
+
+    function cacheFlameBasePosition() {
+      if (!flameCanvas || flameCanvas.style.display === "none") return;
+      let x = 0, y = 0, el = flameCanvas;
+      while (el && el !== stageEl) {
+        x += el.offsetLeft || 0;
+        y += el.offsetTop || 0;
+        el = el.offsetParent;
+      }
+      const w = flameCanvas.offsetWidth || 96;
+      const h = flameCanvas.offsetHeight || 134;
+      cachedFlameBase.centerX = x + w * 0.5;
+      cachedFlameBase.top = y;
+      cachedFlameBase.width = w;
+      cachedFlameBase.height = h;
+    }
+
+    function updateStageScale() {
+      const bodyStyle = getComputedStyle(document.body);
+      const padL = parseFloat(bodyStyle.paddingLeft) || 0;
+      const padR = parseFloat(bodyStyle.paddingRight) || 0;
+      const padT = parseFloat(bodyStyle.paddingTop) || 0;
+      const padB = parseFloat(bodyStyle.paddingBottom) || 0;
+      const vpW = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+      const vpH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      const availW = Math.max(1, vpW - padL - padR);
+      const availH = Math.max(1, vpH - padT - padB);
+      stageScale = Math.min(availW / STAGE_W, availH / STAGE_H);
+      stageEl.style.transform = `scale(${stageScale})`;
+      cacheFlameBasePosition();
+    }
+
+    window.addEventListener("resize", updateStageScale, { passive: true });
+    window.addEventListener("orientationchange", () => setTimeout(updateStageScale, 120), { passive: true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", updateStageScale, { passive: true });
+    }
+
+    /* ПОЛНОЭКРАННЫЙ РЕЖИМ (FULLSCREEN API + WEBKIT + TELEGRAM + МОБИЛЬНЫЙ ФОЛБЭК) */
+    function isFullscreenActive() {
+      return Boolean(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement ||
+        document.body.classList.contains("pseudo-fullscreen")
+      );
+    }
+
+    function syncFullscreenButtonUI() {
+      const active = isFullscreenActive();
+      const btn = document.getElementById("fullscreen-btn");
+      const enterIcon = document.getElementById("fullscreen-icon-enter");
+      const exitIcon = document.getElementById("fullscreen-icon-exit");
+      if (enterIcon) enterIcon.style.display = active ? "none" : "block";
+      if (exitIcon) exitIcon.style.display = active ? "block" : "none";
+      if (btn) {
+        const label = active ? "Выйти из полноэкранного режима" : "На весь экран";
+        btn.title = label;
+        btn.setAttribute("aria-label", label);
+      }
+      updateStageScale();
+    }
+
+    function toggleFullscreenMode() {
+      playCardSound("click");
+      const tg = window.Telegram && window.Telegram.WebApp;
+      const docEl = document.documentElement;
+      const fsElement = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+
+      if (fsElement) {
+        try {
+          const exitFn = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+          if (exitFn) {
+            const p = exitFn.call(document);
+            if (p && typeof p.catch === "function") p.catch(() => {});
+          }
+        } catch (e) {}
+        document.body.classList.remove("pseudo-fullscreen");
+        if (tg && typeof tg.exitFullscreen === "function") {
+          try { tg.exitFullscreen(); } catch (e) {}
+        }
+        syncFullscreenButtonUI();
+        return;
+      }
+
+      if (document.body.classList.contains("pseudo-fullscreen")) {
+        document.body.classList.remove("pseudo-fullscreen");
+        if (tg && typeof tg.exitFullscreen === "function") {
+          try { tg.exitFullscreen(); } catch (e) {}
+        }
+        syncFullscreenButtonUI();
+        return;
+      }
+
+      // Telegram Mini App / WebView поддержка
+      if (tg) {
+        try {
+          if (typeof tg.expand === "function") tg.expand();
+          if (typeof tg.requestFullscreen === "function") tg.requestFullscreen();
+        } catch (e) {}
+      }
+
+      const reqFn = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+      if (reqFn) {
+        try {
+          const p = reqFn.call(docEl, { navigationUI: "hide" });
+          if (p && typeof p.then === "function") {
+            p.then(() => syncFullscreenButtonUI()).catch(() => {
+              document.body.classList.add("pseudo-fullscreen");
+              try { window.scrollTo(0, 1); } catch (err) {}
+              syncFullscreenButtonUI();
+            });
+          } else {
+            syncFullscreenButtonUI();
+          }
+        } catch (e) {
+          document.body.classList.add("pseudo-fullscreen");
+          try { window.scrollTo(0, 1); } catch (err) {}
+          syncFullscreenButtonUI();
+        }
+      } else {
+        // Безопасный фолбэк для мобильных браузеров без Fullscreen API (например, iOS Safari)
+        document.body.classList.add("pseudo-fullscreen");
+        try { window.scrollTo(0, 1); } catch (e) {}
+        syncFullscreenButtonUI();
+      }
+    }
+
+    document.addEventListener("fullscreenchange", syncFullscreenButtonUI);
+    document.addEventListener("webkitfullscreenchange", syncFullscreenButtonUI);
+    document.addEventListener("MSFullscreenChange", syncFullscreenButtonUI);
 
     let isDraggingTorch = false;
     let dragStartX = 0, dragStartY = 0;
@@ -3280,20 +3425,21 @@
       hideMatchTutorialHint();
       isDraggingTorch = true;
       flameCanvas.classList.add("dragging");
-      dragStartX = e.clientX - torchOffsetX;
-      dragStartY = e.clientY - torchOffsetY;
+      const scale = stageScale || 1;
+      dragStartX = e.clientX / scale - torchOffsetX;
+      dragStartY = e.clientY / scale - torchOffsetY;
       if (flameCanvas.setPointerCapture) flameCanvas.setPointerCapture(e.pointerId);
     });
 
     window.addEventListener("pointermove", (e) => {
       if (!isDraggingTorch) return;
       hideMatchTutorialHint();
-      const stRect = stageEl.getBoundingClientRect();
-      const maxX = stRect.width * 0.48;
-      const maxYUp = stRect.height * 0.88;
-      const maxYDown = stRect.height * 0.08;
-      const rawX = e.clientX - dragStartX;
-      const rawY = e.clientY - dragStartY;
+      const scale = stageScale || 1;
+      const maxX = STAGE_W * 0.48;
+      const maxYUp = STAGE_H * 0.88;
+      const maxYDown = STAGE_H * 0.08;
+      const rawX = e.clientX / scale - dragStartX;
+      const rawY = e.clientY / scale - dragStartY;
       torchOffsetX = Math.max(-maxX, Math.min(maxX, rawX));
       torchOffsetY = Math.max(-maxYUp, Math.min(maxYDown, rawY));
     });
@@ -3432,9 +3578,18 @@
     }
 
     /* ============================================================================
-       15. ГЛАВНЫЙ ЦИКЛ: ШАР СВЕТА ЧЁТКО ПРИВЯЗАН К КОНЧИКУ СПИЧКИ/СВЕЧИ
+       15. ГЛАВНЫЙ ЦИКЛ: ШАР СВЕТА ЧЁТКО ПРИВЯЗАН К КОНЧИКУ СПИЧКИ/СВЕЧИ (БЕЗ REFLOW)
     ============================================================================ */
     let currentLightRadius = 0;
+    let lastTorchTransform = "";
+    const lastStageVars = Object.create(null);
+
+    function setStageVar(name, val) {
+      if (lastStageVars[name] !== val) {
+        lastStageVars[name] = val;
+        stageEl.style.setProperty(name, val);
+      }
+    }
 
     function animateLoop(ts) {
       const t = ts * 0.001;
@@ -3443,18 +3598,20 @@
       smoothTorchY += (torchOffsetY - smoothTorchY) * lerpSpeed;
 
       const tiltDeg = Math.max(-14, Math.min(14, smoothTorchX * 0.035));
-      flameCanvas.style.transform = `translate3d(${smoothTorchX.toFixed(1)}px, ${smoothTorchY.toFixed(1)}px, 0) rotate(${tiltDeg.toFixed(2)}deg)`;
+      const nextTorchTransform = `translate3d(${smoothTorchX.toFixed(1)}px, ${smoothTorchY.toFixed(1)}px, 0) rotate(${tiltDeg.toFixed(2)}deg)`;
+      if (nextTorchTransform !== lastTorchTransform) {
+        lastTorchTransform = nextTorchTransform;
+        flameCanvas.style.transform = nextTorchTransform;
+      }
 
       renderCenterMatchAndCandle(ts);
 
-      const stRect = stageEl.getBoundingClientRect();
-      const cvRect = flameCanvas.getBoundingClientRect();
       const flameRatioY = Math.max(0.1, Math.min(0.9, lastFlameCanvasY / flameCanvas.height));
-      const flameScreenX = cvRect.left + cvRect.width * 0.5;
-      const flameScreenY = cvRect.top + cvRect.height * flameRatioY;
+      const flameStageX = cachedFlameBase.centerX + smoothTorchX;
+      const flameStageY = cachedFlameBase.top + cachedFlameBase.height * flameRatioY + smoothTorchY;
 
-      const lx = ((flameScreenX - stRect.left) / (stRect.width || 1)) * 100 + Math.sin(t * 3.1) * 0.25;
-      const ly = ((flameScreenY - stRect.top) / (stRect.height || 1)) * 100 + Math.cos(t * 2.6) * 0.25;
+      const lx = (flameStageX / STAGE_W) * 100 + Math.sin(t * 3.1) * 0.25;
+      const ly = (flameStageY / STAGE_H) * 100 + Math.cos(t * 2.6) * 0.25;
 
       const normX = (lx - 50) / 50;
       const normY = (ly - 50) / 50;
@@ -3465,33 +3622,32 @@
       const bobX = isStatic ? 0 : (walkBobIntensity ? Math.sin(t * 7.5) * 8 : Math.sin(t * 1.4) * 1.5);
       const bobY = isStatic ? 0 : (walkBobIntensity ? Math.abs(Math.cos(t * 7.5)) * 10 : Math.cos(t * 1.8) * 2);
       const fl = Math.sin(t * 6.3) * 0.4 + Math.sin(t * 14.7) * 0.35 + Math.cos(t * 23.1) * 0.25;
-      const sw = stRect.width || window.innerWidth;
 
       let tr = 0;
-      if (state.lightMode === "match") tr = sw * 0.26 + fl * (sw * 0.015);
+      if (state.lightMode === "match") tr = STAGE_W * 0.26 + fl * (STAGE_W * 0.015);
       else if (state.lightMode === "candle") {
         const wickLit = ts >= state.candleWickLitTime;
-        tr = (wickLit ? sw * 0.44 : sw * 0.26) + fl * (sw * 0.018);
+        tr = (wickLit ? STAGE_W * 0.44 : STAGE_W * 0.26) + fl * (STAGE_W * 0.018);
       }
-      else if (state.lightMode === "kerosene") tr = sw * 0.58 + fl * (sw * 0.012);
+      else if (state.lightMode === "kerosene") tr = STAGE_W * 0.58 + fl * (STAGE_W * 0.012);
       currentLightRadius += (tr - currentLightRadius) * 0.1;
 
       const isLit = (state.lightMode === "match" || state.lightMode === "candle" || state.lightMode === "kerosene") && !isSceneHidingTorch(state.currentScene);
       const alpha = isLit ? Math.min(1, 0.94 + fl * 0.04) : 0;
 
-      const root = document.documentElement.style;
-      root.setProperty("--parallax-x", `${px.toFixed(1)}px`);
-      root.setProperty("--parallax-y", `${py.toFixed(1)}px`);
-      root.setProperty("--bob-x", `${bobX.toFixed(1)}px`);
-      root.setProperty("--bob-y", `${bobY.toFixed(1)}px`);
-      root.setProperty("--light-x", `${lx.toFixed(2)}%`);
-      root.setProperty("--light-y", `${ly.toFixed(2)}%`);
-      root.setProperty("--light-r", `${Math.max(0, currentLightRadius).toFixed(1)}px`);
-      root.setProperty("--light-alpha", alpha.toFixed(3));
+      setStageVar("--parallax-x", `${px.toFixed(1)}px`);
+      setStageVar("--parallax-y", `${py.toFixed(1)}px`);
+      setStageVar("--bob-x", `${bobX.toFixed(1)}px`);
+      setStageVar("--bob-y", `${bobY.toFixed(1)}px`);
+      setStageVar("--light-x", `${lx.toFixed(2)}%`);
+      setStageVar("--light-y", `${ly.toFixed(2)}%`);
+      setStageVar("--light-r", `${Math.max(0, currentLightRadius).toFixed(1)}px`);
+      setStageVar("--light-alpha", alpha.toFixed(3));
 
       requestAnimationFrame(animateLoop);
     }
 
+    updateStageScale();
     applyBackgroundToSlot(slotA, "bedroom");
     updateFlameVisibility();
     updateBackpackBadge();
