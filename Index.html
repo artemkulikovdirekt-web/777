@@ -1,0 +1,3503 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KOLA PATHOGEN — Холодная Осень</title>
+  <style>
+    :root {
+      --light-x: 50%; --light-y: 82%; --light-r: 0px; --light-alpha: 0;
+      --parallax-x: 0px; --parallax-y: 0px; --bob-x: 0px; --bob-y: 0px; --step-zoom: 1.03;
+    }
+    * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; -webkit-user-drag: none; }
+    body, html {
+      width: 100%; height: 100%; overflow: hidden; background: #020305;
+      font-family: 'Georgia', serif; color: #e6dccb; display: flex; align-items: center; justify-content: center;
+    }
+    #stage-16x9 {
+      position: relative; width: 100vw; height: 56.25vw; max-height: 100vh; max-width: 177.78vh;
+      overflow: hidden; background: #040507; box-shadow: 0 0 60px rgba(0,0,0,0.95);
+    }
+
+    /* ==========================================================================
+       1. ГЛАВНОЕ МЕНЮ С ВИДЕО-ФОНОМ И ЭКРАН ПРЕДЗАГРУЗКИ (PRELOADER)
+    ========================================================================== */
+    #main-menu {
+      position: absolute; inset: 0; z-index: 100;
+      background: #020406; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+      padding-bottom: clamp(18px, 3.2vw, 42px);
+      transition: opacity 0.65s ease, visibility 0.65s ease;
+    }
+    #main-menu.hidden {
+      opacity: 0; visibility: hidden; pointer-events: none;
+    }
+    #menu-bg-video {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; z-index: 1; pointer-events: none;
+      filter: brightness(0.92) contrast(1.05);
+    }
+    .menu-vignette {
+      position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background:
+        radial-gradient(circle at 50% 45%, transparent 35%, rgba(2, 5, 9, 0.72) 100%),
+        linear-gradient(to top, rgba(2, 4, 7, 0.92) 0%, rgba(2, 4, 7, 0.45) 38%, transparent 72%);
+    }
+    .menu-content {
+      position: relative; z-index: 3;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+      width: 100%; max-width: 780px; gap: clamp(14px, 2vw, 26px);
+    }
+    .menu-items {
+      display: flex; flex-direction: column; align-items: center;
+      gap: clamp(8px, 1.15vw, 15px); margin-bottom: clamp(2px, 0.5vw, 8px);
+    }
+    .menu-item-btn {
+      background: transparent; border: none; outline: none; cursor: pointer;
+      font-family: 'Georgia', serif; font-weight: bold;
+      font-size: clamp(16px, 1.85vw, 27px); letter-spacing: 1.6px;
+      text-transform: uppercase; color: rgba(214, 224, 222, 0.62);
+      padding: 4px 22px;
+      transform: scale(0.88);
+      opacity: 0.62;
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+                  color 0.28s ease,
+                  text-shadow 0.28s ease,
+                  opacity 0.28s ease;
+    }
+    .menu-item-btn.active,
+    .menu-item-btn:hover,
+    .menu-item-btn:focus-visible {
+      transform: scale(1.22);
+      color: #2dd4bf;
+      opacity: 1;
+      text-shadow:
+        0 0 14px rgba(45, 212, 191, 0.85),
+        0 0 32px rgba(45, 212, 191, 0.45),
+        0 2px 6px rgba(0, 0, 0, 0.95);
+    }
+    #menu-sub-toast {
+      min-height: 1.4em;
+      font-size: clamp(11px, 1vw, 14px);
+      color: rgba(45, 212, 191, 0.88);
+      font-style: italic;
+      letter-spacing: 0.4px;
+      text-shadow: 0 2px 8px #000;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    #menu-sub-toast.show { opacity: 1; }
+
+    .menu-logo-wrap {
+      width: min(560px, 64vw);
+      height: clamp(64px, 9.5vw, 136px);
+      display: flex; align-items: center; justify-content: center;
+      transform: translateY(6px);
+      pointer-events: none;
+    }
+    #menu-logo-img {
+      max-width: 100%; max-height: 100%; width: auto; height: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 6px 24px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 18px rgba(45, 212, 191, 0.22));
+    }
+    #menu-logo-img.blend-screen {
+      mix-blend-mode: screen;
+      filter: contrast(1.15) brightness(1.08);
+    }
+    #menu-logo-fallback-text {
+      display: none;
+      font-size: clamp(24px, 3.6vw, 52px);
+      font-weight: bold; letter-spacing: 5px;
+      color: #5ea8a7;
+      text-shadow: 0 0 22px rgba(45, 212, 191, 0.5), 0 6px 18px #000;
+    }
+
+    /* ЭКРАН ПРЕДЗАГРУЗКИ (PRELOADER) */
+    #preloader-overlay {
+      position: absolute; inset: 0; z-index: 110;
+      background: radial-gradient(circle at 50% 45%, #081114 0%, #020406 100%);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px; padding: 28px;
+      transition: opacity 0.45s ease;
+    }
+    #preloader-overlay.visible { display: flex; }
+    .preloader-title {
+      font-size: clamp(14px, 1.45vw, 20px);
+      color: #2dd4bf; letter-spacing: 2px; text-transform: uppercase;
+      text-shadow: 0 0 16px rgba(45, 212, 191, 0.45);
+    }
+    .preloader-bar-wrap {
+      width: min(440px, 76%); height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(45, 212, 191, 0.38);
+      border-radius: 999px; overflow: hidden;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.85);
+    }
+    #preloader-bar-fill {
+      width: 0%; height: 100%;
+      background: linear-gradient(90deg, #0d9488 0%, #2dd4bf 60%, #99f6e4 100%);
+      box-shadow: 0 0 14px rgba(45, 212, 191, 0.8);
+      transition: width 0.15s ease;
+    }
+    #preloader-status {
+      font-size: clamp(11px, 1vw, 13.5px);
+      color: rgba(214, 224, 222, 0.72);
+      font-style: italic;
+    }
+
+    /* ==========================================================================
+       2. СЦЕНА И СЛОИ ОСВЕЩЕНИЯ
+    ========================================================================== */
+    .scene-slot {
+      position: absolute; inset: -3%; width: 106%; height: 106%; pointer-events: none;
+      will-change: transform, opacity;
+      transition: opacity 0.85s cubic-bezier(0.25,0.1,0.25,1), transform 0.85s cubic-bezier(0.22,0.61,0.36,1);
+    }
+    .scene-slot.current {
+      opacity: 1; z-index: 2;
+      transform: translate3d(calc(var(--parallax-x) + var(--bob-x)), calc(var(--parallax-y) + var(--bob-y)), 0) scale(var(--step-zoom));
+    }
+    .scene-slot.current.peephole-zoom {
+      transition: transform 1.1s cubic-bezier(0.2,0.7,0.3,1);
+      transform: translate3d(0,0,0) scale(1.32);
+    }
+    .scene-slot.outgoing {
+      opacity: 0; z-index: 1;
+      transform: translate3d(calc(var(--parallax-x)*1.3), calc(var(--parallax-y)*1.3 - 8px), 0) scale(1.1);
+    }
+    .scene-slot.incoming-prep {
+      opacity: 0; z-index: 3; transform: translate3d(0,8px,0) scale(0.97); transition: none !important;
+    }
+    .layer-dark, .layer-lit {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      background-position: center; background-size: 100% 100%; background-repeat: no-repeat;
+    }
+    body[data-lit="intro"] .layer-dark { filter: brightness(0.62) saturate(0.12) contrast(1.08); }
+    body[data-lit="false"] .layer-dark { filter: brightness(0.08) saturate(0.15) contrast(1.2) hue-rotate(200deg); }
+    body[data-lit="true"] .layer-dark { filter: brightness(0.16) saturate(0.22) contrast(1.15) hue-rotate(195deg); }
+    .layer-lit {
+      opacity: var(--light-alpha); filter: brightness(1.12) sepia(0.26) saturate(1.34) contrast(1.06);
+      -webkit-mask-image: radial-gradient(circle var(--light-r) at var(--light-x) var(--light-y), #000 0%, rgba(0,0,0,0.95) 48%, rgba(0,0,0,0.48) 76%, transparent 100%);
+      mask-image: radial-gradient(circle var(--light-r) at var(--light-x) var(--light-y), #000 0%, rgba(0,0,0,0.95) 48%, rgba(0,0,0,0.48) 76%, transparent 100%);
+    }
+    .scene-slot.no-darkness .layer-dark { filter: none !important; opacity: 1 !important; }
+    .scene-slot.no-darkness .layer-lit { opacity: 0 !important; }
+    body[data-fullbright="true"] #light-glow-overlay { opacity: 0 !important; }
+    body[data-fullbright="true"] #vignette { box-shadow: inset 0 0 50px 10px rgba(0,0,0,0.35); }
+
+    #light-glow-overlay {
+      position: absolute; inset: 0; z-index: 4; pointer-events: none; mix-blend-mode: screen;
+      opacity: calc(var(--light-alpha) * 0.42);
+      background: radial-gradient(circle var(--light-r) at var(--light-x) var(--light-y), rgba(255,180,80,0.38) 0%, rgba(225,115,35,0.14) 55%, transparent 90%);
+    }
+    #vignette { position: absolute; inset: 0; z-index: 5; pointer-events: none; box-shadow: inset 0 0 110px 25px rgba(0,0,0,0.85); }
+
+    /* СПРАЙТЫ NPC */
+    #npc-layer {
+      position: absolute; inset: 0; z-index: 6; pointer-events: none;
+      display: none; align-items: flex-end; justify-content: center;
+    }
+    #npc-layer.visible { display: flex; }
+    #npc-sprite-box {
+      height: 93%; aspect-ratio: 0.565; width: auto; margin-bottom: 0.8%;
+      background-repeat: no-repeat;
+      filter: drop-shadow(0 14px 28px rgba(0,0,0,0.92));
+    }
+
+    /* ШКАФ С ПРИПАСАМИ */
+    #cabinet-items-layer { position: absolute; inset: 0; z-index: 8; pointer-events: none; display: none; }
+    #cabinet-items-layer.visible { display: block; }
+    .shelf-item {
+      position: absolute; transform: translate(-50%, -50%); pointer-events: auto;
+      background-repeat: no-repeat; cursor: pointer;
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,0.78));
+      transition: transform 0.16s ease, filter 0.16s ease;
+    }
+    .shelf-item:hover {
+      transform: translate(-50%, -53%) scale(1.05);
+      filter: drop-shadow(0 0 12px rgba(215,165,95,0.65));
+    }
+
+    /* ВЕРХНИЙ ТЕКСТ СОБЫТИЙ */
+    #top-event-box {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: min(820px, 83%); z-index: 12;
+      background: rgba(10,9,8,0.88); border: 1px solid rgba(165,135,95,0.38); border-radius: 5px; padding: 8px 18px;
+      backdrop-filter: blur(5px); text-align: center; pointer-events: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.85);
+    }
+    #narrative-text { font-size: clamp(12px, 1.25vw, 15.5px); line-height: 1.35; color: #e8dfd1; }
+
+    /* ПОДСКАЗКА ОБУЧАЮЩЕГО ПРОЛЁТА СПИЧКИ */
+    #match-tutorial-hint {
+      position: absolute; bottom: clamp(150px, 16vw, 210px); left: 50%; transform: translateX(-50%);
+      z-index: 26; pointer-events: none;
+      background: rgba(10, 16, 18, 0.92);
+      border: 1px solid rgba(45, 212, 191, 0.65);
+      border-radius: 6px; padding: 9px 18px;
+      color: #e6f7f5; font-size: clamp(11.5px, 1.1vw, 14.5px);
+      text-align: center; max-width: min(560px, 84%);
+      box-shadow: 0 8px 26px rgba(0,0,0,0.9), 0 0 18px rgba(45, 212, 191, 0.28);
+      opacity: 0; visibility: hidden;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+    #match-tutorial-hint.visible {
+      opacity: 1; visibility: visible;
+    }
+
+    /* ИКОНКА ВЕЩМЕШКА */
+    #backpack-btn {
+      position: absolute; top: 10px; right: 14px; z-index: 18;
+      width: clamp(44px, 4.3vw, 56px); height: clamp(44px, 4.3vw, 56px);
+      background: #12100e;
+      border: 1px solid rgba(168,138,98,0.48); border-radius: 5px;
+      padding: 6px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.92), inset 0 0 0 1px rgba(255,235,205,0.06);
+      transition: border-color 0.18s ease, transform 0.15s ease, background 0.18s ease;
+    }
+    #backpack-btn:hover {
+      border-color: #c9a368; background: #1b1714; transform: translateY(-1px);
+    }
+    #backpack-btn svg {
+      width: 100%; height: 100%; stroke: #b89f7d; fill: #26201a;
+      stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.85));
+      transition: stroke 0.18s ease;
+    }
+    #backpack-btn:hover svg { stroke: #dfd0b8; }
+    #backpack-badge {
+      position: absolute; bottom: -5px; right: -5px;
+      min-width: 18px; height: 18px; padding: 0 4px;
+      background: #1f1913; color: #d8c3a5;
+      font: bold 10.5px/16px 'Georgia', serif; text-align: center;
+      border: 1px solid #8c7352; border-radius: 3px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.95);
+    }
+
+    /* ЕДИНЫЙ СТРОГИЙ СТИЛЬ КНОПОК */
+    .grim-btn {
+      position: relative; cursor: pointer;
+      padding: 8px 24px;
+      background: #14110e;
+      color: #dfd3c0;
+      border: 1px solid #7a6345;
+      border-radius: 4px;
+      font: bold clamp(11.5px, 1.05vw, 14px) 'Georgia', serif;
+      letter-spacing: 0.4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.92), inset 0 0 0 2px #0b0908, inset 0 0 12px rgba(0,0,0,0.8);
+      transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease, transform 0.14s ease;
+    }
+    .grim-btn:hover {
+      background: #1e1914;
+      border-color: #c59b61;
+      color: #f5ebd9;
+    }
+    .grim-btn:active { transform: translateY(1px); }
+
+    #scene-back-btn {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      z-index: 22; display: none;
+    }
+    #scene-back-btn.visible { display: block; }
+    #scene-back-btn:hover { transform: translateX(-50%) translateY(-1px); }
+
+    /* ЦЕНТРАЛЬНЫЙ ВЫБОР В ДИАЛОГЕ С СОСЕДОМ (БЕЗ ЛИШНИХ ПЛАШЕК И РАМОК) */
+    #neighbor-choice-overlay {
+      position: absolute; inset: 0; z-index: 28;
+      display: none; align-items: center; justify-content: center;
+      gap: clamp(12px, 1.6vw, 22px); flex-wrap: wrap;
+      padding: 20px; pointer-events: none;
+    }
+    #neighbor-choice-overlay.visible {
+      display: flex;
+    }
+    #neighbor-choice-overlay .choice-card {
+      pointer-events: auto;
+      width: clamp(82px, 9.2vw, 128px);
+    }
+
+    /* ОКНО НАХОДОК ПО ЦЕНТРУ ЭКРАНА */
+    #loot-center-modal {
+      position: absolute; inset: 0; z-index: 30;
+      background: rgba(5, 5, 6, 0.82); backdrop-filter: blur(4px);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px; padding: 20px;
+    }
+    #loot-center-modal.visible { display: flex; }
+    .loot-modal-title {
+      font-size: clamp(15px, 1.55vw, 20px); color: #dfd1b8; font-weight: normal;
+      font-style: italic; letter-spacing: 0.5px; text-shadow: 0 2px 10px #000;
+      border-bottom: 1px solid rgba(168,138,98,0.35); padding-bottom: 6px;
+    }
+    #loot-cards-row {
+      display: flex; align-items: stretch; justify-content: center;
+      gap: clamp(10px, 1.4vw, 18px); flex-wrap: wrap;
+    }
+
+    /* ПОЛНОЭКРАННЫЙ ИНВЕНТАРЬ (ВЕЩМЕШОК) */
+    #inventory-screen {
+      position: absolute; inset: 0; z-index: 35;
+      background: radial-gradient(circle at 50% 45%, #14110d 0%, #060504 100%);
+      display: none; flex-direction: column; align-items: center; justify-content: space-between;
+      padding: clamp(18px, 2.6vw, 34px);
+    }
+    #inventory-screen.visible { display: flex; }
+    .inv-header {
+      width: 100%; max-width: 960px; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid rgba(165,135,95,0.28); padding-bottom: 12px;
+    }
+    .inv-title-wrap {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .inv-title-wrap svg {
+      width: 24px; height: 24px; stroke: #b89f7d; fill: #26201a;
+      stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .inv-title {
+      font-size: clamp(16px, 1.65vw, 22px); color: #dfd1b8;
+      font-weight: normal; letter-spacing: 0.6px;
+    }
+    #inventory-grid {
+      width: 100%; max-width: 960px; flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      gap: clamp(12px, 1.4vw, 18px); flex-wrap: wrap; overflow-y: auto; padding: 14px 4px;
+    }
+    .inv-empty-msg { font-style: italic; color: rgba(215,200,178,0.45); font-size: 15px; }
+    .inv-item-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .inv-sub-btn {
+      width: 100%; padding: 4px 8px; font: 11px 'Georgia', serif;
+      background: #14110e; color: #d6c5aa;
+      border: 1px solid rgba(155,125,85,0.45); border-radius: 3px; cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .inv-sub-btn:hover { border-color: #c59b61; color: #fff; background: #211b15; }
+    #inventory-hint {
+      font-size: clamp(12px, 1.05vw, 14px); color: rgba(210,192,165,0.75); font-style: italic;
+      text-align: center; min-height: 1.5em; border-top: 1px solid rgba(165,135,95,0.18);
+      padding-top: 10px; width: 100%; max-width: 960px;
+    }
+
+    /* МОДАЛКА ПАМЯТКИ ГО И ИНСТРУКЦИИ К КОСТЯМ */
+    #brochure-modal {
+      position: absolute; inset: 0; z-index: 40; background: rgba(5,5,6,0.68);
+      display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    #brochure-modal.visible { display: flex; }
+    .brochure-paper {
+      width: min(640px, 90%); max-height: 82%; overflow-y: auto;
+      background: linear-gradient(135deg, rgba(215,201,174,0.96) 0%, rgba(196,178,147,0.96) 100%); color: #1f1a16;
+      border: 2px solid #5c4b37; box-shadow: 0 20px 60px rgba(0,0,0,0.95); border-radius: 4px; padding: 20px 24px; font-family: 'Courier New', monospace;
+    }
+    .brochure-stamp { display: inline-block; border: 2px solid #7a231d; color: #7a231d; font-weight: bold; font-size: 11px; padding: 2px 8px; margin-bottom: 10px; text-transform: uppercase; }
+    .brochure-title { font-size: clamp(14px, 1.35vw, 18px); font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #3a2e21; padding-bottom: 8px; margin-bottom: 12px; }
+    .brochure-body p { font-size: clamp(12px, 1.05vw, 14px); line-height: 1.45; margin-bottom: 10px; font-weight: 600; }
+    .brochure-section-title { font-size: clamp(13px, 1.15vw, 15px); font-weight: bold; margin: 14px 0 6px 0; text-decoration: underline; }
+    .brochure-close-btn { margin-top: 12px; width: 100%; padding: 10px; background: #2b2219; color: #f0e6d6; border: 1px solid #6e563f; border-radius: 4px; font-weight: bold; cursor: pointer; }
+
+    /* ОВЕРЛЕЙ ПОДКЛЮЧЕНИЯ ОТДЕЛЬНОГО ФАЙЛА ОЧКО.HTML (БЕЗ ПЕРЕЗАГРУЗКИ IFRAME) */
+    #ochko-modal-wrap {
+      position: absolute; inset: 0; z-index: 50; background: #050403;
+      opacity: 0; visibility: hidden; pointer-events: none;
+      display: flex; flex-direction: column;
+      transition: opacity 0.16s ease;
+    }
+    #ochko-modal-wrap.visible {
+      opacity: 1; visibility: visible; pointer-events: auto;
+    }
+    #ochko-iframe { width: 100%; height: 100%; border: none; }
+
+    /* НИЖНЯЯ ЗОНА КАРТОЧЕК */
+    #bottom-hud {
+      position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 15;
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 6px; pointer-events: none;
+    }
+    #bottom-hud.hidden-hud .deck-group { visibility: hidden !important; pointer-events: none !important; }
+    .deck-group {
+      display: flex; align-items: center; gap: 5px; pointer-events: auto;
+      flex: 0 1 auto; max-width: calc(50% - 48px);
+    }
+    .deck-cards {
+      display: flex; align-items: flex-end; gap: clamp(5px, 0.65vw, 9px);
+      min-height: clamp(92px, 10.5vw, 138px); perspective: 900px;
+    }
+    .scroll-arrow {
+      position: relative; z-index: 5; flex-shrink: 0;
+      width: clamp(20px, 1.9vw, 26px); height: clamp(76px, 8.2vw, 114px);
+      background: rgba(14,12,10,0.92); border: 1px solid rgba(185,155,115,0.48);
+      border-radius: 5px; color: #f2e9dc; font-size: clamp(11px, 1vw, 14px);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.85); transition: border-color 0.15s, transform 0.12s, background 0.15s;
+    }
+    .scroll-arrow:hover:not(:disabled) { border-color: #c59b61; background: rgba(30,24,18,0.96); transform: scale(1.05); }
+    .scroll-arrow:disabled { opacity: 0.22; cursor: default; }
+
+    /* КАРТОЧКИ И ПРИОРИТЕТНАЯ ПОДСВЕТКА (.priority-card) */
+    .choice-card {
+      position: relative; width: clamp(68px, 7.6vw, 108px); flex-shrink: 0;
+      background: transparent; border: none; padding: 0; cursor: pointer;
+      font-family: inherit; perspective: 800px; transform-style: preserve-3d;
+      transition: transform 0.22s cubic-bezier(0.22, 1.3, 0.36, 1), filter 0.2s ease;
+    }
+    .choice-card.deal-anim {
+      animation: cardDeal 0.52s cubic-bezier(0.2, 1.22, 0.32, 1) backwards;
+      animation-delay: var(--deal-delay, 0ms);
+    }
+    .choice-card:hover:not(:disabled):not(.activating) {
+      transform: translateY(-9px) scale(1.05) rotateX(5deg);
+      filter: drop-shadow(0 12px 20px rgba(240,168,84,0.28));
+    }
+    .choice-card.activating {
+      animation: cardActivateFlip 0.42s cubic-bezier(0.22, 1.25, 0.36, 1) forwards !important;
+      pointer-events: none;
+    }
+    .choice-card:disabled:not(.activating) { opacity: 0.48; cursor: default; }
+
+    /* ПРИОРИТЕТНАЯ КАРТОЧКА НА 1-М МЕСТЕ */
+    .choice-card.priority-card:not(.activating) {
+      animation: priorityCardFloat 2.1s ease-in-out infinite;
+      z-index: 4;
+    }
+    .choice-card.priority-card .card-inner {
+      border: 1.5px solid #2dd4bf;
+      box-shadow:
+        0 0 14px rgba(45, 212, 191, 0.68),
+        0 0 26px rgba(234, 179, 8, 0.35),
+        inset 0 0 10px rgba(45, 212, 191, 0.25);
+      animation: priorityBorderGlow 1.75s ease-in-out infinite alternate;
+    }
+    .choice-card.priority-card .choice-caption {
+      color: #99f6e4;
+      text-shadow: 0 0 8px rgba(45, 212, 191, 0.65);
+    }
+
+    @keyframes priorityCardFloat {
+      0%, 100% { transform: translateY(-4px) scale(1.03); }
+      50% { transform: translateY(-10px) scale(1.06); }
+    }
+    @keyframes priorityBorderGlow {
+      0% {
+        border-color: #2dd4bf;
+        box-shadow: 0 0 12px rgba(45, 212, 191, 0.65), 0 0 22px rgba(212, 165, 85, 0.28), inset 0 0 8px rgba(45, 212, 191, 0.22);
+      }
+      100% {
+        border-color: #f5c469;
+        box-shadow: 0 0 18px rgba(245, 196, 105, 0.8), 0 0 30px rgba(45, 212, 191, 0.55), inset 0 0 12px rgba(245, 196, 105, 0.28);
+      }
+    }
+
+    .card-inner {
+      position: relative; width: 100%; transform-style: preserve-3d;
+      background: linear-gradient(165deg, rgba(24,20,16,0.96) 0%, rgba(12,10,8,0.96) 100%);
+      border: 1px solid rgba(195,160,115,0.48); border-radius: 6px;
+      padding: 5px 5px 6px 5px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      box-shadow: 0 7px 18px rgba(0,0,0,0.88), inset 0 1px 0 rgba(255,230,190,0.12);
+      backface-visibility: hidden;
+    }
+    .choice-card:hover:not(:disabled) .card-inner {
+      border-color: #d6a45c;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.92), 0 0 12px rgba(220,160,80,0.28);
+    }
+    .card-back {
+      position: absolute; inset: 0; border-radius: 6px; backface-visibility: hidden;
+      transform: rotateY(180deg);
+      background: radial-gradient(circle at 50% 50%, #3a2b1c 0%, #17120d 85%);
+      border: 1.5px solid #a88455;
+      box-shadow: inset 0 0 0 4px #1f1811, inset 0 0 0 6px rgba(168,132,85,0.45);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card-back::after { content: "★"; font-size: clamp(18px, 2vw, 26px); color: rgba(215,175,115,0.55); }
+
+    @keyframes cardDeal {
+      0% { opacity: 0; transform: translate3d(0, 68px, -60px) rotateY(180deg) rotateZ(-8deg) scale(0.72); }
+      65% { opacity: 1; transform: translate3d(0, -7px, 12px) rotateY(-10deg) rotateZ(1.5deg) scale(1.03); }
+      100% { opacity: 1; transform: translate3d(0, 0, 0) rotateY(0deg) rotateZ(0deg) scale(1); }
+    }
+    @keyframes cardActivateFlip {
+      0% { transform: translateY(-6px) scale(1.04) rotateY(0deg); }
+      45% { transform: translateY(-28px) scale(1.14) rotateY(180deg); filter: drop-shadow(0 0 18px rgba(255,190,95,0.75)); }
+      80% { transform: translateY(-16px) scale(1.08) rotateY(360deg); filter: drop-shadow(0 0 14px rgba(255,190,95,0.5)); }
+      100% { transform: translateY(0) scale(1) rotateY(360deg); }
+    }
+
+    .card-icon-frame { width: 100%; aspect-ratio: 1/1; border-radius: 4px; overflow: hidden; background-color: #161412; background-repeat: no-repeat; }
+    .choice-caption {
+      font-size: clamp(8.5px, 0.82vw, 11.5px); line-height: 1.12; color: #f5ecdf;
+      text-align: center; font-weight: bold; min-height: 2.25em;
+      display: flex; align-items: center; justify-content: center; word-break: break-word;
+    }
+
+    /* СПИЧКА И СВЕЧА */
+    #center-flame-canvas {
+      width: clamp(72px, 7.5vw, 112px); height: clamp(96px, 10.5vw, 152px);
+      pointer-events: auto; cursor: grab; flex-shrink: 0; margin: 0 2px;
+      touch-action: none; will-change: transform; z-index: 25;
+      transition: filter 0.15s ease;
+    }
+    #center-flame-canvas:hover { filter: drop-shadow(0 0 10px rgba(255,180,80,0.45)); }
+    #center-flame-canvas.dragging { cursor: grabbing; filter: drop-shadow(0 0 18px rgba(255,200,100,0.85)); }
+  </style>
+</head>
+<body data-lit="intro" data-fullbright="false">
+
+  <div id="stage-16x9">
+    <!-- ГЛАВНОЕ МЕНЮ С ВИДЕО-ФОНОМ И АУДИОФОНОМ -->
+    <div id="main-menu">
+      <video id="menu-bg-video" src="Фон.mp4" autoplay loop muted playsinline preload="auto"></video>
+      <div class="menu-vignette"></div>
+
+      <div class="menu-content">
+        <div id="menu-sub-toast"></div>
+        <div class="menu-items" id="menu-items-list">
+          <button type="button" class="menu-item-btn active" data-menu-idx="0" onclick="handleMenuClick('new')">Новая игра</button>
+          <button type="button" class="menu-item-btn" data-menu-idx="1" onclick="handleMenuClick('load')">Загрузки</button>
+          <button type="button" class="menu-item-btn" data-menu-idx="2" onclick="handleMenuClick('settings')">Настройки</button>
+        </div>
+
+        <div class="menu-logo-wrap">
+          <img id="menu-logo-img" src="лого.png" alt="KOLA PATHOGEN" />
+          <div id="menu-logo-fallback-text">KOLA PATHOGEN</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ЭКРАН ПРЕДЗАГРУЗКИ (PRELOADER) -->
+    <div id="preloader-overlay">
+      <div class="preloader-title">Загрузка мира...</div>
+      <div class="preloader-bar-wrap">
+        <div id="preloader-bar-fill"></div>
+      </div>
+      <div id="preloader-status">Подготовка сцен и игровых ресурсов (0%)</div>
+    </div>
+
+    <div id="slot-a" class="scene-slot current"><div class="layer-dark"></div><div class="layer-lit"></div></div>
+    <div id="slot-b" class="scene-slot outgoing"><div class="layer-dark"></div><div class="layer-lit"></div></div>
+
+    <div id="npc-layer"><div id="npc-sprite-box"></div></div>
+    <div id="cabinet-items-layer"></div>
+
+    <!-- КНОПКА ВЕЩМЕШКА -->
+    <button id="backpack-btn" title="Вещмешок (Инвентарь)" onclick="openInventoryScreen()">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M11 7 C11 3.5, 21 3.5, 21 7" fill="none"/>
+        <path d="M7 11 C7 8, 25 8, 25 11 L26 26 C26 28, 24 29, 22 29 L10 29 C8 29, 6 28, 6 26 Z"/>
+        <path d="M6.5 13 C6.5 16, 25.5 16, 25.5 13"/>
+        <rect x="10" y="18" width="12" height="8" rx="1.2"/>
+        <line x1="12" y1="12" x2="12" y2="21"/>
+        <line x1="20" y1="12" x2="20" y2="21"/>
+        <rect x="11" y="15" width="2" height="2.2"/>
+        <rect x="19" y="15" width="2" height="2.2"/>
+      </svg>
+      <span id="backpack-badge">0</span>
+    </button>
+
+    <!-- КНОПКА «НАЗАД» -->
+    <button id="scene-back-btn" class="grim-btn" onclick="handleSceneBackBtn()">Отойти назад</button>
+
+    <!-- ЦЕНТРАЛЬНЫЙ ВЫБОР В ДИАЛОГЕ С СОСЕДОМ ПОВЕРХ СЦЕНЫ -->
+    <div id="neighbor-choice-overlay"></div>
+
+    <!-- ПОДСКАЗКА ПРОЛЁТА СПИЧКИ -->
+    <div id="match-tutorial-hint">Зажмите спичку или свечу мышью и перетаскивайте по экрану, чтобы подсветить себе комнату</div>
+
+    <!-- ОКНО НАХОДОК ПО ЦЕНТРУ ЭКРАНА (ПРИ ПОИСКЕ В ХЛАМЕ) -->
+    <div id="loot-center-modal">
+      <div class="loot-modal-title" id="loot-modal-title">Вы нашли в коробках с хламом:</div>
+      <div id="loot-cards-row"></div>
+      <button class="grim-btn" onclick="closeLootModal()">Убрать в вещмешок</button>
+    </div>
+
+    <!-- ПОЛНОЭКРАННЫЙ ИНВЕНТАРЬ -->
+    <div id="inventory-screen">
+      <div class="inv-header">
+        <div class="inv-title-wrap">
+          <svg viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M11 7 C11 3.5, 21 3.5, 21 7" fill="none"/>
+            <path d="M7 11 C7 8, 25 8, 25 11 L26 26 C26 28, 24 29, 22 29 L10 29 C8 29, 6 28, 6 26 Z"/>
+            <path d="M6.5 13 C6.5 16, 25.5 16, 25.5 13"/>
+            <rect x="10" y="18" width="12" height="8" rx="1.2"/>
+          </svg>
+          <div class="inv-title">Вещмешок</div>
+        </div>
+        <button class="grim-btn" onclick="closeInventoryScreen()">Вернуться к комнате</button>
+      </div>
+      <div id="inventory-grid"></div>
+      <div id="inventory-hint">Нажмите на предмет, чтобы осмотреть его, прочитать документ или открыть ящик с костями.</div>
+    </div>
+
+    <!-- МОДАЛКА ПАМЯТКИ ГО И ИНСТРУКЦИИ К ИГРЕ В КОСТИ -->
+    <div id="brochure-modal">
+      <div class="brochure-paper">
+        <div class="brochure-stamp" id="brochure-stamp">Гражданская оборона СССР • Памятка жильцу</div>
+        <div class="brochure-title" id="brochure-title">ПАМЯТКА НАСЕЛЕНИЮ</div>
+        <div class="brochure-body" id="brochure-content"></div>
+        <button class="brochure-close-btn" onclick="closeBrochure()">Убрать в карман</button>
+      </div>
+    </div>
+
+    <!-- ОВЕРЛЕЙ ПОДКЛЮЧЕННОЙ ИГРЫ ОЧКО.HTML (ГРУЗИТСЯ ОДИН РАЗ В PRELOADER) -->
+    <div id="ochko-modal-wrap">
+      <iframe id="ochko-iframe" src="about:blank"></iframe>
+    </div>
+
+    <div id="light-glow-overlay"></div>
+    <div id="vignette"></div>
+
+    <div id="top-event-box">
+      <div id="narrative-text">Вы проснулись среди ночи со странным ощущением. Пересохло в горле — хочется пить и нужно в туалет.</div>
+    </div>
+
+    <div id="bottom-hud">
+      <div class="deck-group">
+        <button class="scroll-arrow" id="act-prev" title="Влево">&#9664;</button>
+        <div class="deck-cards" id="left-action-cards"></div>
+        <button class="scroll-arrow" id="act-next" title="Вправо">&#9654;</button>
+      </div>
+
+      <canvas id="center-flame-canvas" width="140" height="180" title="Зажмите и двигайте спичку/свечу по всему экрану"></canvas>
+
+      <div class="deck-group" id="right-move-group" style="visibility:hidden">
+        <button class="scroll-arrow" id="mov-prev" title="Влево">&#9664;</button>
+        <div class="deck-cards" id="right-move-cards"></div>
+        <button class="scroll-arrow" id="mov-next" title="Вправо">&#9654;</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ============================================================================
+       0. СБРОС ПРОГРЕССА КОСТЕЙ ПРИ НОВОМ ЗАПУСКЕ ИГРЫ INDEX.HTML
+    ============================================================================ */
+    try {
+      localStorage.setItem("ochko_owned_counts", JSON.stringify([6, 0, 0, 0, 0, 0, 0, 0]));
+      localStorage.setItem("ochko_player_skins", JSON.stringify([0, 0, 0, 0, 0, 0]));
+    } catch (e) {}
+
+    /* ============================================================================
+       0.1. ГЛАВНОЕ МЕНЮ: БЕСШОВНЫЙ ВИДЕО-ФОН БЕЗ ЗВУКА, МУЗЫКА «АУДИОФОН», ЛОГОТИП
+    ============================================================================ */
+    const menuEl = document.getElementById("main-menu");
+    const menuVideo = document.getElementById("menu-bg-video");
+    const menuLogoImg = document.getElementById("menu-logo-img");
+    const menuLogoFallbackText = document.getElementById("menu-logo-fallback-text");
+    const menuButtons = Array.from(document.querySelectorAll(".menu-item-btn"));
+    const menuToast = document.getElementById("menu-sub-toast");
+    let activeMenuIdx = 0;
+    let menuToastTimer = null;
+    let isMenuOpen = true;
+
+    // 1) Бесшовное зацикленное видео без звука
+    const VIDEO_CANDIDATES = ["Фон.mp4", "фон.mp4", "события/Фон.mp4", "события/фон.mp4"];
+    let videoCandidateIdx = 0;
+    if (menuVideo) {
+      menuVideo.muted = true;
+      menuVideo.defaultMuted = true;
+      menuVideo.volume = 0;
+
+      menuVideo.addEventListener("error", () => {
+        videoCandidateIdx++;
+        if (videoCandidateIdx < VIDEO_CANDIDATES.length) {
+          menuVideo.src = encodeURI(VIDEO_CANDIDATES[videoCandidateIdx]);
+          menuVideo.load();
+          menuVideo.play().catch(() => {});
+        }
+      });
+
+      // Мгновенный перезапуск в самом конце без малейшего разрыва/черного кадра
+      menuVideo.addEventListener("timeupdate", () => {
+        if (menuVideo.duration && menuVideo.currentTime >= menuVideo.duration - 0.06) {
+          menuVideo.currentTime = 0;
+          menuVideo.play().catch(() => {});
+        }
+      });
+      menuVideo.addEventListener("ended", () => {
+        menuVideo.currentTime = 0;
+        menuVideo.play().catch(() => {});
+      });
+      menuVideo.play().catch(() => {});
+    }
+
+    // 2) Зацикленный аудиоассет «аудиофон»
+    const MENU_AUDIO_CANDIDATES = [
+      "аудиофон.mp3", "Аудиофон.mp3", "АУДИОФОН.mp3",
+      "АУДИО/аудиофон.mp3", "АУДИО/Аудиофон.mp3", "АУДИО/АУДИОФОН.mp3",
+      "АУДИО 2/аудиофон.mp3", "АУДИО 2/Аудиофон.mp3", "АУДИО 2/АУДИОФОН.mp3",
+      "аудиофон.ogg", "аудиофон.wav"
+    ];
+    let menuAudio = null;
+    let menuAudioIdx = 0;
+    let menuAudioStarted = false;
+
+    function initMenuBackgroundAudio() {
+      if (menuAudio) return;
+      menuAudio = new Audio();
+      menuAudio.loop = true;
+      menuAudio.volume = 0.65;
+
+      menuAudio.addEventListener("error", () => {
+        menuAudioIdx++;
+        if (menuAudioIdx < MENU_AUDIO_CANDIDATES.length && isMenuOpen) {
+          menuAudio.src = encodeURI(MENU_AUDIO_CANDIDATES[menuAudioIdx]);
+          menuAudio.load();
+          menuAudio.play().then(() => { menuAudioStarted = true; }).catch(() => {});
+        }
+      });
+
+      // Бесшовный цикл аудиофона
+      menuAudio.addEventListener("timeupdate", () => {
+        if (menuAudio && menuAudio.duration && menuAudio.currentTime >= menuAudio.duration - 0.08) {
+          menuAudio.currentTime = 0;
+          menuAudio.play().catch(() => {});
+        }
+      });
+
+      menuAudio.src = encodeURI(MENU_AUDIO_CANDIDATES[0]);
+      menuAudio.play().then(() => { menuAudioStarted = true; }).catch(() => {});
+    }
+
+    function ensureMenuAudioPlaying() {
+      if (!isMenuOpen) return;
+      if (!menuAudio) initMenuBackgroundAudio();
+      else if (menuAudio.paused) {
+        menuAudio.play().then(() => { menuAudioStarted = true; }).catch(() => {});
+      }
+      if (menuVideo && menuVideo.paused) {
+        menuVideo.muted = true;
+        menuVideo.play().catch(() => {});
+      }
+    }
+
+    window.addEventListener("pointerdown", ensureMenuAudioPlaying, { passive: true });
+    window.addEventListener("keydown", ensureMenuAudioPlaying, { passive: true });
+    initMenuBackgroundAudio();
+
+    function stopMenuMedia() {
+      isMenuOpen = false;
+      if (menuVideo) {
+        try { menuVideo.pause(); } catch (e) {}
+      }
+      if (menuAudio) {
+        const fade = setInterval(() => {
+          if (!menuAudio) { clearInterval(fade); return; }
+          if (menuAudio.volume > 0.06) {
+            menuAudio.volume = Math.max(0, menuAudio.volume - 0.06);
+          } else {
+            clearInterval(fade);
+            try { menuAudio.pause(); } catch (e) {}
+          }
+        }, 50);
+      }
+    }
+
+    // 3) Фолбэк логотипа: лого.png -> название.png -> текст фон.jpg
+    const LOGO_CANDIDATES = ["лого.png", "Лого.png", "название.png", "Название.png", "текст фон.jpg", "Текст фон.jpg"];
+    let logoCandidateIdx = 0;
+    if (menuLogoImg) {
+      menuLogoImg.addEventListener("load", () => {
+        const curSrc = LOGO_CANDIDATES[logoCandidateIdx] || "";
+        if (curSrc.toLowerCase().endsWith(".jpg") || curSrc.toLowerCase().endsWith(".jpeg")) {
+          menuLogoImg.classList.add("blend-screen");
+        } else {
+          menuLogoImg.classList.remove("blend-screen");
+        }
+      });
+      menuLogoImg.addEventListener("error", () => {
+        logoCandidateIdx++;
+        if (logoCandidateIdx < LOGO_CANDIDATES.length) {
+          menuLogoImg.src = encodeURI(LOGO_CANDIDATES[logoCandidateIdx]);
+        } else {
+          menuLogoImg.style.display = "none";
+          if (menuLogoFallbackText) menuLogoFallbackText.style.display = "block";
+        }
+      });
+    }
+
+    // 4) Переключение пунктов меню (активный увеличивается и светится бирюзовым, остальные уменьшаются)
+    function setActiveMenuItem(idx) {
+      activeMenuIdx = (idx + menuButtons.length) % menuButtons.length;
+      menuButtons.forEach((btn, i) => {
+        btn.classList.toggle("active", i === activeMenuIdx);
+      });
+    }
+    menuButtons.forEach((btn, idx) => {
+      btn.addEventListener("mouseenter", () => {
+        if (activeMenuIdx !== idx) playCardSound("click");
+        setActiveMenuItem(idx);
+      });
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (!isMenuOpen) return;
+      if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
+        playCardSound("click");
+        setActiveMenuItem(activeMenuIdx - 1);
+      } else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
+        playCardSound("click");
+        setActiveMenuItem(activeMenuIdx + 1);
+      } else if (e.key === "Enter" || e.key === " ") {
+        const actions = ["new", "load", "settings"];
+        handleMenuClick(actions[activeMenuIdx] || "new");
+      }
+    });
+
+    function showMenuToast(msg) {
+      if (!menuToast) return;
+      menuToast.textContent = msg;
+      menuToast.classList.add("show");
+      if (menuToastTimer) clearTimeout(menuToastTimer);
+      menuToastTimer = setTimeout(() => menuToast.classList.remove("show"), 2600);
+    }
+
+    function handleMenuClick(action) {
+      ensureMenuAudioPlaying();
+      playCardSound("flip");
+      if (action === "new") {
+        startNewGameWithPreloader();
+      } else if (action === "load") {
+        showMenuToast("Сохранённых игр пока нет.");
+      } else if (action === "settings") {
+        showMenuToast("Настройки по умолчанию: звук 100%, экран 16:9.");
+      }
+    }
+
+    /* ============================================================================
+       1. КАРТА КАРТИНОК (ВКЛЮЧАЯ 5 ЭТАЖЕЙ ПОДЪЕЗДА 18/14 КАРТИНОК, ДВЕРИ 16–30 И УЛИЦУ)
+    ============================================================================ */
+    const SCENE_IMAGES = {
+      bedroom: "спальня.jpg", bedroom_rev: "спальня обратная.jpg",
+      corridor_room: "коридор комнаты.jpg", corridor_room_rev: "коридор комнаты обратная.jpg",
+      corridor_main: "коридор.jpg", corridor_main_rev: "коридор обратная.jpg",
+      kitchen: "кухня.jpg", kitchen_rev: "кухня обратная.jpg",
+      junkroom: "события/хлам с коврами.jpg", junkroom_empty: "комната с хламом.jpg",
+      junkroom_rev: "комната с хламом обратная.jpg",
+      toilet: "туалет.jpg", bath: "ванна.jpg", entrance: "вход.jpg",
+      cabinet: "шкаф еда.jpg", radio: "радио.jpg",
+      ev_switch: "события/выключатель.jpg", ev_flush: "события/смыв туалет.jpg",
+      ev_glass: "события/стакан.jpg", ev_thermometer: "события/термометр.jpg",
+      ev_robe: "события/халат.jpg",
+      ev_window_1: "события/окно.jpg",
+      ev_window_2: "события/окно 2.jpg",
+      ev_window_climb: "события/вылазит в окно.jpg",
+      ev_yard_window: "события/двор с окна.jpg",
+      ev_defense: "события/оборона.jpg",
+      ev_search_junk: "события/поиск хлам.jpg",
+      ev_peephole_empty_1: "события/глазок.jpg",
+      ev_peephole_empty_2: "события/глазок 3.jpg",
+      ev_peephole_lit_1: "события/глазок 1.jpg",
+      ev_peephole_lit_2: "события/глазок 2.jpg",
+      ev_tap: "события/кран.jpg",
+      ev_dress: "события/одеться.jpg", ev_shoes: "события/обуться.jpg",
+      ev_carpets_roll: "события/ковры скатаны.jpg", ev_carpets_wall: "события/только ковры.jpg",
+      ev_all_covered: "события/всё завешано.jpg", ev_bricks: "события/кирпичи.jpg",
+      ev_stove: "события/печка.jpg", ev_dumbbells: "события/гантели.jpg", ev_bed: "события/кровать.jpg",
+      ev_granny_cans: "события/бидоны.jpg"
+    };
+
+    // 5 этажей: подъезд 1 (спуск сверху вниз с 5-го этажа — 18 кадров), подъезд 2 (подъём снизу вверх — 14 кадров)
+    for (let i = 1; i <= 18; i++) SCENE_IMAGES[`p1_${i}`] = `события/подъезд 1/${i}.jpg`;
+    for (let i = 1; i <= 14; i++) SCENE_IMAGES[`p2_${i}`] = `события/подъезд 2/${i}.jpg`;
+    for (let apt = 16; apt <= 30; apt++) {
+      SCENE_IMAGES[`door_${apt}`] = `события/двери/${apt}.jpg`;
+      SCENE_IMAGES[`door_${apt}_open`] = `события/двери/${apt} открытая.jpg`;
+    }
+    for (let u = 1; u <= 16; u++) SCENE_IMAGES[`street_${u}`] = `события/улица/${u}.jpg`;
+
+    const FULL_BRIGHT_SCENES = new Set([
+      "ev_yard_window", "ev_bricks", "ev_peephole_lit_2", "ev_peephole_empty_2"
+    ]);
+    for (let u = 1; u <= 16; u++) FULL_BRIGHT_SCENES.add(`street_${u}`);
+
+    /* ============================================================================
+       1.1. ПРЕДЗАГРУЗКА ВСЕХ РЕСУРСОВ (PRELOADER) И СРЫТЫЙ PRELOAD ОЧКО.HTML
+    ============================================================================ */
+    let ochkoIframeReady = false;
+    let pendingOchkoMessage = null;
+
+    function setupOchkoIframePreload() {
+      const iframe = document.getElementById("ochko-iframe");
+      if (!iframe) return Promise.resolve();
+      return new Promise((resolve) => {
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          ochkoIframeReady = true;
+          if (pendingOchkoMessage && iframe.contentWindow) {
+            try { iframe.contentWindow.postMessage(pendingOchkoMessage, "*"); } catch (e) {}
+            pendingOchkoMessage = null;
+          }
+          resolve();
+        };
+        iframe.onload = finish;
+        iframe.onerror = finish;
+        if (!iframe.src || iframe.src.endsWith("about:blank")) {
+          iframe.src = "Очко.html?preload=1";
+        } else {
+          finish();
+        }
+        setTimeout(finish, 1800);
+      });
+    }
+
+    async function startNewGameWithPreloader() {
+      const preloader = document.getElementById("preloader-overlay");
+      const barFill = document.getElementById("preloader-bar-fill");
+      const statusEl = document.getElementById("preloader-status");
+      preloader.classList.add("visible");
+
+      const urlsToPreload = [
+        ...Object.values(SCENE_IMAGES),
+        ...Object.values(ICON_SHEETS),
+        "тушенка.png", "картошка.png", "сосед.png", "соседка.png"
+      ];
+      const uniqueUrls = [...new Set(urlsToPreload)];
+      let loadedCount = 0;
+      const totalTasks = uniqueUrls.length + 1; // +1 для #ochko-iframe
+
+      function updateProgress() {
+        loadedCount++;
+        const pct = Math.min(100, Math.round((loadedCount / totalTasks) * 100));
+        if (barFill) barFill.style.width = `${pct}%`;
+        if (statusEl) statusEl.textContent = `Подготовка сцен и игровых ресурсов (${pct}%)`;
+      }
+
+      const imagePromises = uniqueUrls.map((rawUrl) => new Promise((res) => {
+        const img = new Image();
+        let settled = false;
+        const done = () => {
+          if (settled) return;
+          settled = true;
+          updateProgress();
+          res();
+        };
+        img.onload = done;
+        img.onerror = done;
+        img.src = encodeURI(rawUrl);
+        setTimeout(done, 1200);
+      }));
+
+      const iframePromise = setupOchkoIframePreload().then(() => updateProgress());
+
+      await Promise.all([...imagePromises, iframePromise]);
+
+      stopMenuMedia();
+      startNeighborArrivalCountdown();
+      menuEl.classList.add("hidden");
+      preloader.style.opacity = "0";
+      setTimeout(() => {
+        preloader.classList.remove("visible");
+        preloader.style.opacity = "";
+      }, 460);
+    }
+
+    /* ============================================================================
+       2. ЗВУКОВОЙ ДВИЖОК
+    ============================================================================ */
+    let stepBareToggle = 0, stepShoesToggle = 0, doorCreakToggle = 0, knockTimerId = null, knockToggle = 0, audioCtx = null;
+
+    function playCardSound(type) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const dur = type === "flip" ? 0.11 : (type === "deal" ? 0.065 : 0.03);
+        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) {
+          const t = i / data.length;
+          data[i] = (Math.random() * 2 - 1) * Math.sin(t * Math.PI) * Math.pow(1 - t, type === "flip" ? 1.15 : 2.2);
+        }
+        const src = audioCtx.createBufferSource(); src.buffer = buf;
+        const flt = audioCtx.createBiquadFilter(); flt.type = "bandpass";
+        flt.frequency.setValueAtTime(type === "flip" ? 650 : 950, audioCtx.currentTime);
+        flt.frequency.exponentialRampToValueAtTime(type === "flip" ? 1950 : 1400, audioCtx.currentTime + dur);
+        flt.Q.value = 1.4;
+        const gain = audioCtx.createGain(); gain.gain.value = type === "flip" ? 0.55 : 0.35;
+        src.connect(flt); flt.connect(gain); gain.connect(audioCtx.destination); src.start();
+      } catch (e) {}
+    }
+
+    function playAudioSmart(folders, names, vol = 0.85) {
+      const fList = Array.isArray(folders) ? folders : [folders];
+      const nList = Array.isArray(names) ? names : [names];
+      const queue = [];
+      for (const f of fList) {
+        for (const n of nList) {
+          const cap = n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
+          [n, n.toUpperCase(), n.toLowerCase(), cap].forEach((variant) => {
+            const path = `${f}/${variant}.mp3`;
+            if (!queue.includes(path)) queue.push(path);
+          });
+        }
+      }
+      return new Promise((res) => {
+        let idx = 0;
+        function tryNext() {
+          if (idx >= queue.length) return res(false);
+          const a = new Audio(encodeURI(queue[idx++]));
+          a.volume = vol;
+          a.onended = () => res(true);
+          a.onerror = () => tryNext();
+          a.play().catch(() => tryNext());
+        }
+        tryNext();
+      });
+    }
+
+    const playSnd1 = (n, v = 0.85) => playAudioSmart(["АУДИО", "АУДИО 2"], n, v);
+    const playSnd2 = (n, v = 0.85) => playAudioSmart(["АУДИО 2", "АУДИО"], n, v);
+
+    function playFootstepSound() {
+      if (state.logicalRoom === "landing") playSnd2(stepShoesToggle++ % 2 === 0 ? "ШАГИ ПОДЪЕЗД" : "ШАГИ ПОДЪЕЗД 2");
+      else if (state.hasShoes) playSnd1(stepShoesToggle++ % 2 === 0 ? "ШАГИ ОБУВЬ БЕЗ СКРИПА" : "ШАГИ ОБУВЬ СКРИП");
+      else playSnd1(stepBareToggle++ % 2 === 0 ? "ШАГИ БЕЗ ОБУВИ СКРИП" : "ШАГИ БЕЗ ОБУВИ СКРИП 2");
+    }
+
+    function playDoorCreakSound() {
+      const pick = doorCreakToggle++ % 2 === 0 ? ["СКРИП ДВЕРИ", "СКРИП ДВЕРИ 2"] : ["СКРИП ДВЕРИ 2", "СКРИП ДВЕРИ"];
+      return playAudioSmart(["АУДИО", "АУДИО 2"], pick, 0.85);
+    }
+
+    function startDoorKnockLoop() {
+      stopDoorKnockLoop(); state.isKnocking = true;
+      (async function loop() {
+        if (!state.isKnocking) return;
+        await playSnd2(knockToggle++ % 2 === 0 ? "СТУК" : "СТУК 2", 0.78);
+        if (state.isKnocking) knockTimerId = setTimeout(loop, 2500);
+      })();
+    }
+    function stopDoorKnockLoop() {
+      state.isKnocking = false;
+      if (knockTimerId) { clearTimeout(knockTimerId); knockTimerId = null; }
+    }
+
+    /* ============================================================================
+       3. ЛИСТЫ ИКОНОК 1–5
+    ============================================================================ */
+    const ICON_SHEETS = { 1: "ИКОНКИ.jpg", 2: "ИКОНКИ 2.jpg", 3: "ИКОНКИ 3.jpg", 4: "иконки 4.jpg", 5: "иконки 5.jpg" };
+    const SHEET_METRICS = {
+      1: { colX: [1.8, 21.4, 41.0, 60.6, 80.2], rowY: [7.2, 38.8, 70.3], boxW: 18.0, boxH: 25.0 },
+      2: { colX: [2.0, 21.8, 41.8, 61.8, 81.6], rowY: [7.5, 39.0, 70.5], boxW: 16.4, boxH: 22.0 },
+      3: { colX: [2.1, 21.9, 41.8, 61.7, 81.6], rowY: [7.4, 39.0, 70.6], boxW: 16.2, boxH: 21.8 },
+      4: { colX: [2.0, 21.8, 41.6, 61.5, 81.3], rowY: [6.4, 38.0, 69.8], boxW: 16.6, boxH: 22.2 },
+      5: { colX: [2.0, 21.8, 41.6, 61.5, 81.3], rowY: [6.4, 38.0, 69.8], boxW: 16.6, boxH: 22.2 }
+    };
+    function applyIconSprite(el, sheetNum, iconNum) {
+      const idx = (iconNum || 1) - 1, col = idx % 5, row = (idx / 5) | 0;
+      const m = SHEET_METRICS[sheetNum] || SHEET_METRICS[1];
+      const scaleX = (100 / m.boxW) * 100, scaleY = (100 / m.boxH) * 100;
+      const posX = (m.colX[col] / (100 - m.boxW)) * 100, posY = (m.rowY[row] / (100 - m.boxH)) * 100;
+      el.style.backgroundImage = `url("${encodeURI(ICON_SHEETS[sheetNum])}")`;
+      el.style.backgroundSize = `${scaleX.toFixed(2)}% ${scaleY.toFixed(2)}%`;
+      el.style.backgroundPosition = `${posX.toFixed(2)}% ${posY.toFixed(2)}%`;
+    }
+
+    /* ============================================================================
+       4. СПРАЙТЫ СОСЕДЕЙ (СОСЕД.PNG И СОСЕДКА.PNG)
+    ============================================================================ */
+    const NPC_FILES = { neighbor: "сосед.png", woman: "соседка.png" };
+    const npcCutoutCache = { neighbor: {}, woman: {} };
+    let npcTalkInterval = null;
+
+    function preloadNpcSprites() {
+      ["neighbor", "woman"].forEach((k) => {
+        const img = new Image();
+        img.onload = () => {
+          for (let p = 1; p <= 8; p++) {
+            try { npcCutoutCache[k][p] = cutoutNpcPose(img, p); } catch (e) { break; }
+          }
+        };
+        img.src = encodeURI(NPC_FILES[k]);
+      });
+    }
+
+    function cutoutNpcPose(img, pose) {
+      const idx = pose - 1, col = idx % 4, row = (idx / 4) | 0;
+      const cw = (img.naturalWidth / 4) | 0, ch = (img.naturalHeight / 2) | 0;
+      const c = document.createElement("canvas"); c.width = cw; c.height = ch;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img, col * cw, row * ch, cw, ch, 0, 0, cw, ch);
+      const imgData = ctx.getImageData(0, 0, cw, ch), d = imgData.data;
+
+      if (d[3] < 30 && d[(cw - 1) * 4 + 3] < 30) {
+        return c.toDataURL("image/png");
+      }
+
+      const bgR = d[0], bgG = d[1], bgB = d[2];
+      const vis = new Uint8Array(cw * ch), q = new Int32Array(cw * ch);
+      let head = 0, tail = 0;
+      function push(x, y) {
+        const p = y * cw + x; if (vis[p]) return;
+        const i = p * 4, r = d[i], g = d[i+1], b = d[i+2];
+        const diff = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
+        const sat = Math.max(r, g, b) - Math.min(r, g, b);
+        if ((diff < 95 && sat < 38) || (r > 235 && g > 235 && b > 235)) {
+          vis[p] = 1; q[tail++] = p;
+        }
+      }
+      for (let x = 0; x < cw; x++) { push(x, 0); push(x, ch - 1); }
+      for (let y = 0; y < ch; y++) { push(0, y); push(cw - 1, y); }
+      while (head < tail) {
+        const p = q[head++]; d[p * 4 + 3] = 0;
+        const x = p % cw, y = (p / cw) | 0;
+        if (x > 0) push(x - 1, y); if (x < cw - 1) push(x + 1, y);
+        if (y > 0) push(x, y - 1); if (y < ch - 1) push(x, y + 1);
+      }
+      ctx.putImageData(imgData, 0, 0);
+      return c.toDataURL("image/png");
+    }
+
+    function setNpcPose(npcKey, pose) {
+      const layer = document.getElementById("npc-layer"), box = document.getElementById("npc-sprite-box");
+      if (!npcKey) { layer.classList.remove("visible"); return; }
+      layer.classList.add("visible");
+      const cached = npcCutoutCache[npcKey]?.[pose];
+      if (cached) {
+        box.style.backgroundImage = `url("${cached}")`;
+        box.style.backgroundSize = "contain";
+        box.style.backgroundPosition = "center bottom";
+      } else {
+        const idx = pose - 1, col = idx % 4, row = (idx / 4) | 0;
+        box.style.backgroundImage = `url("${encodeURI(NPC_FILES[npcKey])}")`;
+        box.style.backgroundSize = "400% 200%";
+        box.style.backgroundPosition = `${((col / 3) * 100).toFixed(2)}% ${(row * 100).toFixed(2)}%`;
+      }
+    }
+
+    async function playNpcSpeech(npcKey, audioName, seqOverride = null) {
+      if (npcTalkInterval) clearInterval(npcTalkInterval);
+      const seq = seqOverride || (npcKey === "neighbor" ? [1, 4, 6, 7, 8] : [1, 2, 4, 7]);
+      let s = 0; setNpcPose(npcKey, 1);
+      npcTalkInterval = setInterval(() => { s = (s + 1) % seq.length; setNpcPose(npcKey, seq[s]); }, 420);
+      await Promise.race([playSnd2(audioName, 0.95), new Promise((r) => setTimeout(r, 3400))]);
+      clearInterval(npcTalkInterval); npcTalkInterval = null; setNpcPose(npcKey, 1);
+    }
+    function hideNpc() { if (npcTalkInterval) { clearInterval(npcTalkInterval); npcTalkInterval = null; } setNpcPose(null); }
+
+    /* ============================================================================
+       5. ШКАФ С ПРИПАСАМИ (ТУШЁНКА И ИСПРАВЛЕННЫЙ МЕШОК С КАРТОШКОЙ)
+    ============================================================================ */
+    const STEW_CROP = { rx: 0.048, ry: 0.082, rw: 0.148, rh: 0.368, aspect: 0.72 };
+    const POTATO_CROPS = {
+      5: { rx: 0.018, ry: 0.065, rw: 0.362, rh: 0.355, aspect: 1.81 },
+      4: { rx: 0.384, ry: 0.065, rw: 0.252, rh: 0.355, aspect: 1.26 },
+      3: { rx: 0.652, ry: 0.060, rw: 0.186, rh: 0.365, aspect: 0.91 },
+      2: { rx: 0.502, ry: 0.490, rw: 0.275, rh: 0.195, aspect: 2.50 },
+      1: { rx: 0.535, ry: 0.755, rw: 0.222, rh: 0.180, aspect: 2.19 }
+    };
+    const shelfLayout = {
+      stew1:{x:25.0,y:29.0,w:5.5}, stew2:{x:31.2,y:29.0,w:5.5}, stew3:{x:37.4,y:29.0,w:5.5},
+      stew4:{x:25.0,y:20.5,w:5.5}, stew5:{x:31.2,y:20.5,w:5.5}, stew6:{x:37.4,y:20.5,w:5.5},
+      potato5:{x:31.5,y:54.0,w:17.5}, potato4:{x:31.5,y:53.5,w:13.5},
+      potato3:{x:31.5,y:53.0,w:10.5}, potato2:{x:31.5,y:56.5,w:15.0}, potato1:{x:31.5,y:57.0,w:13.0}
+    };
+    function applySpriteCropToDiv(div, url, c) {
+      div.style.backgroundImage = `url("${url}")`;
+      div.style.backgroundSize = `${(100/c.rw).toFixed(2)}% ${(100/c.rh).toFixed(2)}%`;
+      div.style.backgroundPosition = `${((c.rx/(1-c.rw))*100).toFixed(2)}% ${((c.ry/(1-c.rh))*100).toFixed(2)}%`;
+      div.style.aspectRatio = `${c.aspect}`;
+    }
+
+    function renderCabinetItems() {
+      const container = document.getElementById("cabinet-items-layer");
+      const show = state.currentScene === "cabinet" && !state.isWalking;
+      container.classList.toggle("visible", show);
+      container.innerHTML = "";
+      if (!show) return;
+
+      for (let i = 1; i <= state.stewCount; i++) {
+        const pos = shelfLayout[`stew${i}`]; if (!pos) continue;
+        const d = document.createElement("div");
+        d.className = "shelf-item";
+        d.title = "Нажмите, чтобы взять банку тушёнки в вещмешок";
+        d.style.left = `${pos.x}%`; d.style.top = `${pos.y}%`; d.style.width = `${pos.w}%`;
+        applySpriteCropToDiv(d, encodeURI("тушенка.png"), STEW_CROP);
+        d.onclick = () => {
+          if (state.stewCount <= 0) return;
+          state.stewCount--;
+          state.invStew++;
+          state.needsFoodForDice = false;
+          removeStoryCard("go_take_stew");
+          playCardSound("deal");
+          updateBackpackBadge();
+          renderCabinetItems();
+          setEventText(`Вы взяли банку тушёнки в вещмешок (в вещмешке: ${state.invStew} шт.).`);
+          renderUI(false);
+        };
+        container.appendChild(d);
+      }
+
+      const pCrop = POTATO_CROPS[state.potatoStage], pPos = shelfLayout[`potato${state.potatoStage}`];
+      if (state.potatoStage > 0 && pCrop && pPos) {
+        const d = document.createElement("div");
+        d.className = "shelf-item";
+        d.title = "Нажмите, чтобы отсыпать порцию картошки в вещмешок";
+        d.style.left = `${pPos.x}%`; d.style.top = `${pPos.y}%`; d.style.width = `${pPos.w}%`;
+        applySpriteCropToDiv(d, encodeURI("картошка.png"), pCrop);
+        d.onclick = () => {
+          if (state.potatoStage <= 0) return;
+          state.potatoStage--;
+          state.invPotato++;
+          playCardSound("deal");
+          updateBackpackBadge();
+          renderCabinetItems();
+          setEventText(`Вы взяли порцию картошки в вещмешок (в вещмешке: ${state.invPotato} порц.).`);
+          renderUI(false);
+        };
+        container.appendChild(d);
+      }
+    }
+
+    /* ============================================================================
+       6. ТЕКСТЫ ПАМЯТОК ГО И ИНСТРУКЦИИ К КОСТЯМ
+    ============================================================================ */
+    const BROCHURE_TEXTS = {
+      1: `<p>В случае падения температуры ниже +12°C жильцам надлежит незамедлительно приступить к герметизации дверных и оконных проемов ветошью и малярным скотчем.</p><div class="brochure-section-title">РАЗДЕЛ I. Защита от сквозняков и таганок</div><p>Первым делом плотно подоткните щель под входной дверью. В стенках пустой консервной емкости пробиваются вентиляционные отверстия, внутрь ставится свеча («таганок»).</p>`,
+      2: `<div class="brochure-section-title">РАЗДЕЛ II. Обогрев помещения и теплоаккумулятор</div><p>Оклейте стыки оконных рам малярным скотчем. Над зоной горения свечи обязательно устанавливается керамический элемент (строительный кирпич) как теплоаккумулятор.</p>`,
+      dice: `<div class="brochure-section-title">ПРАВИЛА ИГРЫ «КОСТЯНОЕ ОЧКО» (21)</div><p>1. У каждого игрока в наборе ровно 6 костей. В начале кона проводится жеребьёвка первого хода броском по 2 кости.</p><p>2. Игроки ходят по очереди, бросая по 1 или по 2 кости на доску. Очки всех выброшенных граней суммируются.</p><p>3. Цель — набрать сумму как можно ближе к 21 очку. Перебор (больше 21) означает немедленное поражение в коне. Партия идёт до 3 побед.</p>`
+    };
+
+    async function openBrochure(part) {
+      if (part === 1 || part === 2) {
+        await showActionCloseup("ev_defense", false, false);
+      }
+      if (part === 1) {
+        state.readBrochure1 = true;
+        removeStoryCard("read_brochure_1");
+        if (!state.doorSealed) addStoryCard("seal_door", true);
+      }
+      if (part === 2) state.readBrochure2 = true;
+
+      const stampEl = document.getElementById("brochure-stamp");
+      const titleEl = document.getElementById("brochure-title");
+      const contentEl = document.getElementById("brochure-content");
+
+      if (part === "dice") {
+        stampEl.textContent = "Правила настольной игры • Кольский полуостров";
+        titleEl.textContent = "ИНСТРУКЦИЯ: ИГРА «КОСТЯНОЕ ОЧКО»";
+        contentEl.innerHTML = BROCHURE_TEXTS.dice;
+      } else {
+        stampEl.textContent = "Гражданская оборона СССР • Памятка жильцу";
+        titleEl.textContent = "ПАМЯТКА НАСЕЛЕНИЮ: Действия при аварии теплосети";
+        contentEl.innerHTML = part === 2 ? BROCHURE_TEXTS[1] + BROCHURE_TEXTS[2] : BROCHURE_TEXTS[1];
+      }
+      document.getElementById("brochure-modal").classList.add("visible");
+      renderUI(false);
+    }
+
+    async function closeBrochure() {
+      document.getElementById("brochure-modal").classList.remove("visible");
+      if (!state.isWalking && state.currentScene === "ev_defense") {
+        await crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
+      }
+      renderUI(false);
+    }
+
+    /* ============================================================================
+       7. СОСТОЯНИЕ ИГРЫ, ОГАРОК СВЕЧИ (candleBurnedMs) И ИНВЕНТАРЬ
+    ============================================================================ */
+    const MATCH_DURATION = 30000;
+    const CANDLE_DURATION = 360000;
+    const NEIGHBOR_ARRIVAL_DELAY = 180000;
+
+    const state = {
+      logicalRoom: "bedroom", currentScene: "bedroom",
+      lightMode: "intro",
+      matchStart: 0,
+      candleStart: 0,
+      candleBurnedMs: 0, // Сколько мс свеча уже прогорела (сохраняется при взгляде в глазок и окно!)
+      candleIgniteStart: 0, candleWickLitTime: 0, candleIgniteEnd: 0,
+
+      firstMatchTutorialShown: false,
+      matchTutorialSweepActive: false,
+
+      // Начальная последовательность:
+      robeDone: false, waterDone: false, toiletUsed: false, radiatorTouched: false,
+      basicNavUnlocked: false,
+      roomNavUnlocked: false,
+
+      wentOutside: false,
+      neighborVisited: false,
+      neighborPendingArrival: false,
+      neighborReturnTimer: null,
+      neighborArrivalTimerId: null,
+      inPeepholeDialog: false,
+      needsFoodForDice: false,
+      activeBetType: "stew",
+
+      hasCandle: false, hasDiceSet: false, hasBrochure1: false, hasDiceRules: false,
+      hasBrochure2: false, hasTape: false, hasEmptyCan: false,
+      hasGrannyCans: false, grannyCansFilled: false, grannyHelped: false,
+      hasBricks: false,
+      readBrochure1: false, readBrochure2: false,
+      doorSealed: false, windowsTaped: false,
+
+      hasShoes: false, hasCoat: false,
+      carpetsTaken: false, carpetsHung: false, stoveBuilt: false,
+      junkSearches: 0,
+      landingFloor: 3, landingDir: "down",
+      activeDoorApt: null,
+      activeOpponentId: 1,
+      oppProgress: { 1: 1, 2: 1, 3: 1, 4: 1 },
+      opp3Beaten: false,
+
+      isWalking: false, isKnocking: false, activeSlot: "a",
+
+      stewCount: 3, potatoStage: 5,
+      invStew: 0, invPotato: 0,
+
+      actOffset: 0, movOffset: 0,
+      autoReturnTimer: null,
+      backBtnTarget: null,
+      storyCardIds: ["check_switch"]
+    };
+
+    function triggerNeighborArrivalNow() {
+      if (state.neighborVisited || state.wentOutside) return;
+      if (state.logicalRoom === "landing" || state.isWalking) {
+        state.neighborPendingArrival = true;
+        return;
+      }
+      state.neighborPendingArrival = false;
+      startDoorKnockLoop();
+      setEventText("В тишине квартиры раздался настойчивый стук во входную дверь! Подойдите к выходу и посмотрите в глазок.");
+    }
+
+    function startNeighborArrivalCountdown() {
+      if (state.neighborArrivalTimerId) clearTimeout(state.neighborArrivalTimerId);
+      state.neighborArrivalTimerId = setTimeout(() => {
+        triggerNeighborArrivalNow();
+      }, NEIGHBOR_ARRIVAL_DELAY);
+    }
+
+    const setEventText = (t) => { document.getElementById("narrative-text").textContent = t; };
+    function addStoryCard(id, front = false) {
+      if (state.storyCardIds.includes(id)) return;
+      front ? state.storyCardIds.unshift(id) : state.storyCardIds.push(id);
+    }
+    function removeStoryCard(id) { state.storyCardIds = state.storyCardIds.filter((x) => x !== id); }
+
+    function checkInitialStepsProgress() {
+      // Если свеча уже найдена и зажжена, либо выполнены базовые шаги — открываем карточку «Потрогать батарею»
+      if (!state.radiatorTouched && ((state.hasCandle && (state.lightMode === "candle" || state.lightMode === "kerosene")) || (state.robeDone && state.waterDone && state.toiletUsed))) {
+        addStoryCard("touch_radiator", true);
+      }
+      if (state.radiatorTouched && state.hasCandle && (state.lightMode === "candle" || state.lightMode === "kerosene")) {
+        state.roomNavUnlocked = true;
+      }
+    }
+
+    function totalStewAvailable() {
+      return state.invStew + state.stewCount;
+    }
+    function spendOneStew() {
+      if (state.invStew > 0) { state.invStew--; updateBackpackBadge(); return true; }
+      if (state.stewCount > 0) { state.stewCount--; return true; }
+      return false;
+    }
+    function totalPotatoAvailable() {
+      return state.invPotato + state.potatoStage;
+    }
+    function spendOnePotato() {
+      if (state.invPotato > 0) { state.invPotato--; updateBackpackBadge(); return true; }
+      if (state.potatoStage > 0) { state.potatoStage--; return true; }
+      return false;
+    }
+
+    /* ИКОНКИ В ИНВЕНТАРЕ */
+    function getInventoryItemsList() {
+      const list = [];
+      if (state.invStew > 0) list.push({ key: "stew", sheet: 2, icon: 3, caption: `Тушёнка (${state.invStew} шт.)` });
+      if (state.invPotato > 0) list.push({ key: "potato", sheet: 2, icon: 14, caption: `Картошка (${state.invPotato} порц.)` });
+      if (state.hasCandle) list.push({ key: "candle", sheet: 1, icon: 7, caption: "Восковая свеча" });
+      if (state.hasDiceSet) list.push({ key: "dice_set", sheet: 2, icon: 11, caption: "Набор 6 кубиков" });
+      if (state.hasBrochure1) list.push({ key: "brochure_1", sheet: 3, icon: 4, caption: "Памятка ГО (Ч. I)" });
+      if (state.hasDiceRules) list.push({ key: "dice_rules", sheet: 3, icon: 4, caption: "Правила «Очко»" });
+      if (state.hasBrochure2) list.push({ key: "brochure_2", sheet: 3, icon: 4, caption: "Памятка ГО (Ч. II)" });
+      if (state.hasTape && !state.windowsTaped) list.push({ key: "tape", sheet: 3, icon: 5, caption: "Малярный скотч" });
+      if (state.hasEmptyCan && !state.stoveBuilt) list.push({ key: "empty_can", sheet: 3, icon: 9, caption: "Пустая банка" });
+      if (state.hasGrannyCans) {
+        list.push({
+          key: "granny_cans", sheet: 1, icon: 2,
+          caption: state.grannyCansFilled ? "Бидоны с водой (кв. 17)" : "Пустые бидоны (кв. 17)"
+        });
+      }
+      if (state.hasBricks && !state.stoveBuilt) list.push({ key: "bricks", sheet: 3, icon: 10, caption: "Кирпичи" });
+      return list;
+    }
+
+    function updateBackpackBadge() {
+      const count = getInventoryItemsList().length;
+      document.getElementById("backpack-badge").textContent = count;
+    }
+
+    /* МОДАЛКА НАХОДОК ПО ЦЕНТРУ ЭКРАНА */
+    function showLootModal(titleText, cardsArray) {
+      const modal = document.getElementById("loot-center-modal");
+      const row = document.getElementById("loot-cards-row");
+      document.getElementById("loot-modal-title").textContent = titleText;
+      row.innerHTML = "";
+
+      cardsArray.forEach((c, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "choice-card deal-anim";
+        btn.style.setProperty("--deal-delay", `${idx * 85}ms`);
+        const inner = document.createElement("div");
+        inner.className = "card-inner";
+        const iconDiv = document.createElement("div");
+        iconDiv.className = "card-icon-frame";
+        applyIconSprite(iconDiv, c.sheet, c.icon);
+        const cap = document.createElement("div");
+        cap.className = "choice-caption";
+        cap.textContent = c.caption;
+        inner.appendChild(iconDiv);
+        inner.appendChild(cap);
+        btn.appendChild(inner);
+        btn.onclick = () => {
+          playCardSound("click");
+          setEventText(c.desc || c.caption);
+        };
+        row.appendChild(btn);
+      });
+
+      playCardSound("deal");
+      modal.classList.add("visible");
+    }
+
+    function closeLootModal() {
+      document.getElementById("loot-center-modal").classList.remove("visible");
+      updateBackpackBadge();
+      if (!state.isWalking && state.currentScene === "ev_search_junk") {
+        crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
+      }
+      renderUI(true);
+    }
+
+    /* ПОЛНОЭКРАННЫЙ ИНВЕНТАРЬ */
+    function openInventoryScreen() {
+      renderInventoryGrid();
+      document.getElementById("inventory-screen").classList.add("visible");
+      playCardSound("click");
+    }
+    function closeInventoryScreen() {
+      document.getElementById("inventory-screen").classList.remove("visible");
+      renderCabinetItems();
+      renderUI(false);
+    }
+
+    function renderInventoryGrid() {
+      const grid = document.getElementById("inventory-grid");
+      const hint = document.getElementById("inventory-hint");
+      const items = getInventoryItemsList();
+      grid.innerHTML = "";
+      updateBackpackBadge();
+
+      if (items.length === 0) {
+        grid.innerHTML = `<div class="inv-empty-msg">Ваш вещмешок пока пуст.</div>`;
+        return;
+      }
+
+      const inKitchenOrCabinet = (state.logicalRoom === "kitchen" || state.currentScene === "cabinet");
+
+      items.forEach((item) => {
+        const wrap = document.createElement("div");
+        wrap.className = "inv-item-wrap";
+
+        const btn = document.createElement("button");
+        btn.className = "choice-card";
+        const inner = document.createElement("div");
+        inner.className = "card-inner";
+        const iconDiv = document.createElement("div");
+        iconDiv.className = "card-icon-frame";
+        applyIconSprite(iconDiv, item.sheet, item.icon);
+        const cap = document.createElement("div");
+        cap.className = "choice-caption";
+        cap.textContent = item.caption;
+        inner.appendChild(iconDiv);
+        inner.appendChild(cap);
+        btn.appendChild(inner);
+
+        btn.onclick = () => {
+          playCardSound("click");
+          if (item.key === "brochure_1") { closeInventoryScreen(); openBrochure(1); }
+          else if (item.key === "brochure_2") { closeInventoryScreen(); openBrochure(2); }
+          else if (item.key === "dice_rules") { closeInventoryScreen(); openBrochure("dice"); }
+          else if (item.key === "dice_set") { openOchkoBoxOnly(); }
+          else if (item.key === "candle") {
+            igniteCandle();
+            hint.textContent = "Вы зажгли восковую свечу.";
+          } else if (item.key === "stew") {
+            hint.textContent = "Банка мясной тушёнки в вещмешке. Можно съесть, поставить на кон в кости или выложить обратно в шкаф.";
+          } else if (item.key === "potato") {
+            hint.textContent = "Сырая картошка из шкафа. Первый сосед (кв. 20) согласен играть в кости и на картошку!";
+          } else if (item.key === "granny_cans") {
+            hint.textContent = state.grannyCansFilled
+              ? "Полные бидоны с водой для бабушки из кв. 17. Отнесите их ей на 1-й этаж!"
+              : "Пустые бидоны бабушки из кв. 17. Наберите в них воды на уличной колонке.";
+          } else {
+            hint.textContent = item.caption;
+          }
+        };
+        wrap.appendChild(btn);
+
+        if (item.key === "stew") {
+          const eatBtn = document.createElement("button");
+          eatBtn.className = "inv-sub-btn";
+          eatBtn.textContent = "Съесть";
+          eatBtn.onclick = () => {
+            if (state.invStew <= 0) return;
+            state.invStew--;
+            playSnd1("ОТКРЫВАЕТ КОНСЕРВУ", 0.95);
+            hint.textContent = "Вы открыли и съели банку тушёнки. Стало немного теплее.";
+            renderInventoryGrid();
+          };
+          wrap.appendChild(eatBtn);
+
+          if (inKitchenOrCabinet && state.stewCount < 6) {
+            const putBtn = document.createElement("button");
+            putBtn.className = "inv-sub-btn";
+            putBtn.textContent = "На полку шкафа";
+            putBtn.onclick = () => {
+              if (state.invStew <= 0 || state.stewCount >= 6) return;
+              state.invStew--; state.stewCount++;
+              playCardSound("deal");
+              hint.textContent = "Вы вернули банку тушёнки обратно на полку шкафа.";
+              renderInventoryGrid();
+            };
+            wrap.appendChild(putBtn);
+          }
+        }
+
+        if (item.key === "potato" && inKitchenOrCabinet && state.potatoStage < 5) {
+          const putPotBtn = document.createElement("button");
+          putPotBtn.className = "inv-sub-btn";
+          putPotBtn.textContent = "В мешок на полке";
+          putPotBtn.onclick = () => {
+            if (state.invPotato <= 0 || state.potatoStage >= 5) return;
+            state.invPotato--; state.potatoStage++;
+            playCardSound("deal");
+            hint.textContent = "Вы вернули порцию картошки обратно в мешок на полке.";
+            renderInventoryGrid();
+          };
+          wrap.appendChild(putPotBtn);
+        }
+
+        grid.appendChild(wrap);
+      });
+    }
+
+    /* ============================================================================
+       8. МГНОВЕННОЕ ОТКРЫТИЕ ОЧКО.HTML БЕЗ ПЕРЕЗАГРУЗКИ IFRAME (POSTMESSAGE)
+    ============================================================================ */
+    function sendOrOpenOchkoModal(payload) {
+      const wrap = document.getElementById("ochko-modal-wrap");
+      const iframe = document.getElementById("ochko-iframe");
+      if (!iframe) return;
+
+      const msg = { type: "OCHKO_OPEN", ...payload };
+
+      // Если фрейм уже предзагружен — отправляем postMessage и мгновенно показываем оверлей без перезагрузки!
+      if (ochkoIframeReady && iframe.contentWindow && iframe.src && !iframe.src.endsWith("about:blank")) {
+        try {
+          iframe.contentWindow.postMessage(msg, "*");
+        } catch (e) {}
+        wrap.classList.add("visible");
+      } else {
+        pendingOchkoMessage = msg;
+        iframe.onload = () => {
+          ochkoIframeReady = true;
+          if (pendingOchkoMessage && iframe.contentWindow) {
+            try { iframe.contentWindow.postMessage(pendingOchkoMessage, "*"); } catch (e) {}
+            pendingOchkoMessage = null;
+          }
+          wrap.classList.add("visible");
+        };
+        const q = payload.mode === "box"
+          ? "Очко.html?mode=box"
+          : `Очко.html?mode=match&opponent=${payload.opponent || 1}&game=${payload.game || 1}&bg=${encodeURIComponent(payload.bg || "вход.jpg")}`;
+        iframe.src = q;
+      }
+    }
+
+    function openOchkoBoxOnly() {
+      sendOrOpenOchkoModal({ mode: "box" });
+    }
+
+    function openOchkoMatch(opponentId = 1) {
+      // Первый сосед (в глазке и в кв. 20) соглашается играть и на тушёнку, и на картошку!
+      // Остальные соседи играют только на тушёнку.
+      if (opponentId === 1) {
+        if (state.invStew <= 0 && state.invPotato <= 0) {
+          state.needsFoodForDice = true;
+          setEventText("«Пустыми руками за стол не садятся! Возьми на кухне в шкафчике банку тушёнки или хотя бы картошки в вещмешок, тогда и сыграем!»");
+          return;
+        }
+        state.activeBetType = state.invStew > 0 ? "stew" : "potato";
+      } else {
+        if (state.invStew <= 0) {
+          state.needsFoodForDice = true;
+          setEventText("«На картошку я не играю — неси банку настоящей тушёнки в вещмешке, чтобы было что на кон поставить!»");
+          return;
+        }
+        state.activeBetType = "stew";
+      }
+
+      state.needsFoodForDice = false;
+      removeStoryCard("go_take_stew");
+      state.activeOpponentId = opponentId;
+      const gameNum = state.oppProgress[opponentId] || 1;
+      const bgFile = SCENE_IMAGES[state.currentScene] || "вход.jpg";
+
+      sendOrOpenOchkoModal({
+        mode: "match",
+        opponent: opponentId,
+        game: gameNum,
+        bg: bgFile,
+        betType: state.activeBetType
+      });
+    }
+
+    window.addEventListener("message", (e) => {
+      const data = e.data;
+      if (!data || typeof data !== "object") return;
+
+      if (data.type === "OCHKO_BOX_CLOSED") {
+        if (Array.isArray(data.playerSkins)) {
+          try { localStorage.setItem("ochko_player_skins", JSON.stringify(data.playerSkins)); } catch (err) {}
+        }
+        const wrap = document.getElementById("ochko-modal-wrap");
+        wrap.classList.remove("visible");
+        // НЕ сбрасываем iframe.src = "about:blank", чтобы фрейм оставался в памяти!
+        renderInventoryGrid();
+      } else if (data.type === "OCHKO_MATCH_FINISHED") {
+        if (data.ownedCounts) {
+          try { localStorage.setItem("ochko_owned_counts", JSON.stringify(data.ownedCounts)); } catch (err) {}
+        }
+        if (Array.isArray(data.playerSkins)) {
+          try { localStorage.setItem("ochko_player_skins", JSON.stringify(data.playerSkins)); } catch (err) {}
+        }
+
+        const wrap = document.getElementById("ochko-modal-wrap");
+        wrap.classList.remove("visible");
+        // НЕ сбрасываем iframe.src = "about:blank"!
+
+        const oppId = Number(data.opponentId) || state.activeOpponentId || 1;
+        if (data.won) {
+          state.oppProgress[oppId] = 2;
+          if (oppId === 3) state.opp3Beaten = true;
+          const stakeWord = state.activeBetType === "potato" ? "Порция картошки" : "Банка тушёнки";
+          setEventText(`Вы выиграли партию в «Костяное Очко»! ${stakeWord} в вещмешке остаётся при вас, а вы забираете 2 трофейные кости соперника в свой ящик!`);
+        } else {
+          if (state.activeBetType === "potato") {
+            state.invPotato = Math.max(0, state.invPotato - 1);
+            setEventText("Вы уступили в партии в «Костяное Очко» и отдали поставленную на кон порцию картошки из вещмешка.");
+          } else {
+            state.invStew = Math.max(0, state.invStew - 1);
+            setEventText("Вы уступили в партии в «Костяное Очко» и отдали поставленную на кон банку тушёнки из вещмешка.");
+          }
+          updateBackpackBadge();
+        }
+
+        if (state.inPeepholeDialog) {
+          finishPeepholeNeighborDialog();
+          if (state.currentScene === "ev_peephole_lit_2") {
+            crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
+          }
+        }
+        renderUI(true);
+      }
+    });
+
+    /* ============================================================================
+       9. СПИЧКА, СВЕЧА, ОБУЧАЮЩИЙ ПРОЛЁТ И СОХРАНЕНИЕ ОГАРКА (candleBurnedMs)
+    ============================================================================ */
+    function startMatchTutorialSweep() {
+      const hintEl = document.getElementById("match-tutorial-hint");
+      if (hintEl) hintEl.classList.add("visible");
+      state.matchTutorialSweepActive = true;
+      const sweepStart = performance.now();
+      const sweepDuration = 2900;
+
+      function stepSweep(now) {
+        if (!state.matchTutorialSweepActive || isDraggingTorch || state.lightMode !== "match") {
+          state.matchTutorialSweepActive = false;
+          if (!isDraggingTorch) {
+            torchOffsetX = 0;
+            torchOffsetY = 0;
+          }
+          return;
+        }
+        const p = Math.min(1, (now - sweepStart) / sweepDuration);
+        const stRect = stageEl.getBoundingClientRect();
+        const ampX = (stRect.width || window.innerWidth) * 0.28;
+        const ampY = (stRect.height || window.innerHeight) * 0.22;
+
+        // Плавный пролёт влево -> вправо -> возврат в центр
+        const env = Math.sin(p * Math.PI);
+        torchOffsetX = Math.sin(p * Math.PI * 2) * ampX * env;
+        torchOffsetY = -Math.sin(p * Math.PI) * ampY;
+
+        if (p < 1) {
+          requestAnimationFrame(stepSweep);
+        } else {
+          state.matchTutorialSweepActive = false;
+          torchOffsetX = 0;
+          torchOffsetY = 0;
+        }
+      }
+      requestAnimationFrame(stepSweep);
+    }
+
+    function hideMatchTutorialHint() {
+      const hintEl = document.getElementById("match-tutorial-hint");
+      if (hintEl) hintEl.classList.remove("visible");
+      state.matchTutorialSweepActive = false;
+    }
+
+    function igniteMatch(playSoundAlreadyDone = false) {
+      if (!playSoundAlreadyDone) playSnd1("СПИЧКА", 0.9);
+      state.lightMode = "match";
+      state.matchStart = performance.now();
+      flameCanvas.style.display = "block";
+      document.body.setAttribute("data-lit", "true");
+
+      if (!state.firstMatchTutorialShown) {
+        state.firstMatchTutorialShown = true;
+        startMatchTutorialSweep();
+      }
+    }
+
+    function igniteCandle(playSoundAlreadyDone = false) {
+      if (!playSoundAlreadyDone) playSnd1("СПИЧКА", 0.9);
+      state.hasCandle = true;
+      // Если свеча ранее полностью догорела до конца, начинаем новую; иначе продолжаем с того же огарка state.candleBurnedMs!
+      if (state.candleBurnedMs >= CANDLE_DURATION - 500) {
+        state.candleBurnedMs = 0;
+      }
+      state.lightMode = "candle";
+      const now = performance.now();
+      state.candleIgniteStart = now;
+      state.candleWickLitTime = now + 720;
+      state.candleStart = now + 720;
+      state.candleIgniteEnd = now + 2200;
+      flameCanvas.style.display = "block";
+      document.body.setAttribute("data-lit", "true");
+      checkInitialStepsProgress();
+      updateBackpackBadge();
+    }
+
+    // Сохранение огарка и тушение при взгляде в глазок или в окно
+    function pauseAndExtinguishLightForView() {
+      const now = performance.now();
+      if (state.lightMode === "candle") {
+        if (now > state.candleStart) {
+          state.candleBurnedMs = Math.min(CANDLE_DURATION, state.candleBurnedMs + (now - state.candleStart));
+        }
+      }
+      if (state.lightMode !== "kerosene") {
+        state.lightMode = "none";
+        stopTorchDrag();
+        flameCanvas.style.display = "none";
+        document.body.setAttribute("data-lit", "false");
+        addStoryCard(state.hasCandle ? "light_candle" : "light_match", true);
+      }
+    }
+
+    /* ============================================================================
+       9.1. 5 ЭТАЖЕЙ ПОДЪЕЗДА (18 И 14 КАРТИНОК) И МАРШРУТЫ
+    ============================================================================ */
+    function resolveRoomSceneKey(roomKey) {
+      if (roomKey === "bedroom") return state.stoveBuilt ? "ev_stove" : (state.carpetsHung ? "ev_all_covered" : "bedroom");
+      if (roomKey === "junkroom") return state.carpetsTaken ? "junkroom_empty" : "junkroom";
+      if (roomKey === "landing") {
+        // Папка события/подъезд 1/ (18 картинок, спуск сверху вниз с 5-го этажа):
+        // 5 этаж: p1_1, 4 этаж: p1_5, 3 этаж (наш): p1_9, 2 этаж: p1_13, 1 этаж: p1_17
+        if (state.landingDir === "down") {
+          return `p1_${{ 5: 1, 4: 5, 3: 9, 2: 13, 1: 17 }[state.landingFloor] || 9}`;
+        }
+        // Папка события/подъезд 2/ (14 картинок, подъём снизу вверх с 1-го на 5-й этаж):
+        // 1 этаж: p2_2, 2 этаж: p2_5, 3 этаж (наш): p2_8, 4 этаж: p2_11, 5 этаж: p2_14
+        return `p2_${{ 1: 2, 2: 5, 3: 8, 4: 11, 5: 14 }[state.landingFloor] || 8}`;
+      }
+      return roomKey;
+    }
+
+    function buildStairwellFrames(fromFloor, toFloorOrStreet) {
+      const seq = [];
+      if (toFloorOrStreet === "street") {
+        const start = { 5: 2, 4: 6, 3: 10, 2: 14, 1: 18 }[fromFloor] || 10;
+        for (let i = start; i <= 18; i++) seq.push(`p1_${i}`);
+        return seq;
+      }
+      const tf = Number(toFloorOrStreet);
+      if (tf < fromFloor) {
+        const s = { 5: 2, 4: 6, 3: 10, 2: 14 }[fromFloor];
+        const e = { 4: 5, 3: 9, 2: 13, 1: 17 }[tf];
+        for (let i = s; i <= e; i++) seq.push(`p1_${i}`);
+      } else if (tf > fromFloor) {
+        const s = { 1: 3, 2: 6, 3: 9, 4: 12 }[fromFloor];
+        const e = { 2: 5, 3: 8, 4: 11, 5: 14 }[tf];
+        for (let i = s; i <= e; i++) seq.push(`p2_${i}`);
+      }
+      return seq;
+    }
+
+    function buildApartmentRoute(from, to) {
+      if (!from || from === to) return [];
+      const targetKey = resolveRoomSceneKey(to);
+      if (from === "kitchen") {
+        if (to === "entrance") return ["kitchen_rev", "corridor_main_rev", "entrance"];
+        if (to === "bedroom" || to === "junkroom") return ["kitchen_rev", "corridor_main_rev", "corridor_room_rev", targetKey];
+        return ["kitchen_rev", "corridor_main_rev", targetKey];
+      }
+      if (from === "junkroom") {
+        if (to === "bedroom") return ["junkroom_rev", targetKey];
+        if (to === "entrance") return ["junkroom_rev", "corridor_room", "entrance"];
+        return ["junkroom_rev", "corridor_room", "corridor_main", targetKey];
+      }
+      if (from === "bedroom") {
+        if (to === "junkroom") return ["bedroom_rev", targetKey];
+        if (to === "entrance") return ["bedroom_rev", "corridor_room", "entrance"];
+        return ["bedroom_rev", "corridor_room", "corridor_main", targetKey];
+      }
+      if (from === "entrance") {
+        if (to === "bedroom" || to === "junkroom") return ["corridor_room_rev", targetKey];
+        return ["corridor_main", targetKey];
+      }
+      if (from === "toilet" || from === "bath") {
+        if (to === "kitchen" || to === "toilet" || to === "bath") return ["corridor_main", targetKey];
+        if (to === "entrance") return ["corridor_main_rev", "entrance"];
+        return ["corridor_main_rev", "corridor_room_rev", targetKey];
+      }
+      return [targetKey];
+    }
+
+    const slotA = document.getElementById("slot-a"), slotB = document.getElementById("slot-b");
+    let walkBobIntensity = 0;
+
+    function isSceneHidingTorch(sceneKey) {
+      if (!sceneKey) return false;
+      return (
+        sceneKey.startsWith("ev_peephole_") ||
+        sceneKey.startsWith("ev_window_") ||
+        sceneKey === "ev_yard_window"
+      );
+    }
+
+    function updateFlameVisibility() {
+      const hasActiveFlame = state.lightMode === "match" || state.lightMode === "candle" || state.lightMode === "kerosene";
+      const hideByScene = isSceneHidingTorch(state.currentScene);
+      flameCanvas.style.display = (hasActiveFlame && !hideByScene) ? "block" : "none";
+    }
+
+    function setBackButtonTarget(sceneKeyOrNull, label = "Отойти назад") {
+      state.backBtnTarget = sceneKeyOrNull;
+      const btn = document.getElementById("scene-back-btn");
+      const hud = document.getElementById("bottom-hud");
+      btn.textContent = label;
+      btn.classList.toggle("visible", Boolean(sceneKeyOrNull));
+      const hideHud = Boolean(sceneKeyOrNull) || isNeighborCenterChoiceActive();
+      hud.classList.toggle("hidden-hud", hideHud);
+    }
+
+    async function handleSceneBackBtn() {
+      if (state.isWalking || !state.backBtnTarget) return;
+      const target = state.backBtnTarget;
+      state.activeDoorApt = null;
+      state.inPeepholeDialog = false;
+      removeStoryCard("play_dice_door");
+      removeStoryCard("leave_door_view");
+      setBackButtonTarget(null);
+      hideNpc();
+      if (state.needsFoodForDice) {
+        addStoryCard("go_take_stew", true);
+      }
+      await crossfadeToScene(target, false);
+      renderCabinetItems();
+      renderUI(true);
+    }
+
+    function clearAutoReturn() {
+      if (state.autoReturnTimer) { clearTimeout(state.autoReturnTimer); state.autoReturnTimer = null; }
+    }
+
+    /* ФОЛБЭК ПУТЕЙ: ПРОВЕРКА В СОБЫТИЯ/ И В КОРНЕВОЙ ПАПКЕ + ВАРИАНТЫ Ё И Е */
+    function buildFallbackBgUrls(rawPath, sceneKey = "") {
+      const parts = rawPath.split("/");
+      const file = parts.pop();
+      const capFile = file.charAt(0).toUpperCase() + file.slice(1);
+      const dir = parts.length ? parts.join("/") + "/" : "";
+
+      const baseNames = [file, capFile];
+      // Добавляем варианты с заменой ё <-> е
+      [...baseNames].forEach((n) => {
+        if (n.includes("ё") || n.includes("Ё")) {
+          baseNames.push(n.replace(/ё/g, "е").replace(/Ё/g, "Е"));
+        }
+        if (n.includes("е") || n.includes("Е")) {
+          // Для известных слов («всё завешано», «ковёр») добавим и вариант с «ё»
+          baseNames.push(n.replace(/все /gi, "всё ").replace(/ковер/gi, "ковёр"));
+        }
+      });
+
+      const candidates = [];
+      // Проверяем как в указанной папке, так и в события/ и в корневой папке
+      baseNames.forEach((bn) => {
+        if (dir) {
+          candidates.push(`${dir}${bn}`);
+          candidates.push(bn); // в корневой папке
+        } else {
+          candidates.push(bn);
+          candidates.push(`события/${bn}`); // в папке события/
+        }
+      });
+
+      if (sceneKey.startsWith("door_")) {
+        const isOpen = sceneKey.endsWith("_open");
+        const apt = sceneKey.replace("door_", "").replace("_open", "");
+        if (isOpen) {
+          candidates.push(
+            `события/двери/${apt} открытая.jpg`,
+            `двери/${apt} открытая.jpg`,
+            `события/двери/${apt} открыта.jpg`,
+            `двери/${apt} открыта.jpg`,
+            `события/двери/${apt}.jpg`,
+            `двери/${apt}.jpg`
+          );
+        } else {
+          candidates.push(`двери/${file}`, `события/кв ${apt}.jpg`, `кв ${apt}.jpg`);
+        }
+      } else if (sceneKey.startsWith("street_")) {
+        candidates.push(`улица/${file}`, `события/улица ${file}`);
+      }
+
+      return [...new Set(candidates)].map((p) => `url("${encodeURI(p)}")`).join(", ");
+    }
+
+    function applyBackgroundToSlot(slot, key) {
+      const rawPath = SCENE_IMAGES[key] || SCENE_IMAGES.bedroom;
+      const bgVal = buildFallbackBgUrls(rawPath, key);
+      const isFullBright = FULL_BRIGHT_SCENES.has(key);
+      slot.classList.toggle("no-darkness", isFullBright);
+      document.body.setAttribute("data-fullbright", isFullBright ? "true" : "false");
+      slot.querySelector(".layer-dark").style.backgroundImage = bgVal;
+      slot.querySelector(".layer-lit").style.backgroundImage = bgVal;
+    }
+
+    function crossfadeToScene(sceneKey, playStep = true) {
+      clearAutoReturn();
+      return new Promise((resolve) => {
+        const inc = state.activeSlot === "a" ? slotB : slotA;
+        const out = state.activeSlot === "a" ? slotA : slotB;
+        document.getElementById("cabinet-items-layer").classList.remove("visible");
+        applyBackgroundToSlot(inc, sceneKey);
+        inc.className = "scene-slot incoming-prep" + (FULL_BRIGHT_SCENES.has(sceneKey) ? " no-darkness" : "");
+        void inc.offsetWidth;
+        inc.className = "scene-slot current" + (FULL_BRIGHT_SCENES.has(sceneKey) ? " no-darkness" : "");
+        out.className = "scene-slot outgoing" + (out.classList.contains("no-darkness") ? " no-darkness" : "");
+        state.activeSlot = state.activeSlot === "a" ? "b" : "a";
+        state.currentScene = sceneKey;
+        updateFlameVisibility();
+        if (playStep) playFootstepSound();
+        setTimeout(resolve, 860);
+      });
+    }
+
+    async function showActionCloseup(sceneKey, playStep = false, holdReturn = true) {
+      clearAutoReturn();
+      if (state.currentScene !== sceneKey) {
+        await crossfadeToScene(sceneKey, playStep);
+      } else if (playStep) {
+        playFootstepSound();
+      }
+      const baseScene = resolveRoomSceneKey(state.logicalRoom);
+      const nonAutoReturn = new Set([baseScene, "cabinet", "ev_peephole_lit_2", "ev_peephole_empty_2", "ev_yard_window", "ev_defense"]);
+      if (holdReturn && !nonAutoReturn.has(sceneKey) && !sceneKey.startsWith("door_")) {
+        state.autoReturnTimer = setTimeout(async () => {
+          state.autoReturnTimer = null;
+          if (!state.isWalking && state.currentScene === sceneKey && !state.backBtnTarget) {
+            await crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
+            renderCabinetItems();
+          }
+        }, 2800);
+      }
+    }
+
+    const ROOMS_WITH_DOORS = new Set(["bedroom", "junkroom", "toilet", "bath", "kitchen"]);
+
+    async function walkToRoom(targetRoom) {
+      if (state.isWalking) return;
+      clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
+      state.activeDoorApt = null;
+      state.inPeepholeDialog = false;
+      removeStoryCard("play_dice_door");
+      removeStoryCard("leave_door_view");
+      if (state.logicalRoom === targetRoom) {
+        const sc = resolveRoomSceneKey(targetRoom);
+        if (state.currentScene !== sc) await crossfadeToScene(sc, false);
+        return;
+      }
+      const fromRoom = state.logicalRoom;
+      const frames = buildApartmentRoute(fromRoom, targetRoom);
+      state.isWalking = true; renderUI(false); walkBobIntensity = 1;
+
+      if (ROOMS_WITH_DOORS.has(fromRoom)) playDoorCreakSound();
+      for (const frameKey of frames) {
+        await crossfadeToScene(frameKey, true);
+      }
+      if (ROOMS_WITH_DOORS.has(targetRoom)) playDoorCreakSound();
+
+      state.logicalRoom = targetRoom;
+      state.actOffset = 0; state.movOffset = 0;
+      walkBobIntensity = 0; state.isWalking = false;
+      renderCabinetItems();
+      renderUI(true);
+    }
+
+    async function playStairwellSequence(frames) {
+      clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
+      state.activeDoorApt = null;
+      state.inPeepholeDialog = false;
+      removeStoryCard("play_dice_door");
+      removeStoryCard("leave_door_view");
+      state.isWalking = true; renderUI(false); walkBobIntensity = 1;
+      for (const f of frames) {
+        await crossfadeToScene(f, true);
+      }
+      walkBobIntensity = 0; state.isWalking = false;
+      state.actOffset = 0; state.movOffset = 0;
+      renderUI(true);
+    }
+
+    /* ============================================================================
+       10. ПЕРЕМЕЩЕНИЯ СПРАВА (КВАРТИРА + 5 ЭТАЖЕЙ ПОДЪЕЗДА + 16 КАДРОВ УЛИЦЫ)
+    ============================================================================ */
+    const APARTMENT_MOVE_CARDS = [
+      { room: "kitchen",  sheet: 5, icon: 1, caption: "Кухня" },
+      { room: "bedroom",  sheet: 5, icon: 2, caption: "Спальня" },
+      { room: "junkroom", sheet: 5, icon: 3, caption: "Комната с хламом" },
+      { room: "toilet",   sheet: 5, icon: 4, caption: "Туалет" },
+      { room: "bath",     sheet: 5, icon: 5, caption: "Ванна" },
+      { room: "entrance", sheet: 5, icon: 6, caption: "Выход" }
+    ];
+
+    async function navigateToRoomFromPanel(targetRoom) {
+      if (state.isWalking) return;
+      if (state.lightMode === "none") {
+        setEventText("В кромешной темноте не пройти — сначала зажгите спичку или свечу!");
+        addStoryCard(state.hasCandle ? "light_candle" : "light_match", true);
+        renderUI(true);
+        return;
+      }
+      await walkToRoom(targetRoom);
+
+      if (targetRoom === "toilet") {
+        if (!state.toiletUsed) {
+          state.toiletUsed = true; removeStoryCard("go_toilet");
+          playSnd1("СМЫВ", 0.9);
+          await showActionCloseup("ev_flush", false, true);
+          setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
+          checkInitialStepsProgress();
+        } else {
+          setEventText("Вы в туалете. Вода в бачке пустая.");
+        }
+      } else if (targetRoom === "bath") setEventText("Вы заглянули в ванную комнату. Здесь сыро и холодно.");
+      else if (targetRoom === "kitchen") setEventText("Вы на кухне.");
+      else if (targetRoom === "bedroom") setEventText("Вы в спальне.");
+      else if (targetRoom === "junkroom") setEventText("Вы в комнате с хламом. Поройтесь в коробках, чтобы найти свечку.");
+      else if (targetRoom === "entrance") setEventText("Вы у входной двери в прихожей.");
+      renderUI(true);
+    }
+
+    function getRightMoveDeck() {
+      if (!state.basicNavUnlocked && !state.roomNavUnlocked) return [];
+      if (isNeighborCenterChoiceActive()) return [];
+
+      // Пока батарея не потрогана и свеча не горит, свободное передвижение по всей квартире ограничено
+      if (!state.roomNavUnlocked) {
+        const earlyRooms = new Set(["bedroom", "kitchen", "toilet", "junkroom"]);
+        return APARTMENT_MOVE_CARDS
+          .filter((m) => earlyRooms.has(m.room) && m.room !== state.logicalRoom)
+          .map((m) => ({
+            id: `move_${m.room}`, sheet: m.sheet, icon: m.icon, caption: m.caption,
+            action: () => navigateToRoomFromPanel(m.room)
+          }));
+      }
+
+      if (state.logicalRoom !== "landing") {
+        return APARTMENT_MOVE_CARDS
+          .filter((m) => m.room !== state.logicalRoom)
+          .map((m) => ({
+            id: `move_${m.room}`, sheet: m.sheet, icon: m.icon, caption: m.caption,
+            action: () => navigateToRoomFromPanel(m.room)
+          }));
+      }
+
+      if (state.activeDoorApt) return [];
+
+      const moves = [];
+      if (state.landingFloor < 5) {
+        moves.push({
+          id: "move_up", sheet: 4, icon: 1, caption: `На ${state.landingFloor + 1} этаж`,
+          action: async () => {
+            const nextF = state.landingFloor + 1;
+            state.landingDir = "up";
+            const seq = buildStairwellFrames(state.landingFloor, nextF);
+            state.landingFloor = nextF;
+            await playStairwellSequence(seq);
+            setEventText(`Вы поднялись на ${state.landingFloor}-й этаж подъезда.`);
+          }
+        });
+      }
+      if (state.landingFloor > 1) {
+        moves.push({
+          id: "move_down", sheet: 4, icon: 2, caption: `На ${state.landingFloor - 1} этаж`,
+          action: async () => {
+            const nextF = state.landingFloor - 1;
+            state.landingDir = "down";
+            const seq = buildStairwellFrames(state.landingFloor, nextF);
+            state.landingFloor = nextF;
+            await playStairwellSequence(seq);
+            setEventText(`Вы спустились на ${state.landingFloor}-й этаж подъезда.`);
+          }
+        });
+      }
+      moves.push({
+        id: "move_outside", sheet: 4, icon: 4, caption: "Выйти на улицу",
+        action: async () => {
+          state.landingDir = "down";
+          const seq = buildStairwellFrames(state.landingFloor, "street");
+          await playStairwellSequence(seq);
+
+          state.isWalking = true; renderUI(false); walkBobIntensity = 1;
+          playSnd2("ШАГИ СНЕГ", 0.9); playSnd2("СИЛЬНАЯ МЕТЕЛЬ", 0.85);
+          setEventText("Вы выходите из подъезда в слепящую метель и пробираетесь сквозь сугробы к уличной колонке...");
+
+          for (let u = 1; u <= 16; u++) {
+            if (u === 8) {
+              playSnd2("колонка", 0.9);
+              setEventText("Вы качаете обледеневший рычаг колонки и набираете ледяную воду...");
+            }
+            if (u === 12) {
+              playSnd2("ШАГИ СНЕГ 2", 0.85);
+              setEventText("С полными ёмкостями воды вы спешите обратно к спасительному подъезду...");
+            }
+            await crossfadeToScene(`street_${u}`, false);
+          }
+
+          const firstTrip = !state.wentOutside;
+          state.wentOutside = true;
+          if (state.hasGrannyCans) state.grannyCansFilled = true;
+          updateBackpackBadge();
+
+          state.landingFloor = 1; state.landingDir = "up";
+          await playStairwellSequence(["p2_1", "p2_2"]);
+
+          if (firstTrip) {
+            addStoryCard("collect_carpets", true);
+            setEventText(
+              state.grannyCansFilled
+                ? "Вы вернулись с улицы на 1-й этаж с водой и полными бидонами бабушки! Занесите воду в кв. 17 или поднимитесь на 3-й этаж домой."
+                : "Вы набрали воды на улице и вернулись в подъезд (1-й этаж). Поднимитесь на 3-й этаж домой!"
+            );
+          } else {
+            setEventText("Вы вернулись с морозной улицы на 1-й этаж подъезда.");
+          }
+          renderUI(true);
+        }
+      });
+      return moves;
+    }
+
+    /* ============================================================================
+       11. БАЗА КАРТОЧЕК ДЕЙСТВИЙ И АВТО-МАРШРУТ ЗА ТУШЁНКОЙ
+    ============================================================================ */
+    function finishPeepholeNeighborDialog() {
+      state.inPeepholeDialog = false;
+      removeStoryCard("agree_trade");
+      removeStoryCard("agree_trade_potato");
+      removeStoryCard("play_dice_neighbor");
+      removeStoryCard("refuse_trade");
+      addStoryCard("check_tap", true);
+      addStoryCard("put_coat", true);
+      addStoryCard("put_shoes", true);
+      if (state.needsFoodForDice) {
+        addStoryCard("go_take_stew", true);
+      }
+      hideNpc();
+    }
+
+    const CARDS_DB = {
+      check_switch: {
+        sheet: 1, icon: 3, caption: "Включить свет",
+        action: async () => {
+          removeStoryCard("check_switch"); playSnd1("ВЫКЛЮЧАТЕЛЬ", 0.9);
+          await showActionCloseup("ev_switch", false, true);
+          setEventText("Вы щёлкаете выключателем — электричества нет. Нужно зажечь спичку.");
+          addStoryCard("light_match", true); renderUI(true);
+        }
+      },
+      light_match: {
+        sheet: 2, icon: 7, caption: "Зажечь спичку",
+        instantSound: () => playSnd1("СПИЧКА", 0.9),
+        action: async () => {
+          const wasIntro = state.lightMode === "intro";
+          removeStoryCard("light_match");
+          igniteMatch(true);
+          if (wasIntro) {
+            state.basicNavUnlocked = true;
+            await showActionCloseup(resolveRoomSceneKey("bedroom"), false, false);
+            addStoryCard("put_robe");
+            addStoryCard("water");
+            addStoryCard("room_search_junk");
+            addStoryCard("go_toilet", true);
+            setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
+          } else if (!state.toiletUsed) {
+            setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
+          } else if (!state.hasCandle) {
+            setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
+          }
+          renderUI(true);
+        }
+      },
+      put_robe: {
+        sheet: 2, icon: 1, caption: "Надеть халат",
+        action: async () => {
+          removeStoryCard("put_robe");
+          await walkToRoom("bedroom");
+          playSnd2("одежда", 0.9);
+          await showActionCloseup("ev_robe", false, true);
+          state.robeDone = true;
+          if (!state.toiletUsed) {
+            setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
+          } else if (!state.hasCandle) {
+            setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
+          } else {
+            setEventText("Вы надели тёплый махровый халат.");
+          }
+          checkInitialStepsProgress();
+          renderUI(true);
+        }
+      },
+      water: {
+        sheet: 1, icon: 2, caption: "Выпить воды",
+        action: async () => {
+          removeStoryCard("water");
+          await walkToRoom("kitchen");
+          playSnd1("СТАКАН С ВОДОЙ", 0.9);
+          await showActionCloseup("ev_glass", false, true);
+          state.waterDone = true;
+          if (!state.toiletUsed) {
+            setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
+          } else if (!state.hasCandle) {
+            setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
+          } else {
+            setEventText("Вы выпили стакан ледяной воды на кухне.");
+          }
+          checkInitialStepsProgress();
+          renderUI(true);
+        }
+      },
+      go_toilet: {
+        sheet: 5, icon: 4, caption: "Сходить в туалет",
+        action: async () => {
+          removeStoryCard("go_toilet");
+          await walkToRoom("toilet");
+          state.toiletUsed = true;
+          playSnd1("СМЫВ", 0.9);
+          await showActionCloseup("ev_flush", false, true);
+          setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
+          checkInitialStepsProgress();
+          renderUI(true);
+        }
+      },
+      touch_radiator: {
+        sheet: 1, icon: 3, caption: "Потрогать батарею",
+        action: async () => {
+          removeStoryCard("touch_radiator");
+          state.radiatorTouched = true;
+          playFootstepSound();
+          checkInitialStepsProgress();
+          if (!state.hasCandle) {
+            setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
+          } else {
+            setEventText("Батарея абсолютно ледяная — отопление отключили! Теперь в квартире доступны все комнаты и действия.");
+          }
+          renderUI(true);
+        }
+      },
+
+      /* ПОИСК В ХЛАМЕ */
+      room_search_junk: {
+        sheet: 1, icon: 6, caption: "Порыться в хламе",
+        action: async () => {
+          if (state.logicalRoom !== "junkroom") await walkToRoom("junkroom");
+          playSnd1("ХЛАМ", 0.9);
+          await showActionCloseup("ev_search_junk", false, false);
+          state.junkSearches++;
+
+          if (state.junkSearches === 1) {
+            removeStoryCard("room_search_junk");
+            state.hasCandle = true;
+            state.hasDiceSet = true;
+            state.hasBrochure1 = true;
+            state.hasDiceRules = true;
+            addStoryCard("light_candle", true);
+            checkInitialStepsProgress();
+
+            showLootModal("Вы нашли в коробках с хламом:", [
+              { sheet: 1, icon: 7, caption: "Восковая свеча", desc: "Длинная восковая свеча. Зажгите её, чтобы не жечь спички!" },
+              { sheet: 2, icon: 11, caption: "Набор 6 кубиков", desc: "Шесть карболитовых кубиков для игры в «Костяное Очко»." },
+              { sheet: 3, icon: 4, caption: "Памятка ГО (Ч. I)", desc: "Первая часть брошюры Гражданской Обороны. Прочитайте её!" },
+              { sheet: 3, icon: 4, caption: "Инструкция к кубикам", desc: "Правила игры в «Костяное Очко» (доступны в вещмешке)." }
+            ]);
+            setEventText("Вы нашли восковую свечу и полезные вещи! Срочно зажгите свечу.");
+          } else if (state.junkSearches === 2) {
+            state.hasBrochure2 = true;
+            state.hasTape = true;
+            state.hasEmptyCan = true;
+            addStoryCard("tape_windows", true);
+
+            showLootModal("При повторном поиске в хламе вы нашли:", [
+              { sheet: 3, icon: 4, caption: "Памятка ГО (Ч. II)", desc: "Вторая часть памятки ГО о сборке печки с кирпичом." },
+              { sheet: 3, icon: 5, caption: "Малярный скотч", desc: "Плотный рулон скотча — теперь можно заклеить окна на кухне!" },
+              { sheet: 3, icon: 9, caption: "Пустая банка", desc: "Пустая консервная банка для изготовления таганка/печки." }
+            ]);
+            setEventText("Вы нашли вторую памятку ГО, малярный скотч и пустую консервную банку! Теперь можно заклеить окно скотчем.");
+          } else {
+            await showActionCloseup("ev_search_junk", false, true);
+            setEventText("Вы ещё раз перебрали полки с хламом, но больше ничего полезного не осталось.");
+            renderUI(false);
+          }
+        }
+      },
+
+      light_candle: {
+        sheet: 1, icon: 7, caption: "Зажечь свечу",
+        instantSound: () => playSnd1("СПИЧКА", 0.9),
+        action: async () => {
+          removeStoryCard("light_candle"); removeStoryCard("light_match");
+          igniteCandle(true);
+          if (!state.radiatorTouched) {
+            addStoryCard("touch_radiator", true);
+            setEventText("Вы зажгли восковую свечу! В комнате стоит ледяной холод — потрогайте батарею.");
+          } else {
+            setEventText("Вы зажгли восковую свечу! Зажимайте её мышью и водите по экрану для освещения.");
+          }
+          renderUI(true);
+        }
+      },
+
+      /* АВТО-МАРШРУТ ЗА ТУШЁНКОЙ / КАРТОШКОЙ */
+      go_take_stew: {
+        sheet: 2, icon: 3, caption: "Взять тушёнку",
+        action: async () => {
+          removeStoryCard("go_take_stew");
+          state.needsFoodForDice = false;
+
+          // Если мы в подъезде, сначала автоматически заходим в свою квартиру на 3-м этаже
+          if (state.logicalRoom === "landing") {
+            hideNpc();
+            setBackButtonTarget(null);
+            state.activeDoorApt = null;
+            if (state.landingFloor !== 3) {
+              state.landingDir = state.landingFloor < 3 ? "up" : "down";
+              const seq = buildStairwellFrames(state.landingFloor, 3);
+              state.landingFloor = 3;
+              await playStairwellSequence(seq);
+            }
+            playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
+            state.logicalRoom = "entrance";
+            await crossfadeToScene("entrance", true);
+          }
+
+          if (state.lightMode === "none") {
+            if (state.hasCandle) igniteCandle(false);
+            else igniteMatch(false);
+          }
+
+          await walkToRoom("kitchen");
+          playSnd1("ШКАФ С ЕДОЙ", 0.9);
+          await showActionCloseup("cabinet", false, false);
+          renderCabinetItems();
+          setBackButtonTarget("kitchen", "Закрыть шкафчик");
+          setEventText("Нажмите на тушёнку или картошку, чтобы взять в вещмешок");
+          renderUI(false);
+        }
+      },
+
+      /* ОКНО НА КУХНЕ (СВЕЧА ТУХНЕТ И СОХРАНЯЕТ СВОЙ ОГАРОК) */
+      room_look_window: {
+        sheet: 1, icon: 4, caption: "Посмотреть в окно",
+        action: async () => {
+          if (state.logicalRoom !== "kitchen") await walkToRoom("kitchen");
+          clearAutoReturn();
+          pauseAndExtinguishLightForView();
+          state.isWalking = true; renderUI(false);
+
+          await crossfadeToScene("ev_window_2", false);
+          setEventText("Сквозь замёрзшее стекло ничего не разглядеть — вы подставляете табуретку к окну...");
+          await Promise.race([
+            playAudioSmart(["АУДИО", "АУДИО 2"], ["ТАБУРЕТКА", "табуретка"], 0.95),
+            new Promise((r) => setTimeout(r, 1700))
+          ]);
+
+          await crossfadeToScene("ev_window_climb", false);
+          setEventText("Вы открываете примерзшую форточку и высовываетесь наружу...");
+          await Promise.race([
+            playAudioSmart(["АУДИО", "АУДИО 2"], ["ФОРТОЧКА", "форточка"], 0.95),
+            new Promise((r) => setTimeout(r, 1700))
+          ]);
+
+          await crossfadeToScene("ev_yard_window", false);
+          playAudioSmart(["АУДИО 2", "АУДИО"], ["МЕТЕЛЬ", "метель"], 0.85);
+          state.isWalking = false;
+          setEventText("За окном бушует ледяная метель. Весь двор занесён снегом, ни в одном окне нет света.");
+          setBackButtonTarget("kitchen", "Назад на кухню");
+        }
+      },
+
+      room_supplies: {
+        sheet: 1, icon: 9, caption: "Припасы",
+        action: async () => {
+          playSnd1("ШКАФ С ЕДОЙ", 0.9);
+          await showActionCloseup("cabinet", false, false);
+          setEventText("Нажмите на тушёнку или картошку, чтобы взять в вещмешок");
+          renderCabinetItems();
+          setBackButtonTarget("kitchen", "Закрыть шкафчик");
+        }
+      },
+
+      room_radio: {
+        sheet: 1, icon: 5, caption: "Включить радио",
+        action: async () => {
+          playSnd1("РАДИО", 0.9);
+          await showActionCloseup("radio", false, true);
+          setEventText("По радио сквозь треск помех передают экстренную сводку об аварии на теплосетях.");
+          renderUI(false);
+        }
+      },
+
+      room_thermometer: {
+        sheet: 2, icon: 2, caption: "Термометр",
+        action: async () => {
+          await walkToRoom("bedroom");
+          await showActionCloseup("ev_thermometer", true, true);
+          setEventText("Столбик комнатного термометра стремительно падает к нулю.");
+          renderUI(false);
+        }
+      },
+
+      room_bed: {
+        sheet: 1, icon: 12, caption: "Полежать",
+        action: async () => {
+          await walkToRoom("bedroom");
+          playSnd2("одежда", 0.7);
+          await showActionCloseup("ev_bed", true, true);
+          setEventText("Вы прилегли на кровать под одеяло, пытаясь согреться собственным дыханием.");
+          renderUI(false);
+        }
+      },
+
+      room_dumbbells: {
+        sheet: 4, icon: 3, caption: "Потягать гантели",
+        action: async () => {
+          playFootstepSound();
+          await showActionCloseup("ev_dumbbells", false, true);
+          setEventText("Вы делаете несколько подходов с тяжёлыми гантелями — кровь разгоняется, становится теплее!");
+          renderUI(false);
+        }
+      },
+
+      read_brochure_1: {
+        sheet: 3, icon: 4, caption: "Прочитать памятку ГО",
+        action: async () => {
+          await openBrochure(1);
+          setEventText("Вы изучаете памятку Гражданской Обороны. Теперь можно плотно подоткнуть входную дверь от сквозняка!");
+          renderUI(true);
+        }
+      },
+
+      seal_door: {
+        sheet: 2, icon: 10, caption: "Подоткнуть дверь",
+        action: async () => {
+          removeStoryCard("seal_door");
+          state.doorSealed = true;
+          await walkToRoom("entrance");
+          playDoorCreakSound();
+          setEventText("Вы плотно подоткнули щель под входной дверью ветошью, как указано в памятке ГО.");
+          renderUI(true);
+        }
+      },
+
+      tape_windows: {
+        sheet: 3, icon: 5, caption: "Заклеить окно",
+        action: async () => {
+          removeStoryCard("tape_windows");
+          state.windowsTaped = true;
+          updateBackpackBadge();
+          await walkToRoom("kitchen");
+          playSnd1("СКОТЧ", 0.95);
+          await showActionCloseup("ev_window_2", false, true);
+          setEventText("Вы намертво заклеили стыки кухонного окна найденным малярным скотчем.");
+          renderUI(true);
+        }
+      },
+
+      /* ГЛАЗОК И ЦЕНТРАЛЬНЫЙ ВЫБОР С СОСЕДОМ (СВЕЧА ТУХНЕТ И СОХРАНЯЕТ СВОЙ ОГАРОК) */
+      room_peephole: {
+        sheet: 3, icon: 15, caption: "Посмотреть в глазок",
+        action: async () => {
+          const someoneKnocking = state.isKnocking || !state.neighborVisited;
+          stopDoorKnockLoop();
+          pauseAndExtinguishLightForView();
+          state.isWalking = true; renderUI(false);
+
+          const firstImg = someoneKnocking ? "ev_peephole_lit_1" : "ev_peephole_empty_1";
+          const secondImg = someoneKnocking ? "ev_peephole_lit_2" : "ev_peephole_empty_2";
+
+          await showActionCloseup(firstImg, false, false);
+          const slot = state.activeSlot === "a" ? slotA : slotB;
+          slot.classList.add("peephole-zoom");
+          await new Promise((r) => setTimeout(r, 1050));
+          slot.classList.remove("peephole-zoom");
+
+          await showActionCloseup(secondImg, false, false);
+          state.isWalking = false;
+
+          if (someoneKnocking && !state.neighborVisited) {
+            state.neighborVisited = true;
+            state.inPeepholeDialog = true;
+            setEventText("За дверью сосед из кв. 20: «Сосед, выручай банкой тушёнки или картошкой за свечи! Или давай перекинемся в костяшки на тушёнку либо картошку!»");
+            addStoryCard("refuse_trade", true);
+            if (totalPotatoAvailable() > 0) addStoryCard("agree_trade_potato", true);
+            addStoryCard("agree_trade", true);
+            addStoryCard("play_dice_neighbor", true);
+            renderUI(true);
+            await playNpcSpeech("neighbor", "голос мужской");
+          } else {
+            setEventText("Вы посмотрели в дверной глазок — на лестничной площадке тихо.");
+            setBackButtonTarget("entrance", "Отойти от глазка");
+          }
+        }
+      },
+
+      agree_trade: {
+        sheet: 1, icon: 13, caption: "Дать тушёнку",
+        action: async () => {
+          if (totalStewAvailable() <= 0) {
+            setEventText("У вас не осталось ни одной банки тушёнки!");
+            return;
+          }
+          spendOneStew();
+          finishPeepholeNeighborDialog();
+          playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
+          await showActionCloseup("ev_peephole_lit_2", false, false);
+          setEventText("Сосед дал свечи и сказал: «Воду перекрыли, пошли на колонку! И зайди в 17-ю квартиру на 1-м этаже — там бабушка живёт, помоги ей воды принести!»");
+          renderUI(true);
+          await playNpcSpeech("neighbor", "голос мужской 2");
+          hideNpc(); await crossfadeToScene("entrance", false);
+          renderUI(true);
+        }
+      },
+
+      agree_trade_potato: {
+        sheet: 2, icon: 14, caption: "Дать картошку",
+        action: async () => {
+          if (totalPotatoAvailable() <= 0) {
+            setEventText("У вас нет картошки для обмена!");
+            return;
+          }
+          spendOnePotato();
+          finishPeepholeNeighborDialog();
+          playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
+          await showActionCloseup("ev_peephole_lit_2", false, false);
+          setEventText("Сосед взял картошку, дал свечи и сказал: «Воду перекрыли, пошли на колонку! И зайди в 17-ю квартиру на 1-м этаже — помоги бабушке воды принести!»");
+          renderUI(true);
+          await playNpcSpeech("neighbor", "голос мужской 2");
+          hideNpc(); await crossfadeToScene("entrance", false);
+          renderUI(true);
+        }
+      },
+
+      play_dice_neighbor: {
+        sheet: 2, icon: 11, caption: "Сыграть в костяшки",
+        action: async () => {
+          openOchkoMatch(1);
+        }
+      },
+
+      refuse_trade: {
+        sheet: 2, icon: 8, caption: "Отказаться",
+        action: async () => {
+          finishPeepholeNeighborDialog();
+          setEventText("Сосед вздохнул: «Ладно, можешь потом зайти ко мне в 20-ю квартиру сыграть в костяшки. Воду отключили — иди на колонку и загляни к бабушке в 17-ю!»");
+          renderUI(true);
+          await playNpcSpeech("neighbor", "голос мужской 2", [1, 5, 4, 7, 8]);
+          hideNpc(); await crossfadeToScene("entrance", false);
+          renderUI(true);
+        }
+      },
+
+      check_tap: {
+        sheet: 3, icon: 6, caption: "Проверить кран",
+        action: async () => {
+          removeStoryCard("check_tap");
+          await walkToRoom("kitchen");
+          await showActionCloseup("ev_tap", true, true);
+          setEventText("В кране сухо и глухо гудят замёрзшие трубы — воды действительно нет.");
+          renderUI(true);
+        }
+      },
+
+      put_coat: {
+        sheet: 3, icon: 7, caption: "Одеться",
+        action: async () => {
+          removeStoryCard("put_coat");
+          await walkToRoom("entrance");
+          playSnd2("одежда", 0.9);
+          await showActionCloseup("ev_dress", false, true);
+          state.hasCoat = true;
+          setEventText("Вы надели тёплую зимнюю куртку и шапку.");
+          renderUI(true);
+        }
+      },
+
+      put_shoes: {
+        sheet: 2, icon: 15, caption: "Обуться",
+        action: async () => {
+          removeStoryCard("put_shoes");
+          await walkToRoom("entrance");
+          playSnd2("ботинки", 0.9);
+          await showActionCloseup("ev_shoes", false, true);
+          state.hasShoes = true;
+          setEventText("Вы обули зимние ботинки. Теперь на Выходе можно выйти в подъезд.");
+          renderUI(true);
+        }
+      },
+
+      room_exit_door: {
+        sheet: 3, icon: 12, caption: "Выйти в подъезд",
+        action: async () => {
+          if (!state.hasCoat || !state.hasShoes) {
+            addStoryCard("put_coat", true); addStoryCard("put_shoes", true);
+            setEventText("В таком виде в промёрзший подъезд нельзя — сначала оденьтесь и обуйтесь!");
+            renderUI(true); return;
+          }
+          playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
+          state.logicalRoom = "landing"; state.landingFloor = 3; state.landingDir = "down";
+          state.actOffset = 0; state.movOffset = 0;
+          await crossfadeToScene("p1_9", true);
+          setEventText("Вы на площадке 3-го этажа (кв. 22, 23, 24). Справа — переход между этажами (с 1 по 5 этаж) и выход на улицу.");
+          renderUI(true);
+        }
+      },
+
+      landing_back_home: {
+        sheet: 5, icon: 6, caption: "В кв. 22 (Домой)",
+        action: async () => {
+          hideNpc(); setBackButtonTarget(null);
+          state.activeDoorApt = null;
+          removeStoryCard("play_dice_door");
+          removeStoryCard("leave_door_view");
+          playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
+          state.logicalRoom = "entrance"; state.actOffset = 0; state.movOffset = 0;
+          await crossfadeToScene("entrance", true);
+          setEventText("Вы вернулись в свою квартиру №22.");
+          renderUI(true);
+
+          if (state.neighborPendingArrival && !state.neighborVisited && !state.wentOutside) {
+            if (state.neighborReturnTimer) clearTimeout(state.neighborReturnTimer);
+            state.neighborReturnTimer = setTimeout(() => {
+              state.neighborReturnTimer = null;
+              triggerNeighborArrivalNow();
+            }, 15000);
+          }
+        }
+      },
+
+      /* КАРТОЧКИ ВЗАИМОДЕЙСТВИЯ У ОТКРЫТОЙ ДВЕРИ В ПОДЪЕЗДЕ (ПО ЦЕНТРУ ЭКРАНА) */
+      play_dice_door: {
+        sheet: 2, icon: 11, caption: "Сыграть в костяшки",
+        action: async () => {
+          const apt = state.activeDoorApt || 20;
+          let oppId = 1;
+          if (apt === 20) oppId = 1;
+          else if (apt === 18 || apt === 26) oppId = 2;
+          else if (apt === 23 || apt === 29) oppId = state.opp3Beaten ? 4 : 3;
+          else if (apt === 24) oppId = 4;
+          openOchkoMatch(oppId);
+        }
+      },
+
+      leave_door_view: {
+        sheet: 5, icon: 6, caption: "Отойти от двери",
+        action: async () => {
+          state.activeDoorApt = null;
+          removeStoryCard("play_dice_door");
+          removeStoryCard("leave_door_view");
+          removeStoryCard("take_granny_cans");
+          removeStoryCard("give_granny_water");
+          if (state.needsFoodForDice) {
+            addStoryCard("go_take_stew", true);
+          }
+          await crossfadeToScene(resolveRoomSceneKey("landing"), false);
+          setEventText(`Вы на лестничной площадке ${state.landingFloor}-го этажа.`);
+          renderUI(true);
+        }
+      },
+
+      /* КВ. 17: ПОМОЩЬ БАБУШКЕ С БИДОНАМИ ДЛЯ ВОДЫ */
+      take_granny_cans: {
+        sheet: 1, icon: 2, caption: "Взять бидоны бабушки",
+        action: async () => {
+          removeStoryCard("take_granny_cans");
+          removeStoryCard("leave_door_view");
+          state.activeDoorApt = null;
+          state.hasGrannyCans = true;
+          updateBackpackBadge();
+          await crossfadeToScene("ev_granny_cans", false);
+          setEventText("Вы взяли у бабушки из 17-й квартиры пустую тару для воды. Теперь выходите из подъезда на уличную колонку!");
+          setBackButtonTarget(resolveRoomSceneKey("landing"), "Отойти от кв. 17");
+          renderUI(false);
+        }
+      },
+
+      give_granny_water: {
+        sheet: 1, icon: 2, caption: "Отдать воду бабушке",
+        action: async () => {
+          removeStoryCard("give_granny_water");
+          removeStoryCard("leave_door_view");
+          state.activeDoorApt = null;
+          state.hasGrannyCans = false;
+          state.grannyHelped = true;
+          state.invStew++;
+          updateBackpackBadge();
+          await crossfadeToScene("ev_granny_cans", false);
+          setEventText("Бабушка из кв. 17 со слезами благодарит вас за принесённую воду и даёт вам из запасов банку тушёнки!");
+          setBackButtonTarget(resolveRoomSceneKey("landing"), "Отойти от кв. 17");
+          renderUI(false);
+        }
+      },
+
+      collect_carpets: {
+        sheet: 1, icon: 6, caption: "Собрать ковры",
+        action: async () => {
+          removeStoryCard("collect_carpets");
+          await walkToRoom("junkroom");
+          playSnd2("ковер", 0.95);
+          await showActionCloseup("ev_carpets_roll", false, true);
+          state.carpetsTaken = true;
+          addStoryCard("hang_carpets", true);
+          setEventText("Ковры скатаны! Теперь завесьте ими ледяные стены в спальне.");
+          renderUI(true);
+        }
+      },
+
+      hang_carpets: {
+        sheet: 1, icon: 12, caption: "Завесить стены",
+        action: async () => {
+          removeStoryCard("hang_carpets");
+          await walkToRoom("bedroom");
+          playSnd2("ковёр прибить", 0.95);
+          await showActionCloseup("ev_carpets_wall", false, false);
+          await new Promise((r) => setTimeout(r, 850));
+          playSnd1("СКОТЧ", 0.9);
+          state.carpetsHung = true;
+          await showActionCloseup("ev_all_covered", false, false);
+          addStoryCard("find_bricks", true);
+          setEventText("Спальня утеплена коврами! Осталось найти кирпичи в подъезде и собрать печку.");
+          renderUI(true);
+        }
+      },
+
+      find_bricks: {
+        sheet: 3, icon: 12, caption: "Найти кирпичи",
+        action: async () => {
+          removeStoryCard("find_bricks");
+          if (state.logicalRoom !== "landing") {
+            await walkToRoom("entrance");
+            state.logicalRoom = "landing"; state.landingFloor = 3; state.landingDir = "down";
+            await crossfadeToScene("p1_9", true);
+          }
+          setEventText("В подъезде замёрзшая соседка просит помочь едой...");
+          addStoryCard("take_bricks", true);
+          if (totalStewAvailable() > 0) addStoryCard("help_woman", true);
+          renderUI(true);
+          await playNpcSpeech("woman", "женщина голос");
+        }
+      },
+
+      help_woman: {
+        sheet: 1, icon: 13, caption: "Дать банку",
+        action: async () => {
+          removeStoryCard("help_woman");
+          spendOneStew();
+          setEventText("Соседка горячо благодарит вас и показывает, где сложены целые огнеупорные кирпичи.");
+          renderUI(true);
+          await playNpcSpeech("woman", "женщина голос");
+        }
+      },
+
+      take_bricks: {
+        sheet: 3, icon: 9, caption: "Взять кирпичи",
+        action: async () => {
+          removeStoryCard("take_bricks");
+          if (state.storyCardIds.includes("help_woman")) {
+            removeStoryCard("help_woman");
+            await playNpcSpeech("woman", "женщина недовольный голос");
+          }
+          hideNpc(); playSnd2("кирпичи", 0.95);
+          state.hasBricks = true;
+          updateBackpackBadge();
+          await showActionCloseup("ev_bricks", false, true);
+          addStoryCard("build_stove", true);
+          setEventText("Кирпичи у вас! Вернитесь в квартиру (кв. 22) в спальню и соберите печку.");
+          renderUI(true);
+        }
+      },
+
+      build_stove: {
+        sheet: 3, icon: 10, caption: "Собрать печку",
+        action: async () => {
+          removeStoryCard("build_stove");
+          if (state.logicalRoom === "landing") {
+            state.logicalRoom = "entrance"; await crossfadeToScene("entrance", true);
+          }
+          await walkToRoom("bedroom");
+          playSnd2("кирпичи", 0.9); playSnd1("СПИЧКА", 0.9);
+          state.stoveBuilt = true; state.hasCandle = true; state.lightMode = "kerosene";
+          flameCanvas.style.display = "block";
+          updateBackpackBadge();
+          document.body.setAttribute("data-lit", "true");
+          await showActionCloseup("ev_stove", false, false);
+          if (totalStewAvailable() > 0) addStoryCard("heat_stew", true);
+          setEventText("Печка из консервной банки, свечи и кирпичей собрана! В спальне наконец-то стало тепло.");
+          renderUI(true);
+        }
+      },
+
+      heat_stew: {
+        sheet: 1, icon: 14, caption: "Греть тушёнку",
+        action: async () => {
+          removeStoryCard("heat_stew");
+          spendOneStew();
+          playSnd1("ОТКРЫВАЕТ КОНСЕРВУ", 0.95);
+          setEventText("Вы разогрели ароматную тушёнку на раскалённых кирпичах самодельной печки.");
+          renderUI(true);
+        }
+      }
+    };
+
+    /* ============================================================================
+       12. ДВЕРИ ВСЕХ КВАРТИР 1–5 ЭТАЖЕЙ (КВ. 16–30, КРОМЕ НАШЕЙ 22)
+    ============================================================================ */
+    const APT_DESCRIPTIONS = {
+      16: {
+        inhabited: false,
+        type: "creepy",
+        text: "Вы подошли к двери кв. 16 и постучали. За обшивкой раздались странные тяжёлые хрипы и глухое шарканье, но дверь никто не открыл..."
+      },
+      17: {
+        inhabited: true,
+        type: "granny",
+        text: "Дверь кв. 17 приоткрылась. Старенькая бабушка слабым голосом говорит: «Сынок, мне по гололёду до колонки не дойти... Возьми мои бидоны, принеси водички Христа ради!»"
+      },
+      18: {
+        inhabited: true,
+        type: "dice",
+        oppId: 2,
+        text: "Дверь кв. 18 открывается: «Азартный человек? Заходи за стол, перекинемся в Костяное Очко на банку тушёнки!»"
+      },
+      19: {
+        inhabited: false,
+        type: "go_away",
+        text: "На ваш стук в кв. 19 из-за двери грубо рявкнули: «Уходи отсюда! Никому не открываем, проваливай!»"
+      },
+      20: {
+        inhabited: true,
+        type: "dice",
+        oppId: 1,
+        text: "Дверь кв. 20 открывает ваш знакомый сосед с фонарём: «Зашёл перекинуться в костяшки? Ставь тушёнку или картошку на кон!»"
+      },
+      21: {
+        inhabited: false,
+        type: "silent",
+        text: "Вы долго стучите в обледеневшую дверь кв. 21, но внутри стоит мёртвая тишина — похоже, хозяева давно уехали."
+      },
+      23: {
+        inhabited: true,
+        type: "dice",
+        oppId: 3,
+        text: "Дверь кв. 23 открывается — на пороге хмурый сосед с резными костями: «В очко сыграть хочешь? Ставь банку тушёнки на кон!»"
+      },
+      24: {
+        inhabited: true,
+        type: "dice_4",
+        oppId: 4,
+        text: "Дверь кв. 24 приоткрывается — хозяин квартиры готов сыграть с вами в «Костяное Очко» на банку тушёнки!"
+      },
+      25: {
+        inhabited: false,
+        type: "silent",
+        text: "Вы постучали в дверь кв. 25 на 4-м этаже. За дверью слышен только вой ветра из разбитой форточки."
+      },
+      26: {
+        inhabited: true,
+        type: "dice",
+        oppId: 2,
+        text: "Дверь кв. 26 приоткрывается: «Холодно сидеть без дела... Есть банка тушёнки? Давай раскинем кости!»"
+      },
+      27: {
+        inhabited: false,
+        type: "go_away",
+        text: "Из-за двери кв. 27 глухо крикнули: «Света нет, воды нет! Нечего по подъезду шастать!»"
+      },
+      28: {
+        inhabited: false,
+        type: "creepy",
+        text: "Вы постучали в кв. 28 на верхнем этаже. За дверью что-то глухо упало, но к замку никто не подошёл."
+      },
+      29: {
+        inhabited: true,
+        type: "dice",
+        oppId: 3,
+        text: "Дверь кв. 29 открывается — сосед на 5-м этаже согласен перекинуться в костяшки, если поставишь банку тушёнки."
+      },
+      30: {
+        inhabited: false,
+        type: "silent",
+        text: "На двери кв. 30 висит замёрзший навесной замок — внутри никого нет."
+      }
+    };
+
+    [16, 17, 18, 19, 20, 21, 23, 24, 25, 26, 27, 28, 29, 30].forEach((apt) => {
+      CARDS_DB[`knock_${apt}`] = {
+        sheet: 3, icon: 12, caption: `Постучать в кв. ${apt}`,
+        action: async () => {
+          state.isWalking = true; renderUI(false);
+          await crossfadeToScene(`door_${apt}`, false);
+          await playSnd2(knockToggle++ % 2 === 0 ? "СТУК" : "СТУК 2", 0.85);
+
+          const info = APT_DESCRIPTIONS[apt];
+
+          if (info.inhabited) {
+            playDoorCreakSound();
+            await crossfadeToScene(`door_${apt}_open`, false);
+          }
+          state.isWalking = false;
+          setEventText(info.text);
+
+          if (apt === 20) state.neighborVisited = true;
+
+          if (info.type === "granny") {
+            state.activeDoorApt = apt;
+            removeStoryCard("play_dice_door");
+            addStoryCard("leave_door_view", true);
+            if (!state.hasGrannyCans && !state.grannyHelped) {
+              addStoryCard("take_granny_cans", true);
+            } else if (state.hasGrannyCans && state.grannyCansFilled && !state.grannyHelped) {
+              addStoryCard("give_granny_water", true);
+              setEventText("Бабушка из кв. 17 радостно всплеснула руками: «Принёс водички! Дай Бог тебе здоровья, передавай бидоны!»");
+            }
+            state.actOffset = 0;
+            renderUI(true);
+          } else if (info.type === "dice" || info.type === "dice_4") {
+            state.activeDoorApt = apt;
+            addStoryCard("leave_door_view", true);
+            addStoryCard("play_dice_door", true);
+            state.actOffset = 0;
+            renderUI(true);
+          } else {
+            setBackButtonTarget(resolveRoomSceneKey("landing"), "Отойти от двери");
+          }
+        }
+      };
+    });
+
+    /* ============================================================================
+       12.1. СИСТЕМА ПРИОРИТЕТНЫХ КАРТОЧЕК И РАЗДЕЛЕНИЕ КВАРТИРНЫХ / ПОДЪЕЗДНЫХ СОБЫТИЙ
+    ============================================================================ */
+    const LANDING_ALLOWED_STORY_CARDS = new Set([
+      "light_candle", "light_match", "go_take_stew",
+      "find_bricks", "help_woman", "take_bricks"
+    ]);
+
+    function getPriorityCardId() {
+      // Спец-приоритет: если сосед отказался играть без еды, подсвечиваем «Взять тушёнку»
+      if (state.storyCardIds.includes("go_take_stew")) return "go_take_stew";
+
+      // 1) В самом начале: «Включить свет» -> затем «Зажечь спичку»
+      if (state.storyCardIds.includes("check_switch")) return "check_switch";
+
+      // 5) Если в любой момент погасла спичка или свеча (lightMode === "none")
+      if (state.lightMode === "none") {
+        return state.hasCandle ? "light_candle" : "light_match";
+      }
+
+      if (state.lightMode === "intro" && state.storyCardIds.includes("light_match")) {
+        return "light_match";
+      }
+
+      // В подъезде квартирные приоритеты не действуют
+      if (state.logicalRoom === "landing") return null;
+
+      // 3) Сразу после зажигания первой спички — «Сходить в туалет»
+      if (!state.toiletUsed) return "go_toilet";
+
+      // 4) Когда сходил в туалет — «Порыться в хламе» (пока не найдена свеча)
+      if (!state.hasCandle) return "room_search_junk";
+
+      // 6) Когда нашёл свечку в хламе, но она ещё не горит — «Зажечь свечу»
+      if (state.hasCandle && state.lightMode !== "candle" && state.lightMode !== "kerosene") {
+        return "light_candle";
+      }
+
+      // 7) Когда свеча зажжена, но ещё не потрогана батарея — «Потрогать батарею»
+      if (!state.radiatorTouched) return "touch_radiator";
+
+      // 8) Как только батарея потрогана и свеча горит, приоритетная подсветка снимается
+      return null;
+    }
+
+    function isNeighborCenterChoiceActive() {
+      if (state.inPeepholeDialog) return true;
+      if (state.logicalRoom === "landing" && state.activeDoorApt) return true;
+      return false;
+    }
+
+    function getCenterNeighborChoiceCards() {
+      const ids = [];
+      if (state.inPeepholeDialog) {
+        ["play_dice_neighbor", "agree_trade", "agree_trade_potato", "refuse_trade"].forEach((id) => {
+          if (state.storyCardIds.includes(id)) ids.push(id);
+        });
+      } else if (state.logicalRoom === "landing" && state.activeDoorApt) {
+        ["play_dice_door", "take_granny_cans", "give_granny_water", "leave_door_view"].forEach((id) => {
+          if (state.storyCardIds.includes(id)) ids.push(id);
+        });
+      }
+      return ids.map((id) => CARDS_DB[id] ? { id, ...CARDS_DB[id] } : null).filter(Boolean);
+    }
+
+    function getLeftActionDeck() {
+      // Если открыт диалог с соседом по центру экрана, левая колода не отображается
+      if (isNeighborCenterChoiceActive()) return [];
+
+      const ids = [];
+      const r = state.logicalRoom;
+
+      // КОГДА ИГРОК В ПОДЪЕЗДЕ — ВСЕ КВАРТИРНЫЕ КАРТОЧКИ ПОЛНОСТЬЮ СКРЫТЫ!
+      if (r === "landing") {
+        state.storyCardIds.forEach((id) => {
+          if (LANDING_ALLOWED_STORY_CARDS.has(id) && !ids.includes(id)) ids.push(id);
+        });
+        if (state.landingFloor === 5) ["knock_28", "knock_29", "knock_30"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+        else if (state.landingFloor === 4) ["knock_25", "knock_26", "knock_27"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+        else if (state.landingFloor === 3) ["landing_back_home", "knock_23", "knock_24"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+        else if (state.landingFloor === 2) ["knock_19", "knock_20", "knock_21"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+        else if (state.landingFloor === 1) ["knock_16", "knock_17", "knock_18"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+      } else {
+        // ВНУТРИ КВАРТИРЫ:
+        const apartmentExcluded = new Set([
+          "play_dice_neighbor", "agree_trade", "agree_trade_potato", "refuse_trade",
+          "play_dice_door", "take_granny_cans", "give_granny_water", "leave_door_view",
+          "help_woman", "take_bricks"
+        ]);
+        state.storyCardIds.forEach((id) => {
+          if (!apartmentExcluded.has(id) && !ids.includes(id)) ids.push(id);
+        });
+
+        if (state.hasBrochure1 && !state.readBrochure1 && !ids.includes("read_brochure_1")) {
+          ids.unshift("read_brochure_1");
+        }
+
+        // Гарантируем наличие приоритетных карточек ранней фазы
+        if (state.basicNavUnlocked && !state.hasCandle && !ids.includes("room_search_junk")) {
+          ids.push("room_search_junk");
+        }
+        if (state.hasCandle && (state.lightMode === "candle" || state.lightMode === "kerosene") && !state.radiatorTouched && !ids.includes("touch_radiator")) {
+          ids.unshift("touch_radiator");
+        }
+
+        // Бытовые события строго привязаны к своим комнатам:
+        if (state.roomNavUnlocked) {
+          if (r === "kitchen") {
+            ["room_supplies", "room_look_window", "room_radio"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+          } else if (r === "bedroom") {
+            ["room_thermometer", "room_bed"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+          } else if (r === "junkroom") {
+            if (!ids.includes("room_search_junk")) ids.push("room_search_junk");
+            if (state.wentOutside && !ids.includes("room_dumbbells")) ids.push("room_dumbbells");
+          } else if (r === "entrance") {
+            ["room_peephole", "room_exit_door"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+          }
+        }
+      }
+
+      // Принудительно ставим приоритетную карточку на 1-е место!
+      const priorityId = getPriorityCardId();
+      if (priorityId) {
+        if (!ids.includes(priorityId) && CARDS_DB[priorityId]) {
+          // В подъезде добавляем только допустимые для подъезда приоритетные карточки
+          if (r !== "landing" || LANDING_ALLOWED_STORY_CARDS.has(priorityId)) {
+            ids.unshift(priorityId);
+          }
+        } else if (ids.includes(priorityId)) {
+          const idx = ids.indexOf(priorityId);
+          if (idx > 0) {
+            ids.splice(idx, 1);
+            ids.unshift(priorityId);
+          }
+        }
+      }
+
+      return ids
+        .map((id) => CARDS_DB[id] ? { id, isPriority: id === priorityId, ...CARDS_DB[id] } : null)
+        .filter(Boolean);
+    }
+
+    /* ============================================================================
+       13. РЕНДЕР ДВУХ КАРУСЕЛЕЙ КАРТОЧЕК И ЦЕНТРАЛЬНОГО ВЫБОРА СОСЕДА
+    ============================================================================ */
+    const leftCardsEl = document.getElementById("left-action-cards");
+    const rightCardsEl = document.getElementById("right-move-cards");
+    const rightGroupEl = document.getElementById("right-move-group");
+    const neighborOverlayEl = document.getElementById("neighbor-choice-overlay");
+    const actPrevBtn = document.getElementById("act-prev"), actNextBtn = document.getElementById("act-next");
+    const movPrevBtn = document.getElementById("mov-prev"), movNextBtn = document.getElementById("mov-next");
+    let cardActivatingLock = false;
+
+    function createChoiceCardElement(card, idx, animateDeal = false) {
+      const btn = document.createElement("button");
+      let cls = "choice-card";
+      if (animateDeal) cls += " deal-anim";
+      if (card.isPriority) cls += " priority-card";
+      btn.className = cls;
+      if (animateDeal) btn.style.setProperty("--deal-delay", `${idx * 75}ms`);
+      btn.disabled = state.isWalking;
+
+      const inner = document.createElement("div");
+      inner.className = "card-inner";
+      const iconDiv = document.createElement("div");
+      iconDiv.className = "card-icon-frame";
+      applyIconSprite(iconDiv, card.sheet, card.icon);
+      const cap = document.createElement("div");
+      cap.className = "choice-caption";
+      cap.textContent = card.caption;
+      inner.appendChild(iconDiv);
+      inner.appendChild(cap);
+
+      const back = document.createElement("div");
+      back.className = "card-back";
+
+      btn.appendChild(inner);
+      btn.appendChild(back);
+
+      btn.onclick = () => {
+        if (state.isWalking || cardActivatingLock) return;
+        cardActivatingLock = true;
+        playCardSound("flip");
+        if (typeof card.instantSound === "function") card.instantSound();
+        btn.classList.remove("deal-anim");
+        btn.classList.add("activating");
+        setTimeout(() => {
+          cardActivatingLock = false;
+          card.action();
+        }, 360);
+      };
+      return btn;
+    }
+
+    function renderDeckSlice(container, items, offset, animateDeal = false) {
+      container.innerHTML = "";
+      items.slice(offset, offset + 3).forEach((card, idx) => {
+        container.appendChild(createChoiceCardElement(card, idx, animateDeal));
+      });
+    }
+
+    function renderNeighborCenterOverlay(animateDeal = false) {
+      const active = isNeighborCenterChoiceActive();
+      const hud = document.getElementById("bottom-hud");
+      neighborOverlayEl.classList.toggle("visible", active);
+      neighborOverlayEl.innerHTML = "";
+      hud.classList.toggle("hidden-hud", active || Boolean(state.backBtnTarget));
+
+      if (!active) return;
+      const cards = getCenterNeighborChoiceCards();
+      cards.forEach((card, idx) => {
+        neighborOverlayEl.appendChild(createChoiceCardElement(card, idx, animateDeal));
+      });
+    }
+
+    function renderUI(animateDeal = false) {
+      if (animateDeal && !state.isWalking) playCardSound("deal");
+
+      renderNeighborCenterOverlay(animateDeal);
+
+      const priorityId = getPriorityCardId();
+      if (priorityId) {
+        state.actOffset = 0; // Приоритетная карточка всегда видна первой в левом списке!
+      }
+
+      const leftDeck = getLeftActionDeck();
+      const maxLeftOffset = Math.max(0, leftDeck.length - 3);
+      if (state.actOffset > maxLeftOffset) state.actOffset = maxLeftOffset;
+      renderDeckSlice(leftCardsEl, leftDeck, state.actOffset, animateDeal);
+      actPrevBtn.disabled = state.isWalking || state.actOffset <= 0;
+      actNextBtn.disabled = state.isWalking || state.actOffset + 3 >= leftDeck.length;
+
+      const rightDeck = getRightMoveDeck();
+      rightGroupEl.style.visibility = rightDeck.length > 0 ? "visible" : "hidden";
+      const maxRightOffset = Math.max(0, rightDeck.length - 3);
+      if (state.movOffset > maxRightOffset) state.movOffset = maxRightOffset;
+      renderDeckSlice(rightCardsEl, rightDeck, state.movOffset, animateDeal);
+      movPrevBtn.disabled = state.isWalking || state.movOffset <= 0;
+      movNextBtn.disabled = state.isWalking || state.movOffset + 3 >= rightDeck.length;
+    }
+
+    actPrevBtn.onclick = () => { if (state.actOffset > 0) { state.actOffset--; playCardSound("click"); renderUI(false); } };
+    actNextBtn.onclick = () => { const d = getLeftActionDeck(); if (state.actOffset + 3 < d.length) { state.actOffset++; playCardSound("click"); renderUI(false); } };
+    movPrevBtn.onclick = () => { if (state.movOffset > 0) { state.movOffset--; playCardSound("click"); renderUI(false); } };
+    movNextBtn.onclick = () => { const d = getRightMoveDeck(); if (state.movOffset + 3 < d.length) { state.movOffset++; playCardSound("click"); renderUI(false); } };
+
+    /* ============================================================================
+       14. СПИЧКА И СВЕЧА: ТАСКАНИЕ ПО ЭКРАНУ + ОГАРОК СВЕЧИ (candleBurnedMs)
+    ============================================================================ */
+    const stageEl = document.getElementById("stage-16x9");
+    const flameCanvas = document.getElementById("center-flame-canvas");
+    const fCtx = flameCanvas.getContext("2d");
+
+    let isDraggingTorch = false;
+    let dragStartX = 0, dragStartY = 0;
+    let torchOffsetX = 0, torchOffsetY = 0;
+    let smoothTorchX = 0, smoothTorchY = 0;
+    let lastFlameCanvasY = 65;
+
+    flameCanvas.addEventListener("pointerdown", (e) => {
+      if (state.lightMode !== "match" && state.lightMode !== "candle" && state.lightMode !== "kerosene") return;
+      hideMatchTutorialHint();
+      isDraggingTorch = true;
+      flameCanvas.classList.add("dragging");
+      dragStartX = e.clientX - torchOffsetX;
+      dragStartY = e.clientY - torchOffsetY;
+      if (flameCanvas.setPointerCapture) flameCanvas.setPointerCapture(e.pointerId);
+    });
+
+    window.addEventListener("pointermove", (e) => {
+      if (!isDraggingTorch) return;
+      hideMatchTutorialHint();
+      const stRect = stageEl.getBoundingClientRect();
+      const maxX = stRect.width * 0.48;
+      const maxYUp = stRect.height * 0.88;
+      const maxYDown = stRect.height * 0.08;
+      const rawX = e.clientX - dragStartX;
+      const rawY = e.clientY - dragStartY;
+      torchOffsetX = Math.max(-maxX, Math.min(maxX, rawX));
+      torchOffsetY = Math.max(-maxYUp, Math.min(maxYDown, rawY));
+    });
+
+    function stopTorchDrag() {
+      if (!isDraggingTorch) return;
+      isDraggingTorch = false;
+      flameCanvas.classList.remove("dragging");
+      torchOffsetX = 0;
+      torchOffsetY = 0;
+    }
+    window.addEventListener("pointerup", stopTorchDrag);
+    window.addEventListener("pointercancel", stopTorchDrag);
+
+    function drawRealisticFlame(ctx, x, y, scale, t) {
+      const sway = Math.sin(t * 13) * 2.2 + Math.cos(t * 21) * 1.1;
+      const h = (24 + Math.sin(t * 18) * 2.8) * scale;
+
+      const glow = ctx.createRadialGradient(x, y - 9 * scale, 2, x, y - 9 * scale, 40 * scale);
+      glow.addColorStop(0, "rgba(255, 195, 85, 0.55)");
+      glow.addColorStop(0.5, "rgba(255, 110, 20, 0.2)");
+      glow.addColorStop(1, "rgba(255, 70, 0, 0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(x, y - 9 * scale, 40 * scale, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = "#ff8514";
+      ctx.beginPath();
+      ctx.moveTo(x - 6 * scale, y);
+      ctx.quadraticCurveTo(x - 8.5 * scale, y - h * 0.5, x + sway, y - h);
+      ctx.quadraticCurveTo(x + 8.5 * scale, y - h * 0.5, x + 6 * scale, y);
+      ctx.closePath(); ctx.fill();
+
+      ctx.fillStyle = "#fff5b8";
+      ctx.beginPath();
+      ctx.moveTo(x - 3 * scale, y);
+      ctx.quadraticCurveTo(x - 4.2 * scale, y - h * 0.35, x + sway * 0.6, y - h * 0.7);
+      ctx.quadraticCurveTo(x + 4.2 * scale, y - h * 0.35, x + 3 * scale, y);
+      ctx.closePath(); ctx.fill();
+    }
+
+    function renderCenterMatchAndCandle(now) {
+      const t = now * 0.001;
+      fCtx.clearRect(0, 0, flameCanvas.width, flameCanvas.height);
+      const cx = flameCanvas.width / 2;
+
+      updateFlameVisibility();
+
+      if (state.lightMode === "match") {
+        const p = Math.min(1, (now - state.matchStart) / MATCH_DURATION);
+        if (p >= 1) {
+          state.lightMode = "none";
+          stopTorchDrag();
+          hideMatchTutorialHint();
+          updateFlameVisibility();
+          document.body.setAttribute("data-lit", "false");
+          addStoryCard(state.hasCandle ? "light_candle" : "light_match", true);
+          renderUI(true);
+          return;
+        }
+        const botY = 174, fullLen = 110, topY = botY - fullLen;
+        const burnY = topY + p * (fullLen - 20);
+        lastFlameCanvasY = burnY - 12;
+
+        const woodGrad = fCtx.createLinearGradient(cx - 3.5, burnY, cx + 3.5, burnY);
+        woodGrad.addColorStop(0, "#b8864c"); woodGrad.addColorStop(0.5, "#e0b478"); woodGrad.addColorStop(1, "#9c6d36");
+        fCtx.fillStyle = woodGrad;
+        fCtx.fillRect(cx - 3.5, burnY, 7, botY - burnY);
+
+        const charTopY = topY + p * 34;
+        fCtx.strokeStyle = "#171412";
+        fCtx.lineWidth = 5; fCtx.lineCap = "round";
+        fCtx.beginPath();
+        fCtx.moveTo(cx, burnY);
+        fCtx.quadraticCurveTo(cx + 5 * p, (burnY + charTopY) * 0.5, cx + 8 * p, charTopY);
+        fCtx.stroke();
+
+        fCtx.fillStyle = "#29221e";
+        fCtx.beginPath(); fCtx.arc(cx + 8 * p, charTopY, 3.8, 0, Math.PI * 2); fCtx.fill();
+
+        fCtx.fillStyle = "#f94125";
+        fCtx.fillRect(cx - 3.5, burnY - 3, 7, 4);
+
+        drawRealisticFlame(fCtx, cx, burnY - 2, 0.95, t);
+      } else if (state.lightMode === "candle" || state.lightMode === "kerosene") {
+        const currentSessionMs = Math.max(0, now - state.candleStart);
+        const totalBurnedMs = state.candleBurnedMs + currentSessionMs;
+        const p = state.lightMode === "candle" ? Math.min(1, totalBurnedMs / CANDLE_DURATION) : 0.15;
+        if (p >= 1) {
+          state.candleBurnedMs = CANDLE_DURATION;
+          state.lightMode = "none";
+          stopTorchDrag();
+          updateFlameVisibility();
+          document.body.setAttribute("data-lit", "false");
+          addStoryCard("light_candle", true);
+          renderUI(true);
+          return;
+        }
+        const botY = 174, maxH = 102, minH = 24;
+        const curH = maxH - p * (maxH - minH);
+        const topY = botY - curH;
+        lastFlameCanvasY = topY - 16;
+
+        const waxGrad = fCtx.createLinearGradient(cx - 14, topY, cx + 14, topY);
+        waxGrad.addColorStop(0, "#cbbba0"); waxGrad.addColorStop(0.45, "#f7f2e6"); waxGrad.addColorStop(1, "#a8987e");
+        fCtx.fillStyle = waxGrad;
+        fCtx.fillRect(cx - 14, topY, 28, curH);
+
+        fCtx.fillStyle = "#eee7d8";
+        fCtx.beginPath();
+        fCtx.arc(cx - 9, topY + 12 + p * 10, 2.8, 0, Math.PI * 2);
+        fCtx.arc(cx + 8, topY + 19 + p * 8, 2.5, 0, Math.PI * 2);
+        fCtx.fill();
+
+        fCtx.strokeStyle = "#1c1917"; fCtx.lineWidth = 2;
+        fCtx.beginPath(); fCtx.moveTo(cx, topY); fCtx.lineTo(cx, topY - 7); fCtx.stroke();
+
+        if (state.lightMode === "kerosene" || now >= state.candleWickLitTime) {
+          const wickGrow = state.lightMode === "kerosene" ? 1 : Math.min(1, (now - state.candleWickLitTime) / 380);
+          drawRealisticFlame(fCtx, cx, topY - 6, 1.12 * wickGrow, t);
+        }
+
+        if (now < state.candleIgniteEnd) {
+          const totalIgnite = state.candleIgniteEnd - state.candleIgniteStart || 2200;
+          const prog = Math.min(1, (now - state.candleIgniteStart) / totalIgnite);
+          const approach = prog < 0.35 ? (prog / 0.35) : (1 - (prog - 0.35) / 0.65);
+          const mx = cx + 34 - approach * 28;
+          const my = topY - 6;
+          fCtx.save();
+          fCtx.translate(mx, my); fCtx.rotate(-0.42);
+          fCtx.fillStyle = "#d6a76c"; fCtx.fillRect(0, -2.2, 38, 4.5);
+          fCtx.fillStyle = "#1c1917"; fCtx.fillRect(-6, -2.6, 7, 5.2);
+          fCtx.restore();
+          drawRealisticFlame(fCtx, mx - 4, my, 0.78, t);
+        }
+      }
+    }
+
+    /* ============================================================================
+       15. ГЛАВНЫЙ ЦИКЛ: ШАР СВЕТА ЧЁТКО ПРИВЯЗАН К КОНЧИКУ СПИЧКИ/СВЕЧИ
+    ============================================================================ */
+    let currentLightRadius = 0;
+
+    function animateLoop(ts) {
+      const t = ts * 0.001;
+      const lerpSpeed = (isDraggingTorch || state.matchTutorialSweepActive) ? 0.25 : 0.14;
+      smoothTorchX += (torchOffsetX - smoothTorchX) * lerpSpeed;
+      smoothTorchY += (torchOffsetY - smoothTorchY) * lerpSpeed;
+
+      const tiltDeg = Math.max(-14, Math.min(14, smoothTorchX * 0.035));
+      flameCanvas.style.transform = `translate3d(${smoothTorchX.toFixed(1)}px, ${smoothTorchY.toFixed(1)}px, 0) rotate(${tiltDeg.toFixed(2)}deg)`;
+
+      renderCenterMatchAndCandle(ts);
+
+      const stRect = stageEl.getBoundingClientRect();
+      const cvRect = flameCanvas.getBoundingClientRect();
+      const flameRatioY = Math.max(0.1, Math.min(0.9, lastFlameCanvasY / flameCanvas.height));
+      const flameScreenX = cvRect.left + cvRect.width * 0.5;
+      const flameScreenY = cvRect.top + cvRect.height * flameRatioY;
+
+      const lx = ((flameScreenX - stRect.left) / (stRect.width || 1)) * 100 + Math.sin(t * 3.1) * 0.25;
+      const ly = ((flameScreenY - stRect.top) / (stRect.height || 1)) * 100 + Math.cos(t * 2.6) * 0.25;
+
+      const normX = (lx - 50) / 50;
+      const normY = (ly - 50) / 50;
+
+      const isStatic = (state.currentScene === "cabinet" || FULL_BRIGHT_SCENES.has(state.currentScene)) && !state.isWalking;
+      const px = isStatic ? 0 : -normX * 10;
+      const py = isStatic ? 0 : -normY * 7;
+      const bobX = isStatic ? 0 : (walkBobIntensity ? Math.sin(t * 7.5) * 8 : Math.sin(t * 1.4) * 1.5);
+      const bobY = isStatic ? 0 : (walkBobIntensity ? Math.abs(Math.cos(t * 7.5)) * 10 : Math.cos(t * 1.8) * 2);
+      const fl = Math.sin(t * 6.3) * 0.4 + Math.sin(t * 14.7) * 0.35 + Math.cos(t * 23.1) * 0.25;
+      const sw = stRect.width || window.innerWidth;
+
+      let tr = 0;
+      if (state.lightMode === "match") tr = sw * 0.26 + fl * (sw * 0.015);
+      else if (state.lightMode === "candle") {
+        const wickLit = ts >= state.candleWickLitTime;
+        tr = (wickLit ? sw * 0.44 : sw * 0.26) + fl * (sw * 0.018);
+      }
+      else if (state.lightMode === "kerosene") tr = sw * 0.58 + fl * (sw * 0.012);
+      currentLightRadius += (tr - currentLightRadius) * 0.1;
+
+      const isLit = (state.lightMode === "match" || state.lightMode === "candle" || state.lightMode === "kerosene") && !isSceneHidingTorch(state.currentScene);
+      const alpha = isLit ? Math.min(1, 0.94 + fl * 0.04) : 0;
+
+      const root = document.documentElement.style;
+      root.setProperty("--parallax-x", `${px.toFixed(1)}px`);
+      root.setProperty("--parallax-y", `${py.toFixed(1)}px`);
+      root.setProperty("--bob-x", `${bobX.toFixed(1)}px`);
+      root.setProperty("--bob-y", `${bobY.toFixed(1)}px`);
+      root.setProperty("--light-x", `${lx.toFixed(2)}%`);
+      root.setProperty("--light-y", `${ly.toFixed(2)}%`);
+      root.setProperty("--light-r", `${Math.max(0, currentLightRadius).toFixed(1)}px`);
+      root.setProperty("--light-alpha", alpha.toFixed(3));
+
+      requestAnimationFrame(animateLoop);
+    }
+
+    applyBackgroundToSlot(slotA, "bedroom");
+    updateFlameVisibility();
+    updateBackpackBadge();
+    renderUI(true);
+    preloadNpcSprites();
+    requestAnimationFrame(animateLoop);
+  </script>
+</body>
+</html>

@@ -1,0 +1,2673 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Костяное Очко</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-drag: none; }
+  body, html {
+    width: 100%; height: 100%; overflow: hidden;
+    background: radial-gradient(circle at 50% 45%, #1a1410 0%, #070504 100%);
+    background-size: cover; background-position: center;
+    font-family: 'Palatino Linotype', 'Book Antiqua', 'Georgia', serif;
+    color: #dfd1b8;
+  }
+  #webgl-wrap { position: absolute; inset: 0; z-index: 1; cursor: pointer; }
+  .interactive { pointer-events: auto; }
+  input[type="file"] { display: none; }
+
+  #side-status-log {
+    position: absolute; left: 20px; top: 48%; transform: translateY(-50%);
+    z-index: 15; max-width: 210px; pointer-events: none;
+    font-family: 'Palatino Linotype', 'Book Antiqua', 'Georgia', serif;
+    font-size: 13px; font-weight: normal; font-style: italic;
+    line-height: 1.45; letter-spacing: 0.3px;
+    color: rgba(228, 212, 184, 0.88);
+    text-shadow: 0 2px 5px #000, 0 0 10px #000;
+  }
+
+  #right-dev-stack {
+    position: absolute; top: 96px; right: 20px; z-index: 30;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  }
+  .subtle-link {
+    background: rgba(14, 10, 7, 0.65);
+    border: none; border-right: 1px solid rgba(190, 152, 92, 0.45);
+    color: rgba(216, 198, 168, 0.78);
+    padding: 3px 9px; cursor: pointer;
+    font: italic 11.5px 'Palatino Linotype', 'Georgia', serif;
+    letter-spacing: 0.4px; text-shadow: 0 1px 4px #000;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .subtle-link:hover {
+    color: #fff; border-right-color: #e5c07b; background: rgba(32, 22, 14, 0.85);
+  }
+
+  /* ==================== ВАРИАНТ II ==================== */
+  #hud-v2 { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+  body.ui-mode-1 #hud-v2 { display: none; }
+
+  .corner-profile {
+    position: absolute; top: 16px; display: flex; align-items: center; gap: 14px;
+  }
+  .corner-profile.left { left: 20px; }
+  .corner-profile.right { right: 20px; flex-direction: row-reverse; text-align: right; }
+
+  .avatar-lens {
+    width: 68px; height: 68px; border-radius: 50%; position: relative; cursor: pointer;
+    background: radial-gradient(circle at 50% 50%, #110d0a 0%, #030201 82%, #000 100%);
+    background-size: cover; background-position: center;
+    border: 2px solid #4a3623;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.95), inset 0 0 18px #000, 0 0 0 1px rgba(212,175,110,0.25);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .avatar-lens::after {
+    content: ''; position: absolute; inset: 2px; border-radius: 50%; pointer-events: none;
+    background: linear-gradient(135deg, rgba(255,245,220,0.14) 0%, transparent 45%);
+    box-shadow: inset 0 -5px 10px rgba(0,0,0,0.85);
+  }
+  .corner-profile.active-turn .avatar-lens {
+    border-color: #caa052;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.95), 0 0 16px rgba(205,160,80,0.4), inset 0 0 16px #000;
+  }
+
+  .lens-text-block {
+    display: flex; flex-direction: column;
+    text-shadow: 0 2px 6px #000, 0 0 12px #000;
+  }
+  .lens-name {
+    font: italic 12px 'Palatino Linotype', 'Georgia', serif;
+    color: rgba(218, 200, 170, 0.82); letter-spacing: 0.5px;
+  }
+  .lens-score-line { display: flex; align-items: baseline; gap: 9px; margin-top: 1px; }
+  .corner-profile.right .lens-score-line { justify-content: flex-end; }
+  .lens-score-val {
+    font: normal 30px 'Palatino Linotype', 'Georgia', serif;
+    color: #f4e7ce; line-height: 1;
+  }
+  .lens-score-val.bust { color: #b53328; text-decoration: line-through; }
+  .lens-wins-val {
+    font: italic 11.5px 'Palatino Linotype', 'Georgia', serif;
+    color: rgba(198, 166, 112, 0.88);
+  }
+
+  #v2-btn-box {
+    position: absolute; top: 96px; left: 20px;
+    border-left: 1px solid rgba(190, 152, 92, 0.55); border-right: none;
+    padding: 4px 11px; font-size: 12.5px;
+  }
+
+  .v2-corner-dice-btn {
+    position: absolute; bottom: 14px;
+    background: transparent; border: none; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 4px 8px;
+    transition: transform 0.18s ease, opacity 0.18s ease, filter 0.18s ease;
+  }
+  .v2-corner-dice-btn.left { left: 16px; }
+  .v2-corner-dice-btn.right { right: 16px; }
+  .v2-corner-dice-btn:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.04);
+    filter: drop-shadow(0 0 12px rgba(230, 185, 105, 0.35));
+  }
+  .v2-corner-dice-btn:disabled { opacity: 0.28; cursor: default; filter: grayscale(0.6); }
+  .v2-corner-canvas {
+    width: 128px; height: 84px; object-fit: contain; pointer-events: none;
+    filter: drop-shadow(0 8px 10px rgba(0,0,0,0.95));
+  }
+  .v2-corner-caption {
+    font: italic 13px 'Palatino Linotype', 'Georgia', serif;
+    color: #e4d3b4; letter-spacing: 0.4px;
+    text-shadow: 0 2px 5px #000, 0 0 10px #000;
+    border-bottom: 1px solid rgba(195, 158, 98, 0.4);
+    padding-bottom: 1px; margin-top: -2px;
+  }
+
+  .v2-bottom-center {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 14px;
+  }
+
+  /* ==================== ВАРИАНТ I ==================== */
+  #hud-v1 {
+    position: absolute; inset: 0; z-index: 10; pointer-events: none;
+    display: none; flex-direction: column; justify-content: space-between;
+    align-items: center; padding: 14px 18px 14px;
+  }
+  body.ui-mode-1 #hud-v1 { display: flex; }
+  .v1-top-bar { width: 100%; max-width: 1180px; display: flex; justify-content: flex-start; gap: 12px; }
+
+  .paper-label {
+    position: relative; background-color: #cbb793;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(255,248,230,0.35) 0%, transparent 55%),
+      radial-gradient(circle at 85% 80%, rgba(70,45,20,0.35) 0%, transparent 60%);
+    color: #1b130c; padding: 6px 18px 7px;
+    box-shadow: 0 5px 14px rgba(0,0,0,0.85), inset 0 0 10px rgba(75,50,22,0.45);
+    border: 1px solid #6e5638;
+    font-family: 'Palatino Linotype', 'Book Antiqua', 'Georgia', serif;
+    clip-path: polygon(1% 3%, 98% 0%, 100% 95%, 97% 100%, 2% 98%, 0% 6%);
+    transition: transform 0.14s ease, filter 0.14s ease;
+  }
+  .paper-label::before, .paper-label::after {
+    content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+    width: 5px; height: 5px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #e3be78, #5c401c 75%, #1a1107 100%);
+  }
+  .paper-label::before { left: 5px; }
+  .paper-label::after  { right: 5px; }
+
+  .score-tag { display: flex; align-items: baseline; gap: 8px; padding: 6px 20px; }
+  .score-tag.active-turn {
+    background-color: #e4d5b7;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.9), 0 0 14px rgba(235,185,95,0.4);
+  }
+  .tag-caption { font: italic 12px 'Palatino Linotype', 'Georgia', serif; color: #2e2013; }
+  .tag-num { font: bold 24px 'Georgia', serif; color: #140d07; line-height: 1; }
+  .tag-num.bust { color: #8f1d14; text-decoration: line-through; }
+  .tag-wins { font: italic 11px 'Palatino Linotype', 'Georgia', serif; color: #4e3922; }
+
+  .throw-tags-bar { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .tag-throw-btn { cursor: pointer; padding: 7px 22px; text-align: center; background-color: #d1be99; border: none; }
+  .tag-throw-btn:hover:not(:disabled) { background-color: #e2d2b3; transform: translateY(-2px); }
+  .tag-throw-btn:disabled { opacity: 0.36; cursor: default; filter: grayscale(0.5); }
+  .throw-title { display: block; font: bold 13px 'Palatino Linotype', 'Georgia', serif; letter-spacing: 0.4px; color: #1a1109; }
+  .throw-sub { display: block; font: italic 10.5px 'Palatino Linotype', 'Georgia', serif; color: #4a3723; margin-top: 1px; }
+
+  /* ==================== UI ПОЛНОЭКРАННОГО 3D-ЯЩИКА КОСТЕЙ ==================== */
+  #box-screen-ui {
+    position: absolute; inset: 0; z-index: 25; pointer-events: none;
+    display: none;
+  }
+  #box-screen-ui.open { display: block; }
+
+  #box-hint-plaque {
+    position: absolute; top: 18px; left: 22px; max-width: 245px;
+    background: linear-gradient(90deg, rgba(16, 11, 7, 0.92) 0%, rgba(28, 19, 12, 0.78) 100%);
+    border-left: 2px solid #d4a959;
+    border-top: 1px solid rgba(212, 169, 89, 0.3);
+    border-bottom: 1px solid rgba(212, 169, 89, 0.3);
+    padding: 8px 14px;
+    font: italic 12.5px 'Palatino Linotype', 'Georgia', serif;
+    color: #ead8b8; letter-spacing: 0.3px;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.85);
+    transform: translateX(-120%); opacity: 0;
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease;
+  }
+  #box-screen-ui.open #box-hint-plaque {
+    transform: translateX(0); opacity: 1;
+  }
+
+  #btn-close-box-3d {
+    position: absolute; top: 14px; right: 22px;
+    cursor: pointer; padding: 6px 20px;
+  }
+
+  /* ==================== АНИМИРОВАННЫЕ БАННЕРЫ ПОСЕРЕДИНЕ ЭКРАНА ==================== */
+  #center-banner-wrap {
+    position: absolute; inset: 0; z-index: 45; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #center-banner-cnv {
+    width: min(760px, 88vw); height: auto; aspect-ratio: 4 / 1;
+    opacity: 0; pointer-events: none;
+  }
+  #center-banner-cnv.play-fx-0 { animation: bannerFxGold 0.72s cubic-bezier(0.18, 0.89, 0.32, 1.15) forwards; }
+  #center-banner-cnv.play-fx-1 { animation: bannerFxSlam 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+  #center-banner-cnv.play-fx-2 { animation: bannerFxMist 0.72s ease-out forwards; }
+  #center-banner-cnv.play-fx-3 { animation: bannerFxWipe 0.72s cubic-bezier(0.19, 1, 0.22, 1) forwards; }
+  /* Зависающий баннер выбора 2 костей соперника */
+  #center-banner-cnv.hold-banner {
+    animation: bannerHoldPulse 2.2s ease-in-out infinite;
+    opacity: 1;
+  }
+
+  @keyframes bannerHoldPulse {
+    0%   { opacity: 0.94; transform: scale(0.99); filter: brightness(1.15) drop-shadow(0 8px 22px #000) drop-shadow(0 0 18px rgba(245,190,85,0.55)); }
+    50%  { opacity: 1;    transform: scale(1.02); filter: brightness(1.32) drop-shadow(0 8px 26px #000) drop-shadow(0 0 28px rgba(255,205,105,0.85)); }
+    100% { opacity: 0.94; transform: scale(0.99); filter: brightness(1.15) drop-shadow(0 8px 22px #000) drop-shadow(0 0 18px rgba(245,190,85,0.55)); }
+  }
+
+  @keyframes bannerFxGold {
+    0%   { opacity: 0; transform: scale(0.78); filter: brightness(2.2) drop-shadow(0 0 30px rgba(255,200,95,0.95)); }
+    28%  { opacity: 1; transform: scale(1.04); filter: brightness(1.35) drop-shadow(0 0 22px rgba(245,185,75,0.85)); }
+    72%  { opacity: 1; transform: scale(1.0);  filter: brightness(1.08) drop-shadow(0 6px 18px rgba(0,0,0,0.95)); }
+    100% { opacity: 0; transform: scale(1.08); filter: brightness(0.8) drop-shadow(0 0 8px rgba(0,0,0,0.8)); }
+  }
+  @keyframes bannerFxSlam {
+    0%   { opacity: 0; transform: scale(1.65) translateY(-12px); filter: brightness(1.9) drop-shadow(0 0 35px rgba(255,140,55,0.9)); }
+    22%  { opacity: 1; transform: scale(0.96) translateY(2px);  filter: brightness(1.3) drop-shadow(0 0 18px rgba(235,165,75,0.8)); }
+    35%  { opacity: 1; transform: scale(1.02) translateY(0); }
+    76%  { opacity: 1; transform: scale(1.0);  filter: brightness(1.05) drop-shadow(0 8px 20px #000); }
+    100% { opacity: 0; transform: scale(0.92); filter: blur(4px); }
+  }
+  @keyframes bannerFxMist {
+    0%   { opacity: 0; transform: scaleX(1.22) scaleY(0.88); filter: blur(12px) brightness(2.0) drop-shadow(0 0 28px rgba(255,220,140,0.9)); }
+    30%  { opacity: 1; transform: scaleX(1.0) scaleY(1.0);   filter: blur(0px) brightness(1.25) drop-shadow(0 0 18px rgba(225,175,90,0.75)); }
+    75%  { opacity: 1; transform: scale(1.01); filter: blur(0px) drop-shadow(0 6px 18px #000); }
+    100% { opacity: 0; transform: scaleX(1.12); filter: blur(8px); }
+  }
+  @keyframes bannerFxWipe {
+    0%   { opacity: 0; clip-path: inset(0 100% 0 0); transform: scale(0.95); filter: brightness(2.0) drop-shadow(0 0 25px rgba(255,195,90,0.95)); }
+    32%  { opacity: 1; clip-path: inset(0 0% 0 0);   transform: scale(1.02); filter: brightness(1.3) drop-shadow(0 0 20px rgba(240,180,85,0.8)); }
+    76%  { opacity: 1; clip-path: inset(0 0% 0 0);   transform: scale(1.0);  filter: brightness(1.05) drop-shadow(0 6px 16px #000); }
+    100% { opacity: 0; clip-path: inset(0 0 0 100%); transform: scale(1.03); }
+  }
+</style>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="webgl-wrap"></div>
+
+<div id="side-status-log">Жеребьёвка первого хода: бросьте по 2 кости</div>
+
+<!-- ЦЕНТРАЛЬНЫЙ АНИМИРОВАННЫЙ БАННЕР -->
+<div id="center-banner-wrap">
+  <canvas id="center-banner-cnv" width="960" height="240"></canvas>
+</div>
+
+<!-- СТЕК ТЕХНИЧЕСКИХ КНОПОК (АВТОМАТИЧЕСКИ СКРЫВАЕТСЯ ВНУТРИ INDEX.HTML И В MODE=BOX) -->
+<div id="right-dev-stack" class="interactive">
+  <button class="subtle-link" id="btn-opp-cycle">Соперник: I (Игра 1)</button>
+  <button class="subtle-link" id="btn-inv-mode">Склад: Старт (6 карб.)</button>
+  <button class="subtle-link" id="btn-fx-cycle">Эффект баннера: I</button>
+  <button class="subtle-link" id="btn-ui-cycle">Интерфейс: Вариант II</button>
+
+  <label class="subtle-link" for="file-banners" id="lbl-banners-status">Баннеры.png</label>
+  <input type="file" id="file-banners" accept="image/*">
+
+  <label class="subtle-link" for="file-trim" id="lbl-trim-status">Трим-лист</label>
+  <input type="file" id="file-trim" accept="image/*">
+
+  <label class="subtle-link" for="file-glb" id="lbl-glb-status">Модель dice.glb</label>
+  <input type="file" id="file-glb" accept=".glb,.gltf">
+
+  <label class="subtle-link" for="file-box-img" id="lbl-box-status">Ящик (Кубики.jpg)</label>
+  <input type="file" id="file-box-img" accept="image/*">
+
+  <label class="subtle-link" for="file-wood" id="lbl-wood-status">Текстура доски</label>
+  <input type="file" id="file-wood" accept="image/*">
+
+  <label class="subtle-link" for="file-bg">Задний фон</label>
+  <input type="file" id="file-bg" accept="image/*">
+</div>
+
+<!-- ==================== ВАРИАНТ II ==================== -->
+<div id="hud-v2">
+  <div class="corner-profile left active-turn interactive" id="v2-prof-player">
+    <label class="avatar-lens" id="lens-player" for="file-ava-player"></label>
+    <input type="file" id="file-ava-player" accept="image/*">
+    <div class="lens-text-block">
+      <span class="lens-name">Ты (Игрок)</span>
+      <div class="lens-score-line">
+        <span class="lens-score-val" id="v2-score-player">0</span>
+        <span class="lens-wins-val">побед: <span id="v2-wins-player">0</span>/3</span>
+      </div>
+    </div>
+  </div>
+
+  <button id="v2-btn-box" class="subtle-link interactive">Открыть ящик костей</button>
+
+  <div class="corner-profile right interactive" id="v2-prof-bot">
+    <label class="avatar-lens" id="lens-bot" for="file-ava-bot"></label>
+    <input type="file" id="file-ava-bot" accept="image/*">
+    <div class="lens-text-block">
+      <span class="lens-name" id="v2-bot-name">Соперник I</span>
+      <div class="lens-score-line">
+        <span class="lens-score-val" id="v2-score-bot">0</span>
+        <span class="lens-wins-val">побед: <span id="v2-wins-bot">0</span>/3</span>
+      </div>
+    </div>
+  </div>
+
+  <button class="v2-corner-dice-btn left interactive" id="v2-roll-1">
+    <canvas class="v2-corner-canvas" id="cnv-btn-1" width="160" height="104"></canvas>
+    <span class="v2-corner-caption">Бросить одну кость</span>
+  </button>
+
+  <div class="v2-bottom-center interactive">
+    <button class="paper-label tag-throw-btn" id="v2-pass" disabled>
+      <span class="throw-title">Хватит (Пас)</span>
+    </button>
+    <button class="paper-label tag-throw-btn" id="v2-new-round" style="display:none;">
+      <span class="throw-title">Новый кон</span>
+    </button>
+  </div>
+
+  <button class="v2-corner-dice-btn right interactive" id="v2-roll-2">
+    <canvas class="v2-corner-canvas" id="cnv-btn-2" width="160" height="104"></canvas>
+    <span class="v2-corner-caption">Бросить две кости</span>
+  </button>
+</div>
+
+<!-- ==================== ВАРИАНТ I ==================== -->
+<div id="hud-v1">
+  <div class="v1-top-bar interactive">
+    <div class="paper-label score-tag active-turn" id="v1-tag-player">
+      <span class="tag-caption">Ты:</span>
+      <span class="tag-num" id="v1-score-player">0</span>
+      <span class="tag-wins">[побед: <span id="v1-wins-player">0</span>/3]</span>
+    </div>
+    <div class="paper-label score-tag" id="v1-tag-bot">
+      <span class="tag-caption" id="v1-bot-name">Соперник I:</span>
+      <span class="tag-num" id="v1-score-bot">0</span>
+      <span class="tag-wins">[побед: <span id="v1-wins-bot">0</span>/3]</span>
+    </div>
+  </div>
+
+  <div class="throw-tags-bar interactive">
+    <button class="paper-label tag-throw-btn" id="v1-roll-2">
+      <span class="throw-title">Бросить II кости</span>
+      <span class="throw-sub">(ЛКМ по доске)</span>
+    </button>
+    <button class="paper-label tag-throw-btn" id="v1-roll-1">
+      <span class="throw-title">Бросить I кость</span>
+      <span class="throw-sub">(ПКМ по доске)</span>
+    </button>
+    <button class="paper-label tag-throw-btn" id="v1-pass" disabled>
+      <span class="throw-title">Хватит (Пас)</span>
+      <span class="throw-sub">(остановиться)</span>
+    </button>
+    <button class="paper-label tag-throw-btn" id="v1-new-round" style="display:none;">
+      <span class="throw-title">Новый кон</span>
+      <span class="throw-sub">(жеребьёвка)</span>
+    </button>
+    <button class="paper-label tag-throw-btn" id="v1-btn-box">
+      <span class="throw-title">Открыть ящик костей</span>
+      <span class="throw-sub">(8 видов в кассете)</span>
+    </button>
+  </div>
+</div>
+
+<!-- ==================== ОВЕРЛЕЙ 3D-ЯЩИКА КОСТЕЙ ==================== -->
+<div id="box-screen-ui">
+  <div id="box-hint-plaque">Кликни на выбранный кубик, чтобы добавить его в пул</div>
+
+  <button class="paper-label tag-throw-btn interactive" id="btn-close-box-3d">
+    <span class="throw-title">Закрыть ящик</span>
+    <span class="throw-sub" id="close-box-sub">(вернуться к доске)</span>
+  </button>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+/* ============================================================================
+   1. КАТАЛОГ 8 ВИДОВ КОСТЕЙ И ПРЕСЕТЫ 4 СОПЕРНИКОВ
+============================================================================ */
+const DICE_TYPES = [
+  { id: 0, col: 0, baseRow: 0, pipRow: 1, title: "Карболитовые", sub: "(флотский щиток)", roughness: 0.22, metalness: 0.05, fallbackBase: "#241410", fallbackPip: "#dcd5c9" },
+  { id: 1, col: 1, baseRow: 0, pipRow: 1, title: "Кап карликовой берёзы", sub: "", roughness: 0.30, metalness: 0.04, fallbackBase: "#8e4d18", fallbackPip: "#23150e" },
+  { id: 2, col: 2, baseRow: 0, pipRow: 1, title: "Саамские", sub: "(олений рог)", roughness: 0.38, metalness: 0.05, fallbackBase: "#a8a295", fallbackPip: "#3b3833" },
+  { id: 3, col: 3, baseRow: 0, pipRow: 1, title: "Поморские", sub: "(китовое ребро)", roughness: 0.28, metalness: 0.04, fallbackBase: "#d6a856", fallbackPip: "#0d0f13" },
+  { id: 4, col: 0, baseRow: 2, pipRow: 3, title: "Арктические", sub: "(моржовый клык)", roughness: 0.26, metalness: 0.04, fallbackBase: "#e5cda5", fallbackPip: "#b28448" },
+  { id: 5, col: 1, baseRow: 2, pipRow: 3, title: "Эвдиалитовые", sub: "(Лопарская кровь)", roughness: 0.20, metalness: 0.08, fallbackBase: "#8f223b", fallbackPip: "#111114" },
+  { id: 6, col: 2, baseRow: 2, pipRow: 3, title: "Шерловые", sub: "(черный турмалин)", roughness: 0.16, metalness: 0.15, fallbackBase: "#141619", fallbackPip: "#d4dae0" },
+  { id: 7, col: 3, baseRow: 2, pipRow: 3, title: "Астрофиллитовые", sub: "", roughness: 0.22, metalness: 0.22, fallbackBase: "#2b1b11", fallbackPip: "#e3b94b" }
+];
+
+const OPPONENTS_CONFIG = [
+  {
+    id: 1, name: "Сосед из кв. 20",
+    games: [
+      [2, 2, 2, 2, 2, 2], // Игра 1: 6 Саамских
+      [3, 2, 2, 2, 2, 3]  // Игра 2: 4 Саамских + 2 Поморских по краям
+    ]
+  },
+  {
+    id: 2, name: "Жилец из кв. 18",
+    games: [
+      [1, 1, 1, 1, 1, 1], // Игра 1: 6 из капа берёзы
+      [4, 1, 1, 1, 1, 4]  // Игра 2: 4 берёзовых + 2 Арктических по краям
+    ]
+  },
+  {
+    id: 3, name: "Моряк из кв. 23",
+    games: [
+      [5, 1, 1, 1, 1, 5]  // 1 игра: 2 Эвдиалитовых по краям + 4 по центру
+    ]
+  },
+  {
+    id: 4, name: "Финальный игрок",
+    games: [
+      [7, 7, 7, 7, 7, 7], // Игра 1
+      [6, 6, 6, 6, 6, 7]  // Игра 2
+    ]
+  }
+];
+
+let currentOppIdx = 0;
+let currentOppGameIdx = 0;
+let isStandaloneBoxMode = false;
+let isEmbeddedMatchMode = (window.parent && window.parent !== window);
+let debugFullInventory = false;
+
+// Личная коллекция костей игрока: на старте только 6 Карболитовых (id: 0)
+let playerOwnedCounts = [6, 0, 0, 0, 0, 0, 0, 0];
+// Активный боевой набор игрока из 6 костей
+let playerSelectedSkins = [0, 0, 0, 0, 0, 0];
+
+const TARGET_EULER_TABLE = {
+  5: { x: 0,             z: 0 },
+  2: { x: Math.PI,       z: 0 },
+  1: { x: 0,             z: Math.PI / 2 },
+  6: { x: 0,             z: -Math.PI / 2 },
+  4: { x: -Math.PI / 2,  z: 0 },
+  3: { x: Math.PI / 2,   z: 0 }
+};
+
+const T_SLOTS = {
+  3: { gx: 1, gy: 0 },
+  6: { gx: 0, gy: 1 },
+  5: { gx: 1, gy: 1 },
+  1: { gx: 2, gy: 1 },
+  2: { gx: 3, gy: 1 },
+  4: { gx: 1, gy: 2 }
+};
+
+const PIP_LAYOUTS = {
+  1: [[0.50, 0.50, 1.14]],
+  5: [[0.31, 0.31, 1], [0.69, 0.31, 1], [0.50, 0.50, 1], [0.31, 0.69, 1], [0.69, 0.69, 1]],
+  4: [[0.31, 0.31, 1], [0.69, 0.31, 1], [0.31, 0.69, 1], [0.69, 0.69, 1]],
+  6: [
+    [0.30, 0.30, 1], [0.50, 0.30, 1], [0.70, 0.30, 1],
+    [0.30, 0.70, 1], [0.50, 0.70, 1], [0.70, 0.70, 1]
+  ],
+  3: [[0.31, 0.31, 1], [0.50, 0.50, 1], [0.69, 0.69, 1]],
+  2: [[0.31, 0.31, 1], [0.69, 0.69, 1]]
+};
+
+/* ============================================================================
+   2. ФИКСИРОВАННЫЕ РАЗМЕРЫ: СРЕДНИЙ НА ДОСКЕ, МЕЛКИЙ В ЯЩИКЕ
+============================================================================ */
+const BASE_DICE_SIZE = 0.88;
+const BOARD_SCALE = 0.82;
+const BOX_SCALE   = 0.66;
+
+function getBoardDiceSize() { return BASE_DICE_SIZE * BOARD_SCALE; }
+function getBoardDiceHalf() { return getBoardDiceSize() * 0.5; }
+function getBoxDiceSize()   { return BASE_DICE_SIZE * BOX_SCALE; }
+function getBoxDiceHalf()   { return getBoxDiceSize() * 0.5; }
+
+function countInPool(typeId) {
+  let c = 0;
+  for (let i = 0; i < playerSelectedSkins.length; i++) {
+    if (playerSelectedSkins[i] === typeId) c++;
+  }
+  return c;
+}
+
+function getCountInBoxCell(typeId) {
+  const totalOwned = debugFullInventory ? 6 : (playerOwnedCounts[typeId] || 0);
+  const inPool = debugFullInventory ? 0 : countInPool(typeId);
+  return Math.max(0, Math.min(6, totalOwned - inPool));
+}
+
+function ensurePoolHasSixDice() {
+  while (playerSelectedSkins.length < 6) {
+    let added = false;
+    for (let t = 0; t < 8; t++) {
+      if ((playerOwnedCounts[t] || 0) - countInPool(t) > 0) {
+        playerSelectedSkins.push(t);
+        added = true;
+        break;
+      }
+    }
+    if (!added) playerSelectedSkins.push(0);
+  }
+}
+
+function savePlayerStateToStorage() {
+  try {
+    localStorage.setItem('ochko_player_skins', JSON.stringify(playerSelectedSkins));
+    localStorage.setItem('ochko_owned_counts', JSON.stringify(playerOwnedCounts));
+    localStorage.setItem('ochko_player_inventory', JSON.stringify(playerOwnedCounts));
+  } catch (e) {}
+}
+
+/* ============================================================================
+   3. ПРОЕКЦИЯ Т-КРЕСТА И ГЕОМЕТРИЯ КУБИКА
+============================================================================ */
+function projectTCrossUVs(geometry) {
+  const geo = geometry.index ? geometry.toNonIndexed() : geometry.clone();
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  const center = new THREE.Vector3(), size = new THREE.Vector3();
+  bb.getCenter(center); bb.getSize(size);
+
+  const hx = (size.x * 0.5) || 1;
+  const hy = (size.y * 0.5) || 1;
+  const hz = (size.z * 0.5) || 1;
+
+  const pos = geo.attributes.position;
+  const uvArray = new Float32Array(pos.count * 2);
+  const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3();
+  const triCenter = new THREE.Vector3();
+
+  for (let i = 0; i < pos.count; i += 3) {
+    vA.fromBufferAttribute(pos, i).sub(center);
+    vB.fromBufferAttribute(pos, i + 1).sub(center);
+    vC.fromBufferAttribute(pos, i + 2).sub(center);
+
+    triCenter.copy(vA).add(vB).add(vC).divideScalar(3);
+    const nx = triCenter.x / hx, ny = triCenter.y / hy, nz = triCenter.z / hz;
+    const ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
+
+    let face = 5;
+    if (ay >= ax && ay >= az) face = ny >= 0 ? 5 : 2;
+    else if (ax >= ay && ax >= az) face = nx >= 0 ? 1 : 6;
+    else face = nz >= 0 ? 4 : 3;
+
+    const slot = T_SLOTS[face];
+    const verts = [vA, vB, vC];
+
+    for (let k = 0; k < 3; k++) {
+      const v = verts[k];
+      const vx = Math.max(-1, Math.min(1, v.x / hx));
+      const vy = Math.max(-1, Math.min(1, v.y / hy));
+      const vz = Math.max(-1, Math.min(1, v.z / hz));
+
+      let uLoc = 0.5, vLoc = 0.5;
+      if (face === 5)      { uLoc = (vx + 1) * 0.5;  vLoc = (vz + 1) * 0.5; }
+      else if (face === 2) { uLoc = (-vx + 1) * 0.5; vLoc = (vz + 1) * 0.5; }
+      else if (face === 1) { uLoc = (-vz + 1) * 0.5; vLoc = (-vy + 1) * 0.5; }
+      else if (face === 6) { uLoc = (vz + 1) * 0.5;  vLoc = (-vy + 1) * 0.5; }
+      else if (face === 4) { uLoc = (vx + 1) * 0.5;  vLoc = (-vy + 1) * 0.5; }
+      else if (face === 3) { uLoc = (vx + 1) * 0.5;  vLoc = (vy + 1) * 0.5; }
+
+      uLoc = 0.04 + uLoc * 0.92;
+      vLoc = 0.04 + vLoc * 0.92;
+
+      const idx = (i + k) * 2;
+      uvArray[idx]     = (slot.gx + uLoc) * 0.25;
+      uvArray[idx + 1] = 1.0 - (slot.gy + vLoc) * 0.25;
+    }
+  }
+
+  geo.setAttribute('uv', new THREE.BufferAttribute(uvArray, 2));
+  return geo;
+}
+
+function createSmoothRoundedCube(size = BASE_DICE_SIZE, radius = 0.16, segs = 20) {
+  const box = new THREE.BoxGeometry(size, size, size, segs, segs, segs);
+  const pos = box.attributes.position, norm = box.attributes.normal;
+  const half = size * 0.5, core = half - radius;
+  const p = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
+
+  for (let i = 0; i < pos.count; i++) {
+    p.fromBufferAttribute(pos, i);
+    c.set(Math.max(-core, Math.min(core, p.x)), Math.max(-core, Math.min(core, p.y)), Math.max(-core, Math.min(core, p.z)));
+    n.copy(p).sub(c);
+    if (n.lengthSq() > 1e-6) {
+      n.normalize();
+      p.copy(c).addScaledVector(n, radius);
+    } else {
+      n.fromBufferAttribute(norm, i).normalize();
+    }
+    pos.setXYZ(i, p.x, p.y, p.z);
+    norm.setXYZ(i, n.x, n.y, n.z);
+  }
+  return projectTCrossUVs(box);
+}
+
+/* ============================================================================
+   4. ГЕНЕРАЦИЯ PBR-МАТЕРИАЛА КОСТЕЙ
+============================================================================ */
+const trimSheetCanvas = document.createElement('canvas');
+trimSheetCanvas.width = 1024; trimSheetCanvas.height = 1024;
+const trimCtx = trimSheetCanvas.getContext('2d');
+
+function drawDefaultTrim() {
+  const s = 256;
+  DICE_TYPES.forEach(t => {
+    paintCell(trimCtx, t.col * s, t.baseRow * s, s, t.fallbackBase, t.id);
+    paintCell(trimCtx, t.col * s, t.pipRow * s,  s, t.fallbackPip,  t.id + 20);
+  });
+}
+function paintCell(ctx, x, y, size, hex, seed) {
+  ctx.fillStyle = hex; ctx.fillRect(x, y, size, size);
+  for (let i = 0; i < 85; i++) {
+    ctx.strokeStyle = i % 2 === 0 ? 'rgba(255,245,225,0.08)' : 'rgba(0,0,0,0.22)';
+    ctx.lineWidth = 1 + (i % 3);
+    ctx.beginPath();
+    const sx = x + ((i * 43 + seed * 29) % size);
+    const sy = y + ((i * 61 + seed * 19) % size);
+    ctx.moveTo(sx, sy);
+    ctx.bezierCurveTo(sx + 35, sy - 20, sx - 25, sy + 40, x + ((sx + 90) % size), y + ((sy + 80) % size));
+    ctx.stroke();
+  }
+}
+drawDefaultTrim();
+
+const materialCache = new Map();
+
+function getDiceMaterial(typeId) {
+  if (materialCache.has(typeId)) return materialCache.get(typeId);
+  const spec = DICE_TYPES[typeId];
+  const cellW = trimSheetCanvas.width / 4, cellH = trimSheetCanvas.height / 4;
+  const baseX = spec.col * cellW, baseY = spec.baseRow * cellH;
+  const pipX  = spec.col * cellW, pipY  = spec.pipRow * cellH;
+
+  const diffCanvas = document.createElement('canvas');
+  diffCanvas.width = 1024; diffCanvas.height = 1024;
+  const dCtx = diffCanvas.getContext('2d');
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = 1024; bumpCanvas.height = 1024;
+  const bCtx = bumpCanvas.getContext('2d');
+
+  for (let gx = 0; gx < 4; gx++) {
+    for (let gy = 0; gy < 4; gy++) {
+      dCtx.drawImage(trimSheetCanvas, baseX, baseY, cellW, cellH, gx * 256, gy * 256, 256, 256);
+    }
+  }
+  bCtx.fillStyle = '#c8c8c8';
+  bCtx.fillRect(0, 0, 1024, 1024);
+
+  Object.entries(T_SLOTS).forEach(([faceNum, slot]) => {
+    const sx = slot.gx * 256, sy = slot.gy * 256;
+    PIP_LAYOUTS[faceNum].forEach(([px, py, scale], idx) => {
+      const cx = sx + px * 256, cy = sy + py * 256, r = 21.0 * scale;
+
+      const bGrad = bCtx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r * 1.18);
+      bGrad.addColorStop(0.0, '#080808');
+      bGrad.addColorStop(0.76, '#282828');
+      bGrad.addColorStop(0.94, '#ffffff');
+      bGrad.addColorStop(1.0, '#c8c8c8');
+      bCtx.fillStyle = bGrad;
+      bCtx.beginPath(); bCtx.arc(cx, cy, r * 1.18, 0, Math.PI * 2); bCtx.fill();
+
+      dCtx.save();
+      dCtx.beginPath(); dCtx.arc(cx, cy, r * 1.07, 0, Math.PI * 2);
+      dCtx.fillStyle = 'rgba(10, 6, 3, 0.78)'; dCtx.fill();
+
+      dCtx.beginPath(); dCtx.arc(cx, cy, r, 0, Math.PI * 2); dCtx.clip();
+      dCtx.translate(cx, cy);
+      const ang = idx * 1.3 + Number(faceNum) * 0.8;
+      dCtx.rotate(ang);
+      dCtx.drawImage(
+        trimSheetCanvas,
+        pipX + cellW * 0.18, pipY + cellH * 0.18, cellW * 0.64, cellH * 0.64,
+        -r * 1.2, -r * 1.2, r * 2.4, r * 2.4
+      );
+      dCtx.rotate(-ang);
+      dCtx.translate(-cx, -cy);
+
+      const innerShadow = dCtx.createRadialGradient(cx + r * 0.2, cy + r * 0.2, r * 0.1, cx, cy, r);
+      innerShadow.addColorStop(0.0, 'rgba(255,250,235,0.22)');
+      innerShadow.addColorStop(0.65, 'rgba(0,0,0,0)');
+      innerShadow.addColorStop(1.0, 'rgba(0,0,0,0.72)');
+      dCtx.fillStyle = innerShadow;
+      dCtx.fillRect(cx - r, cy - r, r * 2, r * 2);
+      dCtx.restore();
+    });
+  });
+
+  const diffTex = new THREE.CanvasTexture(diffCanvas);
+  diffTex.colorSpace = THREE.SRGBColorSpace;
+  diffTex.anisotropy = 8;
+
+  const mat = new THREE.MeshStandardMaterial({
+    map: diffTex,
+    bumpMap: new THREE.CanvasTexture(bumpCanvas),
+    bumpScale: 0.042,
+    roughness: spec.roughness,
+    metalness: spec.metalness
+  });
+  materialCache.set(typeId, mat);
+  return mat;
+}
+
+/* ============================================================================
+   5. СИСТЕМА АНИМИРОВАННЫХ И ЗАВИСАЮЩИХ БАННЕРОВ ПОСЕРЕДИНЕ ЭКРАНА
+============================================================================ */
+const BANNER_TITLES = {
+  win:  "ТЫ ВЫИГРАЛ",
+  lose: "ТЫ ПРОИГРАЛ",
+  draw: "НИЧЬЯ",
+  pass: "СОПЕРНИК ПАС"
+};
+const BANNER_INDEX = { win: 0, lose: 1, draw: 2, pass: 3 };
+const BANNER_FX_NAMES = ["I (Золотой)", "II (Удар)", "III (Туман)", "IV (Росчерк)"];
+let currentBannerFx = 0;
+let loadedBannerSheet = null;
+let bannerRegions = null;
+let bannerTimer = null;
+
+function detectBannerRows(img) {
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  try {
+    const data = ctx.getImageData(0, 0, c.width, c.height).data;
+    const rowHasPixels = new Array(c.height).fill(false);
+    for (let y = 0; y < c.height; y++) {
+      for (let x = 0; x < c.width; x++) {
+        const a = data[(y * c.width + x) * 4 + 3];
+        if (a > 25) { rowHasPixels[y] = true; break; }
+      }
+    }
+    const bands = [];
+    let inBand = false, startY = 0;
+    for (let y = 0; y < c.height; y++) {
+      if (rowHasPixels[y] && !inBand) { inBand = true; startY = y; }
+      else if (!rowHasPixels[y] && inBand) {
+        if (y - startY > 8) bands.push({ y: startY, h: y - startY });
+        inBand = false;
+      }
+    }
+    if (inBand && c.height - startY > 8) bands.push({ y: startY, h: c.height - startY });
+    if (bands.length === 4) return bands;
+  } catch (e) {}
+  const h4 = img.height / 4;
+  return [
+    { y: 0,      h: h4 },
+    { y: h4,     h: h4 },
+    { y: h4 * 2, h: h4 },
+    { y: h4 * 3, h: h4 }
+  ];
+}
+
+function drawCalligraphicBanner(ctx, w, h, mainText, subText = "", isLose = false) {
+  ctx.save();
+  const grad = ctx.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, w * 0.46);
+  grad.addColorStop(0, 'rgba(24, 15, 8, 0.84)');
+  grad.addColorStop(0.72, 'rgba(10, 6, 4, 0.46)');
+  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = 'rgba(218, 176, 102, 0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(w * 0.14, 34); ctx.lineTo(w * 0.86, 34);
+  ctx.moveTo(w * 0.14, h - 34); ctx.lineTo(w * 0.86, h - 34);
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = '#000';
+  ctx.shadowBlur = 18;
+
+  const mainFontSize = subText ? 48 : 62;
+  const mainY = subText ? h * 0.40 : h * 0.52;
+
+  ctx.font = `bold italic ${mainFontSize}px "Palatino Linotype", "Book Antiqua", Georgia, serif`;
+  ctx.lineWidth = 7;
+  ctx.strokeStyle = '#140c06';
+  ctx.strokeText(mainText, w * 0.5, mainY);
+
+  const tGrad = ctx.createLinearGradient(0, mainY - 28, 0, mainY + 28);
+  if (isLose) {
+    tGrad.addColorStop(0, '#ffcfbe'); tGrad.addColorStop(0.5, '#d65c48'); tGrad.addColorStop(1, '#7a1c12');
+  } else {
+    tGrad.addColorStop(0, '#fff4dc'); tGrad.addColorStop(0.5, '#e5b968'); tGrad.addColorStop(1, '#8f6324');
+  }
+  ctx.fillStyle = tGrad;
+  ctx.fillText(mainText, w * 0.5, mainY);
+
+  if (subText) {
+    const subY = h * 0.67;
+    ctx.font = 'bold italic 31px "Palatino Linotype", "Book Antiqua", Georgia, serif';
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = '#120a05';
+    ctx.strokeText(subText, w * 0.5, subY);
+    ctx.fillStyle = '#f6dfc0';
+    ctx.fillText(subText, w * 0.5, subY);
+  }
+  ctx.restore();
+}
+
+function showCenterBanner(typeKey) {
+  const cnv = document.getElementById('center-banner-cnv');
+  const ctx = cnv.getContext('2d');
+  ctx.clearRect(0, 0, cnv.width, cnv.height);
+
+  const idx = BANNER_INDEX[typeKey] ?? 0;
+
+  if (loadedBannerSheet && bannerRegions && bannerRegions[idx]) {
+    const reg = bannerRegions[idx];
+    const pad = 12;
+    const scale = Math.min((cnv.width - pad * 2) / loadedBannerSheet.width, (cnv.height - pad * 2) / reg.h);
+    const dw = loadedBannerSheet.width * scale;
+    const dh = reg.h * scale;
+    ctx.drawImage(
+      loadedBannerSheet,
+      0, reg.y, loadedBannerSheet.width, reg.h,
+      (cnv.width - dw) * 0.5, (cnv.height - dh) * 0.5, dw, dh
+    );
+  } else {
+    drawCalligraphicBanner(ctx, cnv.width, cnv.height, BANNER_TITLES[typeKey] || typeKey, "", typeKey === 'lose');
+  }
+
+  cnv.className = '';
+  void cnv.offsetWidth;
+  cnv.classList.add(`play-fx-${currentBannerFx}`);
+
+  if (bannerTimer) clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => { cnv.className = ''; }, 740);
+}
+
+// Зависающий по центру баннер (для выбора 2 костяшек соперника прямо на 3D-поле)
+function showSuspendedPromptBanner(mainLine, subLine = "", isLose = false) {
+  if (bannerTimer) { clearTimeout(bannerTimer); bannerTimer = null; }
+  const cnv = document.getElementById('center-banner-cnv');
+  const ctx = cnv.getContext('2d');
+  ctx.clearRect(0, 0, cnv.width, cnv.height);
+  drawCalligraphicBanner(ctx, cnv.width, cnv.height, mainLine, subLine, isLose);
+  cnv.className = 'hold-banner';
+}
+
+function hideSuspendedPromptBanner() {
+  const cnv = document.getElementById('center-banner-cnv');
+  cnv.className = '';
+}
+
+function applyBannerImage(img) {
+  loadedBannerSheet = img;
+  bannerRegions = detectBannerRows(img);
+  document.getElementById('lbl-banners-status').textContent = 'Баннеры.png ✓';
+}
+
+['./Баннеры.png', './баннеры.png', './Баннеры.webp', './баннеры.webp'].forEach(path => {
+  const bImg = new Image();
+  bImg.crossOrigin = 'anonymous';
+  bImg.onload = () => { if (!loadedBannerSheet) applyBannerImage(bImg); };
+  bImg.src = path;
+});
+
+document.getElementById('file-banners').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => { applyBannerImage(img); showCenterBanner('win'); };
+    img.src = ev.target.result;
+  };
+  r.readAsDataURL(f);
+});
+
+document.getElementById('btn-fx-cycle').addEventListener('click', () => {
+  currentBannerFx = (currentBannerFx + 1) % BANNER_FX_NAMES.length;
+  document.getElementById('btn-fx-cycle').textContent = `Эффект баннера: ${BANNER_FX_NAMES[currentBannerFx]}`;
+  showCenterBanner('win');
+});
+
+/* ============================================================================
+   6. ОСНОВНАЯ СЦЕНА И ДОСКА
+============================================================================ */
+const wrapEl = document.getElementById('webgl-wrap');
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 14.2, 8.5);
+camera.lookAt(0, -0.3, 0.4);
+
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
+renderer.setClearColor(0x000000, 0);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.22;
+wrapEl.appendChild(renderer.domElement);
+
+try {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envScene = new THREE.Scene();
+  envScene.background = new THREE.Color(0x1a120b);
+  const l1 = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.MeshBasicMaterial({ color: 0xffd59c }));
+  l1.position.set(-6, 8, 5); l1.lookAt(0, 0, 0); envScene.add(l1);
+  const l2 = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.MeshBasicMaterial({ color: 0x99b8ff }));
+  l2.position.set(7, 6, -6); l2.lookAt(0, 0, 0); envScene.add(l2);
+  scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+  pmrem.dispose();
+} catch (e) {}
+
+scene.add(new THREE.AmbientLight(0xffeacc, 0.74));
+const mainSpot = new THREE.SpotLight(0xffdca8, 125);
+mainSpot.position.set(-4.8, 15.0, 4.8);
+mainSpot.angle = Math.PI / 2.6; mainSpot.penumbra = 0.72; mainSpot.decay = 1.5;
+mainSpot.castShadow = true;
+mainSpot.shadow.mapSize.set(2048, 2048);
+mainSpot.shadow.bias = -0.0004;
+scene.add(mainSpot);
+
+const candlePoint = new THREE.PointLight(0xff9436, 26, 20);
+candlePoint.position.set(-7.2, 4.2, -4.2);
+scene.add(candlePoint);
+
+const gameWorldGroup = new THREE.Group();
+const collectorBoxGroup = new THREE.Group();
+collectorBoxGroup.visible = false;
+scene.add(gameWorldGroup);
+scene.add(collectorBoxGroup);
+
+const TRAY_W = 11.4, TRAY_D = 7.8, WALL_H = 0.92, WALL_T = 0.66;
+let trayBedMaterial = null, trayWallMaterial = null;
+
+function buildWoodenBoard3D() {
+  const boardGroup = new THREE.Group();
+  const shCanvas = document.createElement('canvas');
+  shCanvas.width = 256; shCanvas.height = 256;
+  const sCtx = shCanvas.getContext('2d');
+  const sGrad = sCtx.createRadialGradient(128, 128, 35, 128, 128, 124);
+  sGrad.addColorStop(0, 'rgba(0,0,0,0.88)'); sGrad.addColorStop(0.75, 'rgba(0,0,0,0.48)'); sGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  sCtx.fillStyle = sGrad; sCtx.fillRect(0, 0, 256, 256);
+
+  const shadowPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(TRAY_W * 1.38, TRAY_D * 1.44),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(shCanvas), transparent: true, depthWrite: false })
+  );
+  shadowPlane.rotation.x = -Math.PI / 2; shadowPlane.position.y = -0.22;
+  boardGroup.add(shadowPlane);
+
+  const bedCanvas = document.createElement('canvas');
+  bedCanvas.width = 1024; bedCanvas.height = 1024;
+  const bCtx = bedCanvas.getContext('2d');
+  bCtx.fillStyle = '#1a130d'; bCtx.fillRect(0, 0, 1024, 1024);
+  for (let i = 0; i < 650; i++) {
+    bCtx.fillStyle = i % 2 === 0 ? 'rgba(255,205,150,0.02)' : 'rgba(0,0,0,0.18)';
+    bCtx.fillRect(0, Math.random() * 1024, 1024, 1 + Math.random() * 3);
+  }
+  const bedTex = new THREE.CanvasTexture(bedCanvas);
+  bedTex.colorSpace = THREE.SRGBColorSpace;
+  trayBedMaterial = new THREE.MeshStandardMaterial({ map: bedTex, bumpMap: bedTex, bumpScale: 0.015, roughness: 0.82, metalness: 0.05 });
+
+  const bedMesh = new THREE.Mesh(new THREE.BoxGeometry(TRAY_W, 0.34, TRAY_D), trayBedMaterial);
+  bedMesh.position.y = -0.17; bedMesh.receiveShadow = true; bedMesh.castShadow = true;
+  boardGroup.add(bedMesh);
+
+  const plankCanvas = document.createElement('canvas');
+  plankCanvas.width = 512; plankCanvas.height = 512;
+  const pCtx = plankCanvas.getContext('2d');
+  pCtx.fillStyle = '#362315'; pCtx.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 400; i++) {
+    pCtx.fillStyle = i % 2 === 0 ? 'rgba(255,195,130,0.04)' : 'rgba(10,5,2,0.28)';
+    pCtx.fillRect(0, Math.random() * 512, 512, 1 + Math.random() * 4);
+  }
+  const plankTex = new THREE.CanvasTexture(plankCanvas);
+  plankTex.colorSpace = THREE.SRGBColorSpace;
+  trayWallMaterial = new THREE.MeshStandardMaterial({ map: plankTex, bumpMap: plankTex, bumpScale: 0.02, roughness: 0.68, metalness: 0.08 });
+
+  const walls = [
+    { w: TRAY_W + WALL_T * 2, h: WALL_H, d: WALL_T, x: 0, z: -TRAY_D / 2 - WALL_T / 2 },
+    { w: TRAY_W + WALL_T * 2, h: WALL_H, d: WALL_T, x: 0, z:  TRAY_D / 2 + WALL_T / 2 },
+    { w: WALL_T, h: WALL_H, d: TRAY_D, x: -TRAY_W / 2 - WALL_T / 2, z: 0 },
+    { w: WALL_T, h: WALL_H, d: TRAY_D, x:  TRAY_W / 2 + WALL_T / 2, z: 0 }
+  ];
+  walls.forEach(w => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w.w, w.h, w.d), trayWallMaterial);
+    m.position.set(w.x, w.h / 2 - 0.1, w.z); m.castShadow = true; m.receiveShadow = true;
+    boardGroup.add(m);
+  });
+
+  const ironMat = new THREE.MeshStandardMaterial({ color: 0x5c4328, roughness: 0.42, metalness: 0.78 });
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+    const cx = sx * (TRAY_W / 2 + WALL_T / 2), cz = sz * (TRAY_D / 2 + WALL_T / 2);
+    const cornerBox = new THREE.Mesh(new THREE.BoxGeometry(WALL_T * 1.28, WALL_H + 0.04, WALL_T * 1.28), ironMat);
+    cornerBox.position.set(cx, WALL_H / 2 - 0.09, cz); cornerBox.castShadow = true;
+    boardGroup.add(cornerBox);
+    const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), ironMat);
+    rivet.position.set(cx, WALL_H - 0.05, cz);
+    boardGroup.add(rivet);
+  });
+  gameWorldGroup.add(boardGroup);
+}
+buildWoodenBoard3D();
+
+function applyBoardWoodTexture(img, save = true) {
+  const tex = new THREE.Texture(img);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.needsUpdate = true;
+  trayBedMaterial.map = tex; trayBedMaterial.bumpMap = tex; trayBedMaterial.needsUpdate = true;
+  trayWallMaterial.map = tex; trayWallMaterial.bumpMap = tex; trayWallMaterial.needsUpdate = true;
+  document.getElementById('lbl-wood-status').textContent = 'Текстура доски ✓';
+  if (save) {
+    try {
+      const c = document.createElement('canvas'); c.width = 512; c.height = 512;
+      c.getContext('2d').drawImage(img, 0, 0, 512, 512);
+      localStorage.setItem('saved_wood_board_v1', c.toDataURL('image/jpeg', 0.88));
+    } catch (e) {}
+  }
+}
+
+/* ============================================================================
+   7. 3D-ЯЩИК С РЕАЛЬНЫМ ЧИСЛОМ КОСТЕЙ В ЯЧЕЙКАХ (playerOwnedCounts)
+============================================================================ */
+let masterDiceGeo = createSmoothRoundedCube(BASE_DICE_SIZE, 0.15, 18);
+
+const BOX_3D_W = 12.6;
+const BOX_3D_D = 8.75;
+const BOX_CEILING_Y = 0.46;
+let boxPlaneMesh = null;
+const boxInstancedMeshes = [];
+const boxDiceStates = [];
+const topHandMeshes = [];
+
+function getCellBounds(typeId) {
+  const col = typeId % 4;
+  const row = Math.floor(typeId / 4);
+  const cx = (-1.5 + col) * (BOX_3D_W * 0.218);
+  const cz = (row === 0 ? -2.02 : 1.44);
+  return {
+    cx, cz,
+    minX: cx - 0.84, maxX: cx + 0.84,
+    minZ: cz - 0.58, maxZ: cz + 0.56
+  };
+}
+
+function createBoxCanvasWithAlphaCutout(sourceImg = null) {
+  const c = document.createElement('canvas');
+  c.width = 1440; c.height = 1000;
+  const ctx = c.getContext('2d');
+
+  if (!sourceImg) {
+    const bx = 80, by = 95, bw = 1280, bh = 815;
+    ctx.fillStyle = '#2d1e12';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = '#4e3622'; ctx.lineWidth = 18;
+    ctx.strokeRect(bx, by, bw, bh);
+
+    const cellW = (bw - 40) / 4, cellH = (bh - 30) / 2;
+    DICE_TYPES.forEach((t, idx) => {
+      const col = idx % 4, row = Math.floor(idx / 4);
+      const cx = bx + 20 + col * cellW, cy = by + 15 + row * cellH;
+      ctx.fillStyle = '#140f0b';
+      ctx.fillRect(cx + 6, cy + 6, cellW - 12, cellH - 12);
+
+      ctx.fillStyle = '#c8b490';
+      ctx.fillRect(cx + 14, cy + cellH - 96, cellW - 28, 80);
+      ctx.fillStyle = '#1b130c';
+      ctx.font = 'italic bold 21px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(t.title.toUpperCase(), cx + cellW * 0.5, cy + cellH - 58);
+      if (t.sub) {
+        ctx.font = 'italic 19px Georgia, serif';
+        ctx.fillText(t.sub, cx + cellW * 0.5, cy + cellH - 30);
+      }
+    });
+    return c;
+  }
+
+  ctx.drawImage(sourceImg, 0, 0, c.width, c.height);
+  try {
+    const imgData = ctx.getImageData(0, 0, c.width, c.height);
+    const d = imgData.data;
+    const w = c.width, h = c.height;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = (y * w + x) * 4;
+        const r = d[idx], g = d[idx + 1], b = d[idx + 2];
+        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+        const isOutsideFrame = (x < w * 0.048 || x > w * 0.952 || y < h * 0.088 || y > h * 0.915);
+        const isNearBorder = (x < w * 0.08 || x > w * 0.92 || y < h * 0.13 || y > h * 0.89);
+
+        if (isOutsideFrame) {
+          d[idx + 3] = 0;
+        } else if (isNearBorder && luma < 28) {
+          d[idx + 3] = Math.max(0, Math.min(255, (luma - 12) * 15));
+        }
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+  } catch (e) {}
+  return c;
+}
+
+function build3DCollectorBoxScene() {
+  const tex = new THREE.CanvasTexture(createBoxCanvasWithAlphaCutout(null));
+  tex.colorSpace = THREE.SRGBColorSpace;
+
+  boxPlaneMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(BOX_3D_W, BOX_3D_D),
+    new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.78, metalness: 0.06 })
+  );
+  boxPlaneMesh.rotation.x = -Math.PI / 2;
+  boxPlaneMesh.receiveShadow = true;
+  collectorBoxGroup.add(boxPlaneMesh);
+
+  const facesCycle = [5, 6, 3, 4, 2, 1];
+  const spreadOffsets = [
+    [-0.62, -0.36], [0.00, -0.40], [0.62, -0.34],
+    [-0.58,  0.32], [0.04,  0.36], [0.60,  0.30]
+  ];
+
+  for (let typeId = 0; typeId < 8; typeId++) {
+    const instMesh = new THREE.InstancedMesh(masterDiceGeo, getDiceMaterial(typeId), 6);
+    instMesh.castShadow = true;
+    instMesh.receiveShadow = true;
+    collectorBoxGroup.add(instMesh);
+    boxInstancedMeshes.push(instMesh);
+
+    const bounds = getCellBounds(typeId);
+    const statesForType = [];
+
+    for (let k = 0; k < 6; k++) {
+      const [ox, oz] = spreadOffsets[k];
+      const jx = ((typeId * 17 + k * 31) % 11 - 5) * 0.018;
+      const jz = ((typeId * 23 + k * 19) % 11 - 5) * 0.016;
+      const f = facesCycle[(typeId + k) % 6];
+      const yaw = (typeId * 0.7 + k * 1.15) % (Math.PI * 2);
+      const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+      const qFace = new THREE.Quaternion().setFromEuler(new THREE.Euler(TARGET_EULER_TABLE[f].x, 0, TARGET_EULER_TABLE[f].z, 'XYZ'));
+
+      statesForType.push({
+        x: bounds.cx + ox + jx,
+        z: bounds.cz + oz + jz,
+        vx: 0, vz: 0,
+        baseQuat: qYaw.multiply(qFace),
+        offsetY: 0, velY: 0,
+        wobbleX: 0, wobbleZ: 0, velWX: 0, velWZ: 0
+      });
+    }
+    boxDiceStates.push(statesForType);
+  }
+
+  updateBox3DDiceTransforms();
+}
+build3DCollectorBoxScene();
+
+function updateBox3DDiceTransforms() {
+  const effHalf = getBoxDiceHalf();
+  const dummy = new THREE.Object3D();
+  const qWobble = new THREE.Quaternion();
+
+  for (let typeId = 0; typeId < 8; typeId++) {
+    const instMesh = boxInstancedMeshes[typeId];
+    const states = boxDiceStates[typeId];
+    const visibleCount = getCountInBoxCell(typeId);
+
+    for (let k = 0; k < 6; k++) {
+      const st = states[k];
+      if (k < visibleCount) {
+        const py = effHalf + Math.max(0, st.offsetY);
+        dummy.position.set(st.x, py, st.z);
+        qWobble.setFromEuler(new THREE.Euler(st.wobbleX, 0, st.wobbleZ, 'XYZ'));
+        dummy.quaternion.copy(st.baseQuat).multiply(qWobble);
+        dummy.scale.setScalar(BOX_SCALE);
+      } else {
+        dummy.position.set(st.x, -5, st.z);
+        dummy.scale.setScalar(0);
+      }
+      dummy.updateMatrix();
+      instMesh.setMatrixAt(k, dummy.matrix);
+    }
+    instMesh.instanceMatrix.needsUpdate = true;
+  }
+}
+
+function rebuildTopHand3DDice() {
+  topHandMeshes.forEach(m => collectorBoxGroup.remove(m.mesh));
+  topHandMeshes.length = 0;
+
+  const effHalf = getBoxDiceHalf();
+
+  playerSelectedSkins.forEach((skinId, idx) => {
+    const mesh = new THREE.Mesh(masterDiceGeo, getDiceMaterial(skinId));
+    mesh.scale.setScalar(BOX_SCALE);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    const x = -2.75 + idx * 1.1;
+    const z = -4.25;
+    mesh.position.set(x, effHalf + 0.08, z);
+    mesh.rotation.set(0.18, idx * 0.45 - 0.6, 0);
+    collectorBoxGroup.add(mesh);
+    topHandMeshes.push({ mesh, slotIdx: idx, baseY: effHalf + 0.08, hopY: 0, velY: 0 });
+  });
+}
+
+/* ============================================================================
+   8. 3D-РЕНДЕРЕР БЕЗРАМОЧНЫХ УГЛОВЫХ КНОПОК
+============================================================================ */
+const thumbRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+thumbRenderer.setSize(200, 130);
+thumbRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+thumbRenderer.toneMappingExposure = 1.25;
+
+const thumbScene = new THREE.Scene();
+const thumbCam = new THREE.PerspectiveCamera(32, 200 / 130, 0.1, 50);
+thumbCam.position.set(0, 3.1, 1.7); thumbCam.lookAt(0, 0, 0);
+thumbScene.add(new THREE.AmbientLight(0xffe8c8, 0.92));
+const thumbSpot = new THREE.DirectionalLight(0xffdfa8, 2.5);
+thumbSpot.position.set(-3, 6, 4); thumbScene.add(thumbSpot);
+
+const thumbDie1 = new THREE.Mesh(masterDiceGeo, getDiceMaterial(0));
+const thumbDie2 = new THREE.Mesh(masterDiceGeo, getDiceMaterial(0));
+thumbScene.add(thumbDie1); thumbScene.add(thumbDie2);
+
+function renderCornerDiceIcon(skin1, skin2, count, targetCanvas) {
+  const s = BOARD_SCALE;
+  thumbDie1.geometry = masterDiceGeo; thumbDie2.geometry = masterDiceGeo;
+  thumbDie1.material = getDiceMaterial(skin1);
+
+  if (count === 1) {
+    thumbDie1.visible = true; thumbDie2.visible = false;
+    thumbDie1.scale.setScalar(s * 1.15);
+    thumbDie1.position.set(0, 0, 0);
+    thumbDie1.rotation.set(0.32, 0.55, -0.18);
+  } else {
+    thumbDie1.visible = true; thumbDie2.visible = true;
+    thumbDie2.material = getDiceMaterial(skin2 ?? skin1);
+    thumbDie1.scale.setScalar(s * 1.05); thumbDie2.scale.setScalar(s * 1.05);
+    thumbDie1.position.set(-0.56 * s, 0, 0.10 * s);
+    thumbDie2.position.set( 0.56 * s, 0, -0.08 * s);
+    thumbDie1.rotation.set(0.24, 0.52, -0.16);
+    thumbDie2.rotation.set(-0.30, -0.48, Math.PI / 2 + 0.20);
+  }
+
+  thumbRenderer.render(thumbScene, thumbCam);
+  const ctx = targetCanvas.getContext('2d');
+  ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+  ctx.drawImage(thumbRenderer.domElement, 0, 0, targetCanvas.width, targetCanvas.height);
+}
+
+/* ============================================================================
+   9. ПУЛ КОСТЕЙ ИГРОКА И СОПЕРНИКОВ + ПЕРЕКЛАДЫВАНИЕ В ЯЩИКЕ
+============================================================================ */
+let playerRemainingSkins = [...playerSelectedSkins];
+let botMatchSkins = [...OPPONENTS_CONFIG[0].games[0]];
+let botRemainingSkins = [...botMatchSkins];
+
+const boardDice = [];
+const playerLedgeMeshes = [];
+const botLedgeMeshes = [];
+const flyingTrophyAnims = []; // Анимации перелёта выбранных костяшек с бортика на бортик
+
+function createSingleDieMesh(skinId) {
+  const m = new THREE.Mesh(masterDiceGeo, getDiceMaterial(skinId));
+  m.scale.setScalar(BOARD_SCALE);
+  m.castShadow = true; m.receiveShadow = true;
+  gameWorldGroup.add(m);
+  return m;
+}
+
+function getActiveOpponentSpec() {
+  const opp = OPPONENTS_CONFIG[currentOppIdx] || OPPONENTS_CONFIG[0];
+  const gIdx = Math.min(currentOppGameIdx, opp.games.length - 1);
+  return { opp, gameIdx: gIdx, skins: [...opp.games[gIdx]] };
+}
+
+function resetBotSkinsForRound() {
+  const spec = getActiveOpponentSpec();
+  botMatchSkins = [...spec.skins];
+  botRemainingSkins = [...botMatchSkins];
+  const label = `${spec.opp.name}${spec.opp.games.length > 1 ? ` (Игра ${spec.gameIdx + 1})` : ''}`;
+  document.getElementById('v2-bot-name').textContent = label;
+  document.getElementById('v1-bot-name').textContent = `${label}:`;
+  document.getElementById('btn-opp-cycle').textContent = label;
+}
+
+function rebuildLedgeDice() {
+  playerLedgeMeshes.forEach(m => gameWorldGroup.remove(m));
+  botLedgeMeshes.forEach(m => gameWorldGroup.remove(m));
+  playerLedgeMeshes.length = 0; botLedgeMeshes.length = 0;
+
+  const s = BOARD_SCALE;
+  const dHalf = getBoardDiceHalf();
+  const ledgeY = WALL_H - 0.1 + dHalf * 0.85;
+
+  playerRemainingSkins.forEach((skinId, i) => {
+    const m = createSingleDieMesh(skinId);
+    m.scale.setScalar(s * 0.85);
+    m.position.set(-2.75 + i * 1.1, ledgeY, TRAY_D / 2 + WALL_T / 2);
+    m.rotation.set(0, (i * 0.4) - 0.5, 0);
+    m.userData = { ledgeIndex: i, skinId, picked: false, baseY: ledgeY };
+    playerLedgeMeshes.push(m);
+  });
+
+  botRemainingSkins.forEach((skinId, i) => {
+    const m = createSingleDieMesh(skinId);
+    m.scale.setScalar(s * 0.85);
+    m.position.set(2.75 - i * 1.1, ledgeY, -TRAY_D / 2 - WALL_T / 2);
+    m.rotation.set(0, (i * 0.5) + 0.3, 0);
+    m.userData = { ledgeIndex: i, skinId, picked: false, baseY: ledgeY };
+    botLedgeMeshes.push(m);
+  });
+
+  const s1 = playerRemainingSkins[0] ?? playerSelectedSkins[0] ?? 0;
+  const s2 = playerRemainingSkins[1] ?? playerSelectedSkins[1] ?? s1;
+  renderCornerDiceIcon(s1, s1, 1, document.getElementById('cnv-btn-1'));
+  renderCornerDiceIcon(s1, s2, 2, document.getElementById('cnv-btn-2'));
+}
+
+function clearTrayDice() {
+  boardDice.forEach(d => gameWorldGroup.remove(d.mesh));
+  boardDice.length = 0;
+}
+
+function syncSelectedSkinsToGame() {
+  const countLeft = Math.max(1, playerRemainingSkins.length);
+  playerRemainingSkins = playerSelectedSkins.slice(0, countLeft);
+  rebuildLedgeDice();
+  rebuildTopHand3DDice();
+  updateBox3DDiceTransforms();
+  savePlayerStateToStorage();
+}
+
+const raycaster = new THREE.Raycaster();
+const mouseNDC = new THREE.Vector2();
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const ledgePlane  = new THREE.Plane(new THREE.Vector3(0, 1, 0), -(WALL_H + 0.2));
+const intersectPt = new THREE.Vector3();
+let isBoxOpen = false;
+let lastHoverSoundTime = 0;
+
+function updateDevStackVisibility() {
+  const devEl = document.getElementById('right-dev-stack');
+  if (isStandaloneBoxMode || isEmbeddedMatchMode) {
+    devEl.style.display = 'none';
+  } else {
+    devEl.style.display = isBoxOpen ? 'none' : 'flex';
+  }
+}
+
+function setCollectorBoxOpen(open) {
+  if (!open) {
+    ensurePoolHasSixDice();
+    syncSelectedSkinsToGame();
+
+    // В режиме mode=box кнопка "Закрыть ящик" НЕ переключает камеру на доску, а закрывает окно и возвращает в инвентарь index.html
+    if (isStandaloneBoxMode) {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'OCHKO_BOX_CLOSED',
+          playerSkins: [...playerSelectedSkins],
+          playerOwnedCounts: [...playerOwnedCounts],
+          playerInventory: [...playerOwnedCounts]
+        }, '*');
+      }
+      return;
+    }
+  }
+
+  isBoxOpen = open;
+  gameWorldGroup.visible = !open;
+  collectorBoxGroup.visible = open;
+  document.getElementById('box-screen-ui').classList.toggle('open', open);
+  document.getElementById('hud-v2').style.visibility = open ? 'hidden' : 'visible';
+  document.getElementById('hud-v1').style.visibility = open ? 'hidden' : 'visible';
+  document.getElementById('side-status-log').style.visibility = open ? 'hidden' : 'visible';
+  updateDevStackVisibility();
+
+  if (open) {
+    camera.position.set(0, 14.8, 0.01);
+    camera.lookAt(0, 0, -0.35);
+    rebuildTopHand3DDice();
+    updateBox3DDiceTransforms();
+  } else {
+    camera.position.set(0, 14.2, 8.5);
+    camera.lookAt(0, -0.3, 0.4);
+  }
+}
+
+['v2-btn-box', 'v1-btn-box'].forEach(id => {
+  document.getElementById(id).addEventListener('click', () => setCollectorBoxOpen(true));
+});
+document.getElementById('btn-close-box-3d').addEventListener('click', () => setCollectorBoxOpen(false));
+
+window.addEventListener('mousemove', (e) => {
+  mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  // Подсветка/приподнимание костяшек соперника на верхнем бортике при наведении в фазе выбора приза
+  if (!isBoxOpen && game.phase === 'trophy_pick') {
+    raycaster.setFromCamera(mouseNDC, camera);
+    const hovered = findClickedBotLedgeMesh();
+    botLedgeMeshes.forEach(m => {
+      if (m.userData.picked) return;
+      const isHov = (m === hovered);
+      m.position.y = m.userData.baseY + (isHov ? 0.16 : 0);
+      m.scale.setScalar(BOARD_SCALE * (isHov ? 0.96 : 0.85));
+    });
+    return;
+  }
+
+  if (!isBoxOpen) return;
+  raycaster.setFromCamera(mouseNDC, camera);
+
+  if (raycaster.ray.intersectPlane(groundPlane, intersectPt)) {
+    for (let t = 0; t < 8; t++) {
+      const visibleCount = getCountInBoxCell(t);
+      if (visibleCount <= 0) continue;
+      const states = boxDiceStates[t];
+      for (let k = 0; k < visibleCount; k++) {
+        const st = states[k];
+        const dx = st.x - intersectPt.x;
+        const dz = st.z - intersectPt.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist < 0.78 && Math.abs(st.velY) < 0.03) {
+          const push = (0.78 - dist) * 0.09;
+          const inv = dist > 0.001 ? 1 / dist : 1;
+          st.vx += (dx * inv + (Math.random() - 0.5) * 0.5) * push;
+          st.vz += (dz * inv + (Math.random() - 0.5) * 0.5) * push;
+          st.velY = 0.038 + Math.random() * 0.022;
+          st.velWX = (Math.random() - 0.5) * 0.28;
+          st.velWZ = (Math.random() - 0.5) * 0.28;
+          const now = performance.now();
+          if (now - lastHoverSoundTime > 95) {
+            lastHoverSoundTime = now;
+            sfx.init();
+            sfx.playHit(0.14, true);
+          }
+        }
+      }
+    }
+  }
+});
+
+function takeOneDieFromBoxCellToPool(typeId) {
+  const availableInCell = getCountInBoxCell(typeId);
+  if (availableInCell <= 0) return false;
+
+  let displacedType = -1;
+  if (playerSelectedSkins.length >= 6) {
+    displacedType = playerSelectedSkins.shift();
+  }
+  playerSelectedSkins.push(typeId);
+  syncSelectedSkinsToGame();
+
+  if (displacedType >= 0) {
+    const newCount = getCountInBoxCell(displacedType);
+    const st = boxDiceStates[displacedType][Math.max(0, newCount - 1)];
+    if (st) {
+      st.velY = 0.085;
+      st.velWX = (Math.random() - 0.5) * 0.4;
+      st.velWZ = (Math.random() - 0.5) * 0.4;
+    }
+  }
+
+  topHandMeshes.forEach(h => { h.velY = 0.075; });
+  return true;
+}
+
+/* ============================================================================
+   10. ПЕРЕКЛЮЧАТЕЛИ СОПЕРНИКА, СКЛАДА И ИНТЕРФЕЙСА
+============================================================================ */
+document.getElementById('btn-opp-cycle').addEventListener('click', () => {
+  const opp = OPPONENTS_CONFIG[currentOppIdx];
+  if (currentOppGameIdx + 1 < opp.games.length) {
+    currentOppGameIdx++;
+  } else {
+    currentOppIdx = (currentOppIdx + 1) % OPPONENTS_CONFIG.length;
+    currentOppGameIdx = 0;
+  }
+  game.playerWins = 0;
+  game.botWins = 0;
+  startNewRoundWithTiebreak();
+});
+
+document.getElementById('btn-inv-mode').addEventListener('click', () => {
+  debugFullInventory = !debugFullInventory;
+  document.getElementById('btn-inv-mode').textContent = debugFullInventory
+    ? 'Склад: Тест (все открыты)'
+    : 'Склад: Старт (6 карб.)';
+  updateBox3DDiceTransforms();
+});
+
+document.getElementById('btn-ui-cycle').addEventListener('click', () => {
+  const isV1 = document.body.classList.toggle('ui-mode-1');
+  document.getElementById('btn-ui-cycle').textContent = isV1 ? 'Интерфейс: Вариант I' : 'Интерфейс: Вариант II';
+});
+
+/* ============================================================================
+   11. ЗВУК И ФИЗИКА БРОСКА НА ДОСКЕ
+============================================================================ */
+class BoneSound {
+  constructor() { this.ctx = null; }
+  init() {
+    if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+  }
+  playHit(force = 0.8, isBone = false) {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const v = Math.min(1, Math.max(0.04, force));
+    const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+    osc.type = isBone ? 'triangle' : 'sine';
+    osc.frequency.setValueAtTime(isBone ? (940 + Math.random() * 320) : (210 + Math.random() * 110), now);
+    osc.frequency.exponentialRampToValueAtTime(48, now + 0.045);
+    gain.gain.setValueAtTime(v * 0.4, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.048);
+    osc.connect(gain); gain.connect(this.ctx.destination);
+    osc.start(now); osc.stop(now + 0.05);
+  }
+}
+const sfx = new BoneSound();
+
+let activeThrowAnim = null;
+
+function pickSpreadTarget(existingPoints, zoneZ = 0) {
+  let bestX = 0, bestZ = 0, bestClearance = -1;
+  for (let attempt = 0; attempt < 28; attempt++) {
+    const tx = (Math.random() - 0.5) * (TRAY_W - 2.6);
+    const tz = zoneZ !== 0
+      ? (zoneZ * (0.8 + Math.random() * 1.8))
+      : ((Math.random() - 0.5) * (TRAY_D - 2.3));
+    let minD = 999;
+    for (const p of existingPoints) {
+      const d = Math.hypot(tx - p.x, tz - p.z);
+      if (d < minD) minD = d;
+    }
+    if (minD > bestClearance) {
+      bestClearance = minD; bestX = tx; bestZ = tz;
+    }
+  }
+  existingPoints.push({ x: bestX, z: bestZ });
+  return { x: bestX, z: bestZ };
+}
+
+function throwDiceBatchPhysics(descriptors, onComplete) {
+  sfx.init();
+  const duration = 1.20, steps = 185, dt = duration / steps;
+  const effSize = getBoardDiceSize();
+  const effHalf = getBoardDiceHalf();
+  const boundX = TRAY_W / 2 - effHalf - 0.22;
+  const boundZ = TRAY_D / 2 - effHalf - 0.22;
+  const minSep = effSize * 1.46;
+
+  const occupiedTargets = boardDice.map(d => ({ x: d.x, z: d.z }));
+
+  const newBodies = descriptors.map((desc, i) => {
+    const mesh = createSingleDieMesh(desc.skinId);
+    const target = pickSpreadTarget(occupiedTargets, desc.zoneZ || 0);
+    const startX = ((i % 2 === 0) ? -1.6 : 1.6) + (Math.random() - 0.5) * 1.8;
+    const startZ = desc.fromTop ? (-TRAY_D / 2 + 0.55) : (TRAY_D / 2 - 0.55);
+    const startY = 2.05 + (i % 2) * 0.26;
+
+    return {
+      mesh, skinId: desc.skinId, owner: desc.owner, targetFace: desc.face,
+      x: startX, y: startY, z: startZ,
+      vx: (target.x - startX) * (1.55 + Math.random() * 0.22),
+      vy: -1.0,
+      vz: (target.z - startZ) * (1.55 + Math.random() * 0.22),
+      finalYaw: Math.random() * Math.PI * 2,
+      extraSpinsX: (2 + Math.floor(Math.random() * 2)) * Math.PI * 2 * (Math.random() > 0.5 ? 1 : -1),
+      extraSpinsZ: (2 + Math.floor(Math.random() * 2)) * Math.PI * 2 * (Math.random() > 0.5 ? 1 : -1),
+      frames: [], sounds: []
+    };
+  });
+
+  const restingBodies = boardDice.map(d => ({
+    mesh: d.mesh, x: d.x, y: effHalf, z: d.z, vx: 0, vz: 0,
+    baseQuat: d.mesh.quaternion.clone(), frames: []
+  }));
+
+  const allSimBodies = [...newBodies, ...restingBodies];
+
+  for (let s = 0; s <= steps; s++) {
+    const tNorm = s / steps;
+    newBodies.forEach(b => {
+      b.vy -= 28.0 * dt;
+      b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
+      if (b.y < effHalf) {
+        b.y = effHalf;
+        if (Math.abs(b.vy) > 1.1) b.sounds.push({ step: s, force: Math.min(1, Math.abs(b.vy) / 10), bone: false });
+        b.vy = -b.vy * 0.40;
+        b.vx *= 0.86; b.vz *= 0.86;
+      }
+    });
+
+    restingBodies.forEach(r => {
+      r.x += r.vx * dt; r.z += r.vz * dt;
+      r.vx *= 0.82; r.vz *= 0.82;
+    });
+
+    for (let iter = 0; iter < 6; iter++) {
+      for (let i = 0; i < allSimBodies.length; i++) {
+        const A = allSimBodies[i];
+        if (A.x > boundX)  { A.x = boundX;  if (A.vx > 0) A.vx = -A.vx * 0.55; }
+        if (A.x < -boundX) { A.x = -boundX; if (A.vx < 0) A.vx = -A.vx * 0.55; }
+        if (A.z > boundZ)  { A.z = boundZ;  if (A.vz > 0) A.vz = -A.vz * 0.55; }
+        if (A.z < -boundZ) { A.z = -boundZ; if (A.vz < 0) A.vz = -A.vz * 0.55; }
+
+        for (let j = i + 1; j < allSimBodies.length; j++) {
+          const B = allSimBodies[j];
+          if (Math.abs(A.y - B.y) > effSize * 0.95) continue;
+          let dx = B.x - A.x, dz = B.z - A.z;
+          let dist = Math.hypot(dx, dz);
+          if (dist < minSep) {
+            if (dist < 0.0001) { dx = 0.01; dz = 0.01; dist = Math.hypot(dx, dz); }
+            const nx = dx / dist, nz = dz / dist;
+            const overlap = (minSep - dist) * 0.52;
+            A.x -= nx * overlap; A.z -= nz * overlap;
+            B.x += nx * overlap; B.z += nz * overlap;
+
+            if (iter === 0) {
+              const rvx = B.vx - A.vx, rvz = B.vz - A.vz;
+              const vn = rvx * nx + rvz * nz;
+              if (vn < 0) {
+                const imp = -0.72 * vn;
+                A.vx -= imp * nx; A.vz -= imp * nz;
+                B.vx += imp * nx; B.vz += imp * nz;
+                if (A.sounds && Math.abs(vn) > 1.0) {
+                  A.sounds.push({ step: s, force: Math.min(1, Math.abs(vn) / 6), bone: true });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const decay = Math.pow(1 - tNorm, 2.5);
+    newBodies.forEach(b => {
+      const target = TARGET_EULER_TABLE[b.targetFace];
+      const rx = target.x + b.extraSpinsX * decay;
+      const rz = target.z + b.extraSpinsZ * decay;
+      const ry = b.finalYaw + (b.extraSpinsX * 0.3) * decay;
+      const qYaw  = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry);
+      const qFace = new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, 0, rz, 'XYZ'));
+      b.frames.push({ pos: new THREE.Vector3(b.x, b.y, b.z), quat: qYaw.multiply(qFace) });
+    });
+
+    restingBodies.forEach(r => {
+      r.frames.push({ pos: new THREE.Vector3(r.x, effHalf, r.z), quat: r.baseQuat });
+    });
+  }
+
+  restingBodies.forEach((r, idx) => {
+    const last = r.frames[steps];
+    boardDice[idx].x = last.pos.x; boardDice[idx].z = last.pos.z;
+  });
+  newBodies.forEach(b => {
+    const last = b.frames[steps];
+    boardDice.push({ mesh: b.mesh, x: last.pos.x, z: last.pos.z, face: b.targetFace, skinId: b.skinId, owner: b.owner });
+  });
+
+  activeThrowAnim = {
+    start: performance.now(), duration: duration * 1000, steps,
+    newBodies, restingBodies, played: new Set(), onComplete
+  };
+}
+
+/* ============================================================================
+   12. ЛОГИКА ПАРТИИ ДО 3 ПОБЕД И ВЫБОР 2 КОСТЕЙ ПРЯМО НА ВЕРХНЕМ БОРТИКЕ ДОСКИ
+============================================================================ */
+const game = {
+  phase: 'tiebreak', // 'tiebreak' | 'playing' | 'over' | 'trophy_pick' | 'match_lost'
+  turn: 'player',
+  rolling: false,
+  playerScore: 0,
+  botScore: 0,
+  playerWins: 0,
+  botWins: 0,
+  playerPassed: false,
+  botPassed: false,
+  tiebreakPlayerSum: 0,
+  tiebreakBotSum: 0
+};
+
+let pickedTrophySkins = [];
+
+const elSideLog = document.getElementById('side-status-log');
+function setStatusLog(text) {
+  elSideLog.textContent = text;
+}
+
+function updateHUD() {
+  document.getElementById('v2-score-player').textContent = game.playerScore;
+  document.getElementById('v2-score-bot').textContent    = game.botScore;
+  document.getElementById('v2-wins-player').textContent  = game.playerWins;
+  document.getElementById('v2-wins-bot').textContent     = game.botWins;
+  document.getElementById('v2-prof-player').classList.toggle('active-turn', game.turn === 'player' && game.phase === 'playing');
+  document.getElementById('v2-prof-bot').classList.toggle('active-turn', game.turn === 'bot' && game.phase === 'playing');
+  document.getElementById('v2-score-player').classList.toggle('bust', game.playerScore > 21);
+  document.getElementById('v2-score-bot').classList.toggle('bust', game.botScore > 21);
+
+  document.getElementById('v1-score-player').textContent = game.playerScore;
+  document.getElementById('v1-score-bot').textContent    = game.botScore;
+  document.getElementById('v1-wins-player').textContent  = game.playerWins;
+  document.getElementById('v1-wins-bot').textContent     = game.botWins;
+  document.getElementById('v1-tag-player').classList.toggle('active-turn', game.turn === 'player' && game.phase === 'playing');
+  document.getElementById('v1-tag-bot').classList.toggle('active-turn', game.turn === 'bot' && game.phase === 'playing');
+  document.getElementById('v1-score-player').classList.toggle('bust', game.playerScore > 21);
+  document.getElementById('v1-score-bot').classList.toggle('bust', game.botScore > 21);
+
+  const pLeft = playerRemainingSkins.length;
+  const canPlayerRoll = (!game.rolling && game.phase === 'playing' && game.turn === 'player' && !game.playerPassed);
+  const isTiebreakReady = (!game.rolling && game.phase === 'tiebreak');
+
+  ['v2-roll-1', 'v1-roll-1'].forEach(id => {
+    document.getElementById(id).disabled = !(isTiebreakReady || (canPlayerRoll && pLeft >= 1));
+  });
+  ['v2-roll-2', 'v1-roll-2'].forEach(id => {
+    document.getElementById(id).disabled = !(isTiebreakReady || (canPlayerRoll && pLeft >= 2));
+  });
+  ['v2-pass', 'v1-pass'].forEach(id => {
+    document.getElementById(id).disabled = !(canPlayerRoll && game.playerScore > 0);
+  });
+
+  const isOver = (game.phase === 'over');
+  ['v2-pass', 'v1-pass'].forEach(id => document.getElementById(id).style.display = isOver ? 'none' : 'inline-block');
+  ['v2-new-round', 'v1-new-round'].forEach(id => document.getElementById(id).style.display = isOver ? 'inline-block' : 'none');
+}
+
+function runInitialTiebreakRoll(diceCountEach = 2) {
+  if (isStandaloneBoxMode || game.rolling || game.phase !== 'tiebreak') return;
+  game.rolling = true;
+
+  if (diceCountEach === 2) {
+    clearTrayDice();
+    game.tiebreakPlayerSum = 0;
+    game.tiebreakBotSum = 0;
+  }
+
+  const pVals = [], bVals = [], batch = [];
+  for (let i = 0; i < diceCountEach; i++) {
+    const pv = 1 + Math.floor(Math.random() * 6);
+    const bv = 1 + Math.floor(Math.random() * 6);
+    pVals.push(pv); bVals.push(bv);
+    const pSkin = playerRemainingSkins.shift() ?? playerSelectedSkins[i] ?? 0;
+    const bSkin = botRemainingSkins.shift() ?? botMatchSkins[i] ?? 2;
+    batch.push({ face: pv, skinId: pSkin, fromTop: false, owner: 'player', zoneZ:  1 });
+    batch.push({ face: bv, skinId: bSkin, fromTop: true,  owner: 'bot',    zoneZ: -1 });
+  }
+
+  rebuildLedgeDice();
+  updateHUD();
+  setStatusLog(diceCountEach === 2
+    ? 'Жеребьёвка первого хода: оба кидают по 2 кости...'
+    : 'Ничья на жеребьёвке! Докидываем ещё по 1 кости...');
+
+  throwDiceBatchPhysics(batch, () => {
+    game.rolling = false;
+    game.tiebreakPlayerSum += pVals.reduce((a, b) => a + b, 0);
+    game.tiebreakBotSum    += bVals.reduce((a, b) => a + b, 0);
+
+    if (game.tiebreakPlayerSum === game.tiebreakBotSum) {
+      showCenterBanner('draw');
+      setStatusLog(`Ровно по ${game.tiebreakPlayerSum}! Бросаем ещё по 1 кости...`);
+      setTimeout(() => runInitialTiebreakRoll(1), 950);
+    } else {
+      const playerFirst = game.tiebreakPlayerSum > game.tiebreakBotSum;
+      setStatusLog(
+        `Жеребьёвка: ${game.tiebreakPlayerSum} против ${game.tiebreakBotSum}. ` +
+        (playerFirst ? 'Ты ходишь первым!' : 'Соперник ходит первым!')
+      );
+
+      setTimeout(() => {
+        clearTrayDice();
+        ensurePoolHasSixDice();
+        playerRemainingSkins = [...playerSelectedSkins];
+        resetBotSkinsForRound();
+        rebuildLedgeDice();
+        game.phase = 'playing';
+        game.turn = playerFirst ? 'player' : 'bot';
+        game.playerScore = 0;
+        game.botScore = 0;
+        updateHUD();
+
+        if (playerFirst) {
+          setStatusLog('Кон начался — у тебя 6 костей. Твой первый ход!');
+        } else {
+          setStatusLog('Кон начался — соперник ходит первым...');
+          setTimeout(botSingleTurn, 750);
+        }
+      }, 1250);
+    }
+  });
+}
+
+function advanceTurnAfterAction(lastActor) {
+  if (game.phase !== 'playing') return;
+
+  if (game.playerPassed && game.botPassed) {
+    compareScores();
+    return;
+  }
+
+  const pLeft = playerRemainingSkins.length;
+  const bLeft = botRemainingSkins.length;
+  const playerOut = (!game.playerPassed && pLeft === 0);
+  const botOut    = (!game.botPassed && bLeft === 0);
+  const playerDoneOrOut = (game.playerPassed || pLeft === 0);
+  const botDoneOrOut    = (game.botPassed || bLeft === 0);
+
+  if (playerDoneOrOut && botDoneOrOut) {
+    if (playerOut && game.playerScore < 21 && game.playerScore <= game.botScore) {
+      clearTrayDice();
+      playerRemainingSkins = [...playerSelectedSkins];
+      if (botOut) resetBotSkinsForRound();
+      rebuildLedgeDice();
+      game.turn = 'player';
+      updateHUD();
+      setStatusLog(`Кости сняты со стола (счёт ${game.playerScore}:${game.botScore}) — докидывай до 21!`);
+      return;
+    }
+    if (botOut && game.botScore < 21 && game.botScore < game.playerScore) {
+      clearTrayDice();
+      resetBotSkinsForRound();
+      if (playerOut) playerRemainingSkins = [...playerSelectedSkins];
+      rebuildLedgeDice();
+      game.turn = 'bot';
+      updateHUD();
+      setStatusLog(`Кости сняты со стола (счёт ${game.playerScore}:${game.botScore}) — соперник добирает...`);
+      setTimeout(botSingleTurn, 850);
+      return;
+    }
+    compareScores();
+    return;
+  }
+
+  if (lastActor === 'player') {
+    if (!botDoneOrOut) {
+      game.turn = 'bot'; updateHUD(); setTimeout(botSingleTurn, 750);
+    } else {
+      game.turn = 'player'; updateHUD();
+    }
+  } else {
+    if (!playerDoneOrOut) {
+      game.turn = 'player'; updateHUD();
+    } else {
+      game.turn = 'bot'; updateHUD(); setTimeout(botSingleTurn, 750);
+    }
+  }
+}
+
+function playerThrow(count) {
+  if (game.rolling || isBoxOpen) return;
+  if (game.phase === 'tiebreak') {
+    runInitialTiebreakRoll(2);
+    return;
+  }
+  if (game.phase !== 'playing' || game.turn !== 'player' || game.playerPassed) return;
+
+  const n = Math.min(count, playerRemainingSkins.length);
+  if (n <= 0) return;
+
+  game.rolling = true;
+  const vals = [], batch = [];
+  for (let i = 0; i < n; i++) {
+    const fv = 1 + Math.floor(Math.random() * 6);
+    const sk = playerRemainingSkins.shift();
+    vals.push(fv);
+    batch.push({ face: fv, skinId: sk, fromTop: false, owner: 'player', zoneZ: 0 });
+  }
+
+  rebuildLedgeDice();
+  updateHUD();
+  setStatusLog(`Твой бросок (${n === 2 ? '2 кости' : '1 кость'})...`);
+
+  throwDiceBatchPhysics(batch, () => {
+    game.rolling = false;
+    game.playerScore += vals.reduce((a, b) => a + b, 0);
+    updateHUD();
+
+    const rollStr = vals.join(' + ');
+    if (game.playerScore > 21) {
+      finishRound('bot', `Перебор (${game.playerScore})! Выпало ${rollStr}`);
+      return;
+    }
+    if (game.playerScore === 21) {
+      game.playerPassed = true;
+      setStatusLog(`Выпало ${rollStr} — ровно 21! Ход соперника`);
+      advanceTurnAfterAction('player');
+      return;
+    }
+    setStatusLog(`Ты: ${rollStr} (У тебя: ${game.playerScore}). Ход соперника...`);
+    advanceTurnAfterAction('player');
+  });
+}
+
+function botSingleTurn() {
+  if (game.phase !== 'playing' || game.turn !== 'bot' || game.rolling) return;
+
+  const playerStopped = (game.playerPassed || playerRemainingSkins.length === 0);
+  if (
+    game.botScore === 21 ||
+    (playerStopped && game.botScore > game.playerScore) ||
+    (game.botScore >= 19 && game.botScore >= game.playerScore)
+  ) {
+    game.botPassed = true;
+    showCenterBanner('pass');
+    setStatusLog(`Соперник пасует на ${game.botScore} очк. Твой ход!`);
+    advanceTurnAfterAction('bot');
+    return;
+  }
+
+  const gap = 21 - game.botScore;
+  const n = (gap <= 6 || botRemainingSkins.length === 1) ? 1 : 2;
+  game.rolling = true;
+
+  const vals = [], batch = [];
+  for (let i = 0; i < n; i++) {
+    const fv = 1 + Math.floor(Math.random() * 6);
+    const sk = botRemainingSkins.shift();
+    vals.push(fv);
+    batch.push({ face: fv, skinId: sk, fromTop: true, owner: 'bot', zoneZ: 0 });
+  }
+
+  rebuildLedgeDice();
+  updateHUD();
+  setStatusLog(`Соперник кидает ${n === 2 ? '2 кости' : '1 кость'}...`);
+
+  throwDiceBatchPhysics(batch, () => {
+    game.rolling = false;
+    game.botScore += vals.reduce((a, b) => a + b, 0);
+    updateHUD();
+
+    const rollStr = vals.join(' + ');
+    if (game.botScore > 21) {
+      finishRound('player', `У соперника перебор (${game.botScore})! Твоя победа`);
+      return;
+    }
+    if (game.botScore === 21) {
+      game.botPassed = true;
+      showCenterBanner('pass');
+    }
+
+    setStatusLog(`Соперник: ${rollStr} (У него: ${game.botScore}). Твой ход!`);
+    advanceTurnAfterAction('bot');
+  });
+}
+
+function compareScores() {
+  if (game.botScore > game.playerScore) {
+    finishRound('bot', `Соперник выиграл кон (${game.botScore} против ${game.playerScore})`);
+  } else if (game.botScore < game.playerScore) {
+    finishRound('player', `Твоя победа в коне! (${game.playerScore} против ${game.botScore})`);
+  } else {
+    finishRound('draw', `Ничья — ровно по ${game.playerScore}`);
+  }
+}
+
+// Фаза живого 3D-выбора 2 костей соперника прямо с верхнего бортика
+function startTrophyPickPhase() {
+  game.phase = 'trophy_pick';
+  pickedTrophySkins = [];
+  clearTrayDice();
+  playerRemainingSkins = [...playerSelectedSkins];
+  resetBotSkinsForRound();
+  rebuildLedgeDice();
+  updateHUD();
+
+  showSuspendedPromptBanner("ТЫ ПОБЕДИЛ", "ВЫБЕРИ ДВЕ КОСТЯШКИ СОПЕРНИКА", false);
+  setStatusLog("Нажми на любые 2 костяшки соперника на верхнем бортике доски, чтобы забрать их себе!");
+}
+
+// Поиск костяшки соперника на верхнем бортике под курсором мыши
+function findClickedBotLedgeMesh() {
+  const hits = raycaster.intersectObjects(botLedgeMeshes);
+  if (hits.length > 0 && !hits[0].object.userData.picked) {
+    return hits[0].object;
+  }
+  if (raycaster.ray.intersectPlane(ledgePlane, intersectPt)) {
+    let best = null, minD = 0.78;
+    for (const m of botLedgeMeshes) {
+      if (m.userData.picked) continue;
+      const d = Math.hypot(intersectPt.x - m.position.x, intersectPt.z - m.position.z);
+      if (d < minD) { minD = d; best = m; }
+    }
+    return best;
+  }
+  return null;
+}
+
+// Запуск красивого перелёта выбранной 3D-костяшки с верхнего бортика соперника на сторону игрока
+function pickOpponentLedgeDie(mesh) {
+  if (!mesh || mesh.userData.picked || pickedTrophySkins.length >= 2) return;
+  mesh.userData.picked = true;
+  const wonSkin = mesh.userData.skinId;
+  pickedTrophySkins.push(wonSkin);
+
+  sfx.init();
+  sfx.playHit(0.85, true);
+
+  const pickOrder = pickedTrophySkins.length; // 1 или 2
+  const startPos = mesh.position.clone();
+  const targetSlot = pickOrder === 1 ? 4 : 5;
+  const endPos = new THREE.Vector3(
+    -2.75 + targetSlot * 1.1,
+    mesh.userData.baseY + 0.12,
+    TRAY_D / 2 + WALL_T / 2 - 0.15
+  );
+
+  flyingTrophyAnims.push({
+    mesh,
+    startPos,
+    endPos,
+    startTime: performance.now(),
+    duration: 680,
+    onDone: () => {
+      if (pickOrder === 1) {
+        showSuspendedPromptBanner("ВЫБЕРИ ЕЩЁ ОДНУ КОСТЯШКУ", `ВЗЯТО: ${DICE_TYPES[wonSkin].title.toUpperCase()} (1/2)`, false);
+      } else if (pickOrder === 2) {
+        completeMatchVictoryWithTrophies();
+      }
+    }
+  });
+}
+
+function completeMatchVictoryWithTrophies() {
+  hideSuspendedPromptBanner();
+
+  pickedTrophySkins.forEach(wonSkin => {
+    playerOwnedCounts[wonSkin] = (playerOwnedCounts[wonSkin] || 0) + 1;
+    if (playerSelectedSkins.length >= 6) playerSelectedSkins.shift();
+    playerSelectedSkins.push(wonSkin);
+  });
+
+  const opp = OPPONENTS_CONFIG[currentOppIdx];
+  if (currentOppGameIdx + 1 < opp.games.length) {
+    currentOppGameIdx++;
+  }
+
+  syncSelectedSkinsToGame();
+
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'OCHKO_MATCH_FINISHED',
+        won: true,
+        lostStew: 0,
+        takenDice: [...pickedTrophySkins],
+        lostDice: [],
+        opponentId: OPPONENTS_CONFIG[currentOppIdx].id,
+        gameIndex: currentOppGameIdx,
+        playerSkins: [...playerSelectedSkins],
+        playerOwnedCounts: [...playerOwnedCounts],
+        playerInventory: [...playerOwnedCounts]
+      }, '*');
+    }
+  } catch (e) {}
+
+  game.playerWins = 0;
+  game.botWins = 0;
+  setTimeout(() => {
+    if (!isEmbeddedMatchMode) startNewRoundWithTiebreak();
+  }, 550);
+}
+
+// Завершение матча при 3 поражениях (без HTML-окон: баннер + перелёт проигранных редких костей или списание тушёнки)
+function handleMatchDefeat3D() {
+  game.phase = 'match_lost';
+  clearTrayDice();
+  playerRemainingSkins = [...playerSelectedSkins];
+  resetBotSkinsForRound();
+  rebuildLedgeDice();
+  updateHUD();
+
+  const lostRareIndices = [];
+  playerSelectedSkins.forEach((sk, idx) => {
+    if (sk > 0 && lostRareIndices.length < 2) lostRareIndices.push(idx);
+  });
+
+  const lostDice = [];
+  let lostStew = 0;
+
+  if (lostRareIndices.length === 0) {
+    lostStew = 1;
+    showSuspendedPromptBanner("ТЫ ПРОИГРАЛ ПАРТИЮ", "СТАВКА (БАНКА ТУШЁНКИ) УХОДИТ СОПЕРНИКУ", true);
+    setStatusLog("Партия проиграна. Поставленная банка тушёнки уходит сопернику.");
+  } else {
+    showSuspendedPromptBanner("ТЫ ПРОИГРАЛ ПАРТИЮ", "СОПЕРНИК ЗАБИРАЕТ ТВОИ ВЫИГРАННЫЕ КОСТИ", true);
+    setStatusLog("Партия проиграна. Соперник забирает твои выигранные кости.");
+
+    // Редкие кости игрока с нижнего бортика улетают наверх к сопернику
+    lostRareIndices.forEach((poolIdx, k) => {
+      const m = playerLedgeMeshes[poolIdx];
+      if (m) {
+        flyingTrophyAnims.push({
+          mesh: m,
+          startPos: m.position.clone(),
+          endPos: new THREE.Vector3(1.5 - k * 1.3, m.userData.baseY + 0.12, -TRAY_D / 2 - WALL_T / 2 + 0.15),
+          startTime: performance.now() + k * 140,
+          duration: 680
+        });
+      }
+    });
+
+    const sortedDesc = [...lostRareIndices].sort((a, b) => b - a);
+    sortedDesc.forEach(poolIdx => {
+      const sk = playerSelectedSkins[poolIdx];
+      lostDice.push(sk);
+      if (playerOwnedCounts[sk] > 0) playerOwnedCounts[sk]--;
+      playerSelectedSkins.splice(poolIdx, 1);
+    });
+    ensurePoolHasSixDice();
+  }
+
+  savePlayerStateToStorage();
+
+  setTimeout(() => {
+    hideSuspendedPromptBanner();
+    syncSelectedSkinsToGame();
+
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'OCHKO_MATCH_FINISHED',
+          won: false,
+          lostStew,
+          takenDice: [],
+          lostDice,
+          opponentId: OPPONENTS_CONFIG[currentOppIdx].id,
+          gameIndex: currentOppGameIdx,
+          playerSkins: [...playerSelectedSkins],
+          playerOwnedCounts: [...playerOwnedCounts],
+          playerInventory: [...playerOwnedCounts]
+        }, '*');
+      }
+    } catch (e) {}
+
+    game.playerWins = 0;
+    game.botWins = 0;
+    if (!isEmbeddedMatchMode) startNewRoundWithTiebreak();
+  }, 1650);
+}
+
+function finishRound(winner, msg) {
+  game.phase = 'over';
+  if (winner === 'player') {
+    game.playerWins++;
+    showCenterBanner('win');
+  } else if (winner === 'bot') {
+    game.botWins++;
+    showCenterBanner('lose');
+  } else {
+    showCenterBanner('draw');
+  }
+
+  setStatusLog(`${msg} [Счёт побед: ${game.playerWins}:${game.botWins} до 3]`);
+  updateHUD();
+
+  if (game.playerWins >= 3) {
+    setTimeout(() => startTrophyPickPhase(), 760);
+  } else if (game.botWins >= 3) {
+    setTimeout(() => handleMatchDefeat3D(), 760);
+  }
+}
+
+function startNewRoundWithTiebreak() {
+  hideSuspendedPromptBanner();
+  clearTrayDice();
+  ensurePoolHasSixDice();
+  playerRemainingSkins = [...playerSelectedSkins];
+  resetBotSkinsForRound();
+  game.phase = 'tiebreak';
+  game.turn = 'player';
+  game.playerScore = 0;
+  game.botScore = 0;
+  game.playerPassed = false;
+  game.botPassed = false;
+  rebuildLedgeDice();
+  updateHUD();
+  if (!isStandaloneBoxMode) runInitialTiebreakRoll(2);
+}
+
+['v2-roll-2', 'v1-roll-2'].forEach(id => document.getElementById(id).addEventListener('click', () => playerThrow(2)));
+['v2-roll-1', 'v1-roll-1'].forEach(id => document.getElementById(id).addEventListener('click', () => playerThrow(1)));
+['v2-pass', 'v1-pass'].forEach(id => document.getElementById(id).addEventListener('click', () => {
+  if (game.phase === 'playing' && game.turn === 'player' && !game.rolling && game.playerScore > 0 && !game.playerPassed) {
+    game.playerPassed = true;
+    setStatusLog(`Ты спасовал на ${game.playerScore}. Ход соперника`);
+    advanceTurnAfterAction('player');
+  }
+}));
+['v2-new-round', 'v1-new-round'].forEach(id => document.getElementById(id).addEventListener('click', startNewRoundWithTiebreak));
+
+wrapEl.addEventListener('click', (e) => {
+  mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouseNDC, camera);
+
+  // Режим выбора 2 трофейных костяшек соперника прямо на верхнем бортике доски
+  if (!isBoxOpen && game.phase === 'trophy_pick') {
+    const clickedDie = findClickedBotLedgeMesh();
+    if (clickedDie) {
+      pickOpponentLedgeDie(clickedDie);
+    }
+    return;
+  }
+
+  if (isBoxOpen) {
+    // 1. Клик по кости сверху в пуле: кость исчезает из пула и возвращается в свою ячейку ящика
+    const handHits = raycaster.intersectObjects(topHandMeshes.map(h => h.mesh));
+    if (handHits.length > 0) {
+      const hitMesh = handHits[0].object;
+      const item = topHandMeshes.find(h => h.mesh === hitMesh);
+      if (item) {
+        const returnedType = playerSelectedSkins[item.slotIdx];
+        playerSelectedSkins.splice(item.slotIdx, 1);
+        syncSelectedSkinsToGame();
+
+        const cnt = getCountInBoxCell(returnedType);
+        const st = boxDiceStates[returnedType][Math.max(0, cnt - 1)];
+        if (st) {
+          st.velY = 0.09;
+          st.velWX = (Math.random() - 0.5) * 0.45;
+          st.velWZ = (Math.random() - 0.5) * 0.45;
+        }
+        sfx.init(); sfx.playHit(0.55, true);
+      }
+      return;
+    }
+
+    // 2. Клик по ячейке ящика: 1 кость из ячейки переходит в пул
+    if (raycaster.ray.intersectPlane(groundPlane, intersectPt)) {
+      let bestType = -1;
+      for (let t = 0; t < 8; t++) {
+        const b = getCellBounds(t);
+        if (intersectPt.x >= b.minX - 0.25 && intersectPt.x <= b.maxX + 0.25 &&
+            intersectPt.z >= b.minZ - 0.25 && intersectPt.z <= b.maxZ + 0.25) {
+          bestType = t;
+          break;
+        }
+      }
+
+      if (bestType >= 0 && getCountInBoxCell(bestType) > 0) {
+        takeOneDieFromBoxCellToPool(bestType);
+        const remCount = getCountInBoxCell(bestType);
+        for (let idx = 0; idx < remCount; idx++) {
+          const st = boxDiceStates[bestType][idx];
+          st.velY  = 0.075 + (idx % 3) * 0.014;
+          st.vx   += (Math.random() - 0.5) * 0.14;
+          st.vz   += (Math.random() - 0.5) * 0.14;
+          st.velWX = (Math.random() - 0.5) * 0.45;
+          st.velWZ = (Math.random() - 0.5) * 0.45;
+        }
+        sfx.init(); sfx.playHit(0.75, true);
+      }
+    }
+    return;
+  }
+
+  if (game.rolling) return;
+  if (game.phase === 'tiebreak') runInitialTiebreakRoll(2);
+  else if (game.phase === 'playing' && game.turn === 'player' && !game.playerPassed) {
+    playerThrow(playerRemainingSkins.length >= 2 ? 2 : 1);
+  } else if (game.phase === 'over') {
+    startNewRoundWithTiebreak();
+  }
+});
+
+wrapEl.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  if (!isBoxOpen && !game.rolling && game.phase === 'playing' && game.turn === 'player' && !game.playerPassed && playerRemainingSkins.length >= 1) {
+    playerThrow(1);
+  }
+});
+
+/* ============================================================================
+   13. ИНТЕГРАЦИЯ С INDEX.HTML (ПОДГРУЗКА ФОНА, СОПЕРНИКА, СКЛАДА И MODE=BOX)
+============================================================================ */
+function applyExternalConfig(cfg = {}) {
+  if (cfg.bg) {
+    const bgVal = cfg.bg.startsWith('url(') ? cfg.bg : `url('${cfg.bg}')`;
+    document.body.style.backgroundImage = bgVal;
+  }
+  const incomingCounts = cfg.playerOwnedCounts || cfg.playerInventory;
+  if (Array.isArray(incomingCounts) && incomingCounts.length === 8) {
+    playerOwnedCounts = incomingCounts.map(n => Math.max(0, Number(n) || 0));
+    if (playerOwnedCounts[0] < 6) playerOwnedCounts[0] = 6;
+  }
+  if (Array.isArray(cfg.playerSkins) && cfg.playerSkins.length > 0) {
+    playerSelectedSkins = cfg.playerSkins.slice(0, 6).map(n => Number(n) || 0);
+  }
+  if (cfg.opponent !== undefined) {
+    isEmbeddedMatchMode = true;
+    const oIdx = Math.max(0, Math.min(3, Number(cfg.opponent) - 1));
+    currentOppIdx = oIdx;
+    currentOppGameIdx = Math.max(0, Math.min(OPPONENTS_CONFIG[oIdx].games.length - 1, (Number(cfg.game) || 1) - 1));
+    game.playerWins = 0;
+    game.botWins = 0;
+  }
+  if (cfg.mode === 'box' || cfg.boxOnly === true || cfg.boxOnly === '1') {
+    isStandaloneBoxMode = true;
+    document.getElementById('close-box-sub').textContent = '(вернуться в инвентарь)';
+    setCollectorBoxOpen(true);
+  } else if (cfg.mode === 'match' || cfg.mode === 'game') {
+    isStandaloneBoxMode = false;
+    isEmbeddedMatchMode = true;
+    document.getElementById('close-box-sub').textContent = '(вернуться к доске)';
+    setCollectorBoxOpen(false);
+  }
+
+  updateDevStackVisibility();
+  syncSelectedSkinsToGame();
+  resetBotSkinsForRound();
+  updateHUD();
+}
+
+window.initOchkoFromIndex = applyExternalConfig;
+
+window.addEventListener('message', (e) => {
+  if (!e.data) return;
+  if (e.data.type === 'OPEN_BOX_ONLY') {
+    applyExternalConfig({ ...e.data, mode: 'box' });
+  } else if (e.data.type === 'INIT_OCHKO' || e.data.bg || e.data.opponent || e.data.mode) {
+    applyExternalConfig(e.data);
+    if (e.data.restart && !isStandaloneBoxMode) startNewRoundWithTiebreak();
+  }
+});
+
+function autoDetectIndexEnvironment() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const urlCfg = {};
+    if (params.get('bg')) urlCfg.bg = params.get('bg');
+    if (params.get('opponent')) urlCfg.opponent = params.get('opponent');
+    if (params.get('game')) urlCfg.game = params.get('game');
+    if (params.get('mode') === 'box' || params.get('boxOnly') === '1') urlCfg.mode = 'box';
+    else if (params.get('mode') === 'match') urlCfg.mode = 'match';
+
+    const savedOwned = localStorage.getItem('ochko_owned_counts') || localStorage.getItem('ochko_player_inventory');
+    if (savedOwned) {
+      const parsedInv = JSON.parse(savedOwned);
+      if (Array.isArray(parsedInv) && parsedInv.length === 8) urlCfg.playerOwnedCounts = parsedInv;
+    }
+
+    const savedSkins = localStorage.getItem('ochko_player_skins');
+    if (savedSkins) {
+      const parsed = JSON.parse(savedSkins);
+      if (Array.isArray(parsed) && parsed.length === 6) urlCfg.playerSkins = parsed;
+    }
+
+    const lsBg = localStorage.getItem('current_location_bg') || localStorage.getItem('location_bg');
+    if (!urlCfg.bg && lsBg) urlCfg.bg = lsBg;
+
+    if (!urlCfg.bg && window.parent && window.parent !== window) {
+      try {
+        const pDoc = window.parent.document;
+        const pBg = window.parent.currentLocationBg
+          || pDoc.body.style.backgroundImage
+          || window.parent.getComputedStyle(pDoc.body).backgroundImage;
+        if (pBg && pBg !== 'none' && !pBg.includes('radial-gradient')) {
+          urlCfg.bg = pBg;
+        }
+      } catch (e) {}
+    }
+
+    if (Object.keys(urlCfg).length > 0) applyExternalConfig(urlCfg);
+    updateDevStackVisibility();
+  } catch (e) {}
+}
+
+function applyLoadedTrimImage(img, save = true) {
+  trimCtx.clearRect(0, 0, 1024, 1024);
+  trimCtx.drawImage(img, 0, 0, 1024, 1024);
+  materialCache.clear();
+  document.getElementById('lbl-trim-status').textContent = 'Трим-лист ✓';
+
+  boardDice.forEach(d => { d.mesh.material = getDiceMaterial(d.skinId); });
+  boxInstancedMeshes.forEach((im, idx) => { im.material = getDiceMaterial(idx); });
+  rebuildLedgeDice();
+  rebuildTopHand3DDice();
+  if (save) {
+    try { localStorage.setItem('saved_trim_sheet_v1', trimSheetCanvas.toDataURL('image/jpeg', 0.9)); } catch (e) {}
+  }
+}
+
+function applyLoadedBoxImage(img, save = false) {
+  const cutCanvas = createBoxCanvasWithAlphaCutout(img);
+  const tex = new THREE.CanvasTexture(cutCanvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  boxPlaneMesh.material.map = tex;
+  boxPlaneMesh.material.needsUpdate = true;
+  document.getElementById('lbl-box-status').textContent = 'Ящик (Кубики.jpg) ✓';
+  if (save) {
+    try { localStorage.setItem('saved_box_photo_v2', cutCanvas.toDataURL('image/png')); } catch (e) {}
+  }
+}
+
+const folderBoxImg = new Image();
+folderBoxImg.crossOrigin = 'anonymous';
+folderBoxImg.onload = () => applyLoadedBoxImage(folderBoxImg, false);
+folderBoxImg.src = './КУБИКИ.jpg';
+
+const folderTrimImg = new Image();
+folderTrimImg.crossOrigin = 'anonymous';
+folderTrimImg.onload = () => applyLoadedTrimImage(folderTrimImg, true);
+folderTrimImg.src = './ТРИМ ЛИСТ.jpg';
+
+try {
+  const cachedTrim = localStorage.getItem('saved_trim_sheet_v1');
+  if (cachedTrim) {
+    const img = new Image(); img.onload = () => applyLoadedTrimImage(img, false); img.src = cachedTrim;
+  }
+  const cachedBox = localStorage.getItem('saved_box_photo_v2');
+  if (cachedBox) {
+    const bImg = new Image(); bImg.onload = () => applyLoadedBoxImage(bImg, false); bImg.src = cachedBox;
+  }
+  const cachedWood = localStorage.getItem('saved_wood_board_v1');
+  if (cachedWood) {
+    const wImg = new Image(); wImg.onload = () => applyBoardWoodTexture(wImg, false); wImg.src = cachedWood;
+  }
+} catch (e) {}
+
+document.getElementById('file-trim').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = (ev) => { const img = new Image(); img.onload = () => applyLoadedTrimImage(img, true); img.src = ev.target.result; };
+  r.readAsDataURL(f);
+});
+
+document.getElementById('file-box-img').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = (ev) => { const img = new Image(); img.onload = () => applyLoadedBoxImage(img, true); img.src = ev.target.result; };
+  r.readAsDataURL(f);
+});
+
+const gltfLoader = new GLTFLoader();
+function applyCustomGlb(root) {
+  let foundMesh = null;
+  root.traverse(n => { if (n.isMesh && !foundMesh) foundMesh = n; });
+  if (!foundMesh) return;
+
+  const rawGeo = foundMesh.geometry.clone();
+  rawGeo.computeBoundingBox();
+  const center = new THREE.Vector3(), size = new THREE.Vector3();
+  rawGeo.boundingBox.getCenter(center); rawGeo.boundingBox.getSize(size);
+  rawGeo.translate(-center.x, -center.y, -center.z);
+  const scale = BASE_DICE_SIZE / (Math.max(size.x, size.y, size.z) || 1);
+  rawGeo.scale(scale, scale, scale);
+
+  masterDiceGeo = projectTCrossUVs(rawGeo);
+  document.getElementById('lbl-glb-status').textContent = 'Модель dice.glb ✓';
+
+  boardDice.forEach(d => { d.mesh.geometry = masterDiceGeo; });
+  boxInstancedMeshes.forEach(im => { im.geometry = masterDiceGeo; });
+  rebuildLedgeDice();
+  rebuildTopHand3DDice();
+}
+
+gltfLoader.load('./dice.glb', (gltf) => applyCustomGlb(gltf.scene), undefined, () => {});
+document.getElementById('file-glb').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  gltfLoader.load(URL.createObjectURL(f), (gltf) => applyCustomGlb(gltf.scene));
+});
+
+document.getElementById('file-wood').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = (ev) => { const img = new Image(); img.onload = () => applyBoardWoodTexture(img, true); img.src = ev.target.result; };
+  r.readAsDataURL(f);
+});
+
+document.getElementById('file-bg').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  document.body.style.backgroundImage = `url('${URL.createObjectURL(f)}')`;
+});
+
+document.getElementById('file-ava-player').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  document.getElementById('lens-player').style.backgroundImage = `url('${URL.createObjectURL(f)}')`;
+});
+document.getElementById('file-ava-bot').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  document.getElementById('lens-bot').style.backgroundImage = `url('${URL.createObjectURL(f)}')`;
+});
+
+/* ============================================================================
+   14. СТАРТ И АНИМАЦИОННЫЙ ЦИКЛ
+============================================================================ */
+resetBotSkinsForRound();
+autoDetectIndexEnvironment();
+rebuildLedgeDice();
+rebuildTopHand3DDice();
+updateBox3DDiceTransforms();
+updateHUD();
+if (!isStandaloneBoxMode) {
+  setTimeout(() => runInitialTiebreakRoll(2), 400);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+function animate(now) {
+  requestAnimationFrame(animate);
+  candlePoint.intensity = 25 + Math.sin(now * 0.007) * 1.8 + Math.cos(now * 0.019) * 1.1;
+
+  // Анимация перелёта выбранных трофейных костяшек с верхнего бортика на сторону игрока
+  for (let i = flyingTrophyAnims.length - 1; i >= 0; i--) {
+    const fa = flyingTrophyAnims[i];
+    if (now < fa.startTime) continue;
+    const t = Math.min(1, (now - fa.startTime) / fa.duration);
+    const ease = 1 - Math.pow(1 - t, 3);
+    fa.mesh.position.lerpVectors(fa.startPos, fa.endPos, ease);
+    fa.mesh.position.y += Math.sin(t * Math.PI) * 2.1; // Высокая красивая дуга над доской
+    fa.mesh.rotation.x = t * Math.PI * 2;
+    fa.mesh.rotation.z = t * Math.PI;
+    fa.mesh.scale.setScalar(BOARD_SCALE * (0.85 + Math.sin(t * Math.PI) * 0.25));
+
+    if (t >= 1) {
+      sfx.init(); sfx.playHit(0.65, false);
+      const cb = fa.onDone;
+      flyingTrophyAnims.splice(i, 1);
+      if (cb) cb();
+    }
+  }
+
+  if (isBoxOpen) {
+    let needsInstUpdate = false;
+    const minSepBox = getBoxDiceSize() * 1.12;
+
+    for (let t = 0; t < 8; t++) {
+      const visibleCount = getCountInBoxCell(t);
+      if (visibleCount <= 0) continue;
+      const states = boxDiceStates[t];
+      const b = getCellBounds(t);
+
+      for (let k = 0; k < visibleCount; k++) {
+        const st = states[k];
+        if (
+          Math.abs(st.vx) > 1e-4 || Math.abs(st.vz) > 1e-4 ||
+          Math.abs(st.offsetY) > 1e-4 || Math.abs(st.velY) > 1e-4 ||
+          Math.abs(st.wobbleX) > 1e-4 || Math.abs(st.velWX) > 1e-4
+        ) {
+          needsInstUpdate = true;
+          st.x += st.vx;
+          st.z += st.vz;
+          st.vx *= 0.86;
+          st.vz *= 0.86;
+
+          if (st.x < b.minX) { st.x = b.minX; st.vx = Math.abs(st.vx) * 0.6; }
+          if (st.x > b.maxX) { st.x = b.maxX; st.vx = -Math.abs(st.vx) * 0.6; }
+          if (st.z < b.minZ) { st.z = b.minZ; st.vz = Math.abs(st.vz) * 0.6; }
+          if (st.z > b.maxZ) { st.z = b.maxZ; st.vz = -Math.abs(st.vz) * 0.6; }
+
+          st.offsetY += st.velY;
+          if (st.offsetY > BOX_CEILING_Y) {
+            st.offsetY = BOX_CEILING_Y;
+            st.velY = -Math.abs(st.velY) * 0.45;
+          }
+          if (st.offsetY > 0) {
+            st.velY -= 0.0095;
+          } else {
+            st.offsetY = 0;
+            st.velY = -st.velY * 0.28;
+            if (Math.abs(st.velY) < 0.004) st.velY = 0;
+          }
+
+          st.wobbleX += st.velWX;
+          st.wobbleZ += st.velWZ;
+          st.velWX = (st.velWX - st.wobbleX * 0.18) * 0.82;
+          st.velWZ = (st.velWZ - st.wobbleZ * 0.18) * 0.82;
+        }
+      }
+
+      for (let i = 0; i < visibleCount; i++) {
+        for (let j = i + 1; j < visibleCount; j++) {
+          const A = states[i], B = states[j];
+          let dx = B.x - A.x, dz = B.z - A.z;
+          let dist = Math.hypot(dx, dz);
+          if (dist < minSepBox) {
+            needsInstUpdate = true;
+            if (dist < 0.0001) { dx = 0.01; dz = 0.01; dist = Math.hypot(dx, dz); }
+            const nx = dx / dist, nz = dz / dist;
+            const overlap = (minSepBox - dist) * 0.52;
+            A.x = Math.max(b.minX, Math.min(b.maxX, A.x - nx * overlap));
+            A.z = Math.max(b.minZ, Math.min(b.maxZ, A.z - nz * overlap));
+            B.x = Math.max(b.minX, Math.min(b.maxX, B.x + nx * overlap));
+            B.z = Math.max(b.minZ, Math.min(b.maxZ, B.z + nz * overlap));
+          }
+        }
+      }
+    }
+
+    if (needsInstUpdate) updateBox3DDiceTransforms();
+
+    topHandMeshes.forEach(h => {
+      if (h.hopY > 0 || Math.abs(h.velY) > 1e-4) {
+        h.hopY += h.velY;
+        if (h.hopY > 0.36) { h.hopY = 0.36; h.velY = -Math.abs(h.velY) * 0.4; }
+        if (h.hopY > 0) h.velY -= 0.009;
+        else { h.hopY = 0; h.velY = 0; }
+        h.mesh.position.y = h.baseY + h.hopY;
+      }
+    });
+  }
+
+  if (activeThrowAnim) {
+    const elapsed = now - activeThrowAnim.start;
+    const progress = Math.min(1, elapsed / activeThrowAnim.duration);
+    const stepIdx = Math.min(activeThrowAnim.steps, Math.floor(progress * activeThrowAnim.steps));
+
+    activeThrowAnim.newBodies.forEach((b, i) => {
+      const f = b.frames[stepIdx];
+      if (f) { b.mesh.position.copy(f.pos); b.mesh.quaternion.copy(f.quat); }
+      b.sounds.forEach((ev, evIdx) => {
+        const key = `${i}_${evIdx}`;
+        if (stepIdx >= ev.step && !activeThrowAnim.played.has(key)) {
+          activeThrowAnim.played.add(key);
+          sfx.playHit(ev.force, ev.bone);
+        }
+      });
+    });
+
+    activeThrowAnim.restingBodies.forEach(r => {
+      const f = r.frames[stepIdx];
+      if (f) r.mesh.position.copy(f.pos);
+    });
+
+    if (progress >= 1) {
+      const cb = activeThrowAnim.onComplete;
+      activeThrowAnim = null;
+      if (cb) cb();
+    }
+  }
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
