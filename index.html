@@ -19,21 +19,8 @@
     }
     #stage-16x9 {
       position: relative; width: 1280px; height: 720px; flex-shrink: 0;
-      overflow: hidden; background: #040507;
+      overflow: hidden; background: #040507; box-shadow: 0 0 60px rgba(0,0,0,0.95);
       transform-origin: center center;
-    }
-
-    /* ПОКА ОТКРЫТО ГЛАВНОЕ МЕНЮ, ИГРОВАЯ СЦЕНА И HUD ПОЛНОСТЬЮ ИСКЛЮЧЕНЫ ИЗ РЕНДЕРА */
-    body.menu-open .scene-slot,
-    body.menu-open #darkness-solid,
-    body.menu-open #darkness-mask-overlay,
-    body.menu-open #vignette,
-    body.menu-open #npc-layer,
-    body.menu-open #cabinet-items-layer,
-    body.menu-open #top-event-box,
-    body.menu-open #bottom-hud,
-    body.menu-open #backpack-btn {
-      display: none !important;
     }
 
     /* ==========================================================================
@@ -52,6 +39,7 @@
     #menu-bg-video {
       position: absolute; inset: 0; width: 100%; height: 100%;
       object-fit: cover; z-index: 1; pointer-events: none;
+      filter: brightness(0.92) contrast(1.05);
     }
     .menu-vignette {
       position: absolute; inset: 0; z-index: 2; pointer-events: none;
@@ -76,9 +64,10 @@
       padding: 4px 22px;
       transform: scale(0.88);
       opacity: 0.62;
-      transition: transform 0.24s ease,
-                  color 0.24s ease,
-                  opacity 0.24s ease;
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+                  color 0.28s ease,
+                  text-shadow 0.28s ease,
+                  opacity 0.28s ease;
     }
     .menu-item-btn.active,
     .menu-item-btn:hover,
@@ -87,7 +76,8 @@
       color: #2dd4bf;
       opacity: 1;
       text-shadow:
-        0 0 12px rgba(45, 212, 191, 0.8),
+        0 0 14px rgba(45, 212, 191, 0.85),
+        0 0 32px rgba(45, 212, 191, 0.45),
         0 2px 6px rgba(0, 0, 0, 0.95);
     }
     #menu-sub-toast {
@@ -112,9 +102,11 @@
     #menu-logo-img {
       max-width: 100%; max-height: 100%; width: auto; height: auto;
       object-fit: contain;
+      filter: drop-shadow(0 6px 24px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 18px rgba(45, 212, 191, 0.22));
     }
     #menu-logo-img.blend-screen {
       mix-blend-mode: screen;
+      filter: contrast(1.15) brightness(1.08);
     }
     #menu-logo-fallback-text {
       display: none;
@@ -143,10 +135,12 @@
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(45, 212, 191, 0.38);
       border-radius: 999px; overflow: hidden;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.85);
     }
     #preloader-bar-fill {
       width: 0%; height: 100%;
       background: linear-gradient(90deg, #0d9488 0%, #2dd4bf 60%, #99f6e4 100%);
+      box-shadow: 0 0 14px rgba(45, 212, 191, 0.8);
       transition: width 0.15s ease;
     }
     #preloader-status {
@@ -156,31 +150,34 @@
     }
 
     /* ==========================================================================
-       2. СЦЕНА И ОПТИМИЗИРОВАННЫЕ СЛОИ ОСВЕЩЕНИЯ
+       2. СЦЕНА И GPU-СЛОИ ОСВЕЩЕНИЯ (БЕЗ ДУБЛИРОВАНИЯ ФОНА И CPU-МАСОК)
     ========================================================================== */
     .scene-slot {
-      position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
-      transition: opacity 0.55s ease;
+      position: absolute; inset: -3%; width: 106%; height: 106%; pointer-events: none;
+      will-change: transform, opacity;
+      transition: opacity 0.85s cubic-bezier(0.25,0.1,0.25,1), transform 0.85s cubic-bezier(0.22,0.61,0.36,1);
     }
     .scene-slot.current {
       opacity: 1; z-index: 2;
+      transform: translate3d(0px, 0px, 0) scale(1.03);
     }
     .scene-slot.current.peephole-zoom {
-      transition: transform 0.95s ease !important;
-      transform: scale(1.28) !important;
+      transition: transform 1.1s cubic-bezier(0.2,0.7,0.3,1) !important;
+      transform: translate3d(0,0,0) scale(1.32) !important;
     }
     .scene-slot.outgoing {
       opacity: 0; z-index: 1;
+      transform: translate3d(0px, -8px, 0) scale(1.1);
     }
     .scene-slot.incoming-prep {
-      opacity: 0; z-index: 3; transition: none !important;
+      opacity: 0; z-index: 3; transform: translate3d(0,8px,0) scale(0.97); transition: none !important;
     }
     .layer-bg {
       position: absolute; inset: 0; width: 100%; height: 100%;
       background-position: center; background-size: 100% 100%; background-repeat: no-repeat;
     }
 
-    /* СЛОЙ ТЕМНОТЫ И ЛЁГКИЙ ХОЛСТ 320×180 ДЛЯ КРУГА СВЕТА */
+    /* ЕДИНЫЙ GPU-СЛОЙ ТЕМНОТЫ И ТЁПЛОГО СВЕТА (СТАТИЧЕСКИЕ ГРАДИЕНТЫ, ДВИГАЮТСЯ ТОЛЬКО ЧЕРЕЗ TRANSFORM) */
     #darkness-solid {
       position: absolute; inset: 0; z-index: 4; pointer-events: none;
       background: rgba(2, 6, 15, 0.92);
@@ -196,21 +193,38 @@
       opacity: 1;
     }
     #darkness-mask-overlay {
-      position: absolute; inset: 0; width: 100%; height: 100%;
+      position: absolute; left: -600px; top: -600px; width: 1200px; height: 1200px;
       z-index: 4; pointer-events: none;
-      display: none;
+      will-change: transform, opacity;
+      transform-origin: center center;
+      opacity: 0;
+      background: radial-gradient(
+        circle at 50% 50%,
+        transparent 0%,
+        rgba(3, 8, 18, 0.06) 10%,
+        rgba(3, 8, 18, 0.52) 15%,
+        rgba(2, 6, 15, 0.87) 20%,
+        rgba(2, 6, 15, 0.94) 100%
+      );
+    }
+    #light-glow-overlay {
+      position: absolute; left: -400px; top: -400px; width: 800px; height: 800px;
+      z-index: 4; pointer-events: none; mix-blend-mode: screen;
+      will-change: transform, opacity;
+      transform-origin: center center;
+      opacity: 0;
+      background: radial-gradient(
+        circle at 50% 50%,
+        rgba(255, 185, 85, 0.42) 0%,
+        rgba(230, 120, 35, 0.16) 46%,
+        transparent 76%
+      );
     }
     body[data-fullbright="true"] #darkness-solid,
-    body[data-fullbright="true"] #darkness-mask-overlay { display: none !important; }
-
-    /* ЛЁГКАЯ ВИНЬЕТКА ГРАДИЕНТОМ ВМЕСТО ТЯЖЁЛОГО INSET BOX-SHADOW */
-    #vignette {
-      position: absolute; inset: 0; z-index: 5; pointer-events: none;
-      background: radial-gradient(ellipse at 50% 50%, transparent 56%, rgba(0,0,0,0.78) 100%);
-    }
-    body[data-fullbright="true"] #vignette {
-      background: radial-gradient(ellipse at 50% 50%, transparent 72%, rgba(0,0,0,0.32) 100%);
-    }
+    body[data-fullbright="true"] #darkness-mask-overlay,
+    body[data-fullbright="true"] #light-glow-overlay { opacity: 0 !important; }
+    body[data-fullbright="true"] #vignette { box-shadow: inset 0 0 50px 10px rgba(0,0,0,0.35); }
+    #vignette { position: absolute; inset: 0; z-index: 5; pointer-events: none; box-shadow: inset 0 0 110px 25px rgba(0,0,0,0.85); }
 
     /* СПРАЙТЫ NPC */
     #npc-layer {
@@ -221,6 +235,7 @@
     #npc-sprite-box {
       height: 93%; aspect-ratio: 0.565; width: auto; margin-bottom: 0.8%;
       background-repeat: no-repeat;
+      filter: drop-shadow(0 14px 28px rgba(0,0,0,0.92));
     }
 
     /* ШКАФ С ПРИПАСАМИ */
@@ -229,10 +244,12 @@
     .shelf-item {
       position: absolute; transform: translate(-50%, -50%); pointer-events: auto;
       background-repeat: no-repeat; cursor: pointer;
-      transition: transform 0.16s ease;
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,0.78));
+      transition: transform 0.16s ease, filter 0.16s ease;
     }
     .shelf-item:hover {
       transform: translate(-50%, -53%) scale(1.05);
+      filter: drop-shadow(0 0 12px rgba(215,165,95,0.65));
     }
 
     /* ВЕРХНИЙ ТЕКСТ СОБЫТИЙ */
@@ -240,7 +257,7 @@
       position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 820px; z-index: 12;
       background: rgba(10, 9, 8, 0.94); border: 1px solid rgba(165,135,95,0.38); border-radius: 5px; padding: 8px 18px;
       text-align: center; pointer-events: none;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.75);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.85);
     }
     #narrative-text { font-size: 15.5px; line-height: 1.35; color: #e8dfd1; }
 
@@ -253,7 +270,7 @@
       border-radius: 6px; padding: 9px 18px;
       color: #e6f7f5; font-size: 14px;
       text-align: center; max-width: 560px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.8);
+      box-shadow: 0 8px 26px rgba(0,0,0,0.9), 0 0 18px rgba(45, 212, 191, 0.28);
       opacity: 0; visibility: hidden;
       transition: opacity 0.35s ease, visibility 0.35s ease;
     }
@@ -269,7 +286,7 @@
       border: 1px solid rgba(168,138,98,0.48); border-radius: 5px;
       padding: 6px; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.8);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.92), inset 0 0 0 1px rgba(255,235,205,0.06);
       transition: border-color 0.18s ease, transform 0.15s ease, background 0.18s ease;
     }
     #backpack-btn:hover {
@@ -278,6 +295,7 @@
     #backpack-btn svg {
       width: 100%; height: 100%; stroke: #b89f7d; fill: #26201a;
       stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.85));
       transition: stroke 0.18s ease;
     }
     #backpack-btn:hover svg { stroke: #dfd0b8; }
@@ -287,6 +305,7 @@
       background: #1f1913; color: #d8c3a5;
       font: bold 10.5px/16px 'Georgia', serif; text-align: center;
       border: 1px solid #8c7352; border-radius: 3px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.95);
     }
 
     /* КНОПКА ПОЛНОЭКРАННОГО РЕЖИМА (ДОСТУПНА В МЕНЮ И В ИГРЕ) */
@@ -297,7 +316,7 @@
       border: 1px solid rgba(168,138,98,0.48); border-radius: 5px;
       padding: 10px; cursor: pointer; touch-action: manipulation;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.8);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.92), inset 0 0 0 1px rgba(255,235,205,0.06);
       transition: border-color 0.18s ease, transform 0.15s ease, background 0.18s ease;
     }
     #fullscreen-btn:hover {
@@ -320,7 +339,7 @@
       border-radius: 4px;
       font: bold 13.5px 'Georgia', serif;
       letter-spacing: 0.4px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.82);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.92), inset 0 0 0 2px #0b0908, inset 0 0 12px rgba(0,0,0,0.8);
       transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease, transform 0.14s ease;
     }
     .grim-btn:hover {
@@ -424,7 +443,7 @@
     .brochure-paper {
       width: min(640px, 90%); max-height: 82%; overflow-y: auto;
       background: linear-gradient(135deg, rgba(215,201,174,0.96) 0%, rgba(196,178,147,0.96) 100%); color: #1f1a16;
-      border: 2px solid #5c4b37; box-shadow: 0 12px 32px rgba(0,0,0,0.85); border-radius: 4px; padding: 20px 24px; font-family: 'Courier New', monospace;
+      border: 2px solid #5c4b37; box-shadow: 0 20px 60px rgba(0,0,0,0.95); border-radius: 4px; padding: 20px 24px; font-family: 'Courier New', monospace;
     }
     .brochure-stamp { display: inline-block; border: 2px solid #7a231d; color: #7a231d; font-weight: bold; font-size: 11px; padding: 2px 8px; margin-bottom: 10px; text-transform: uppercase; }
     .brochure-title { font-size: 17.5px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #3a2e21; padding-bottom: 8px; margin-bottom: 12px; }
@@ -432,13 +451,15 @@
     .brochure-section-title { font-size: 14.5px; font-weight: bold; margin: 14px 0 6px 0; text-decoration: underline; }
     .brochure-close-btn { margin-top: 12px; width: 100%; padding: 10px; background: #2b2219; color: #f0e6d6; border: 1px solid #6e563f; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
-    /* ОВЕРЛЕЙ ПОДКЛЮЧЕНИЯ ОТДЕЛЬНОГО ФАЙЛА ОЧКО.HTML (DISPLAY: NONE В СКРЫТОМ СОСТОЯНИИ) */
+    /* ОВЕРЛЕЙ ПОДКЛЮЧЕНИЯ ОТДЕЛЬНОГО ФАЙЛА ОЧКО.HTML (БЕЗ ПЕРЕЗАГРУЗКИ IFRAME) */
     #ochko-modal-wrap {
       position: absolute; inset: 0; z-index: 50; background: #050403;
-      display: none; flex-direction: column;
+      opacity: 0; visibility: hidden; pointer-events: none;
+      display: flex; flex-direction: column;
+      transition: opacity 0.16s ease;
     }
     #ochko-modal-wrap.visible {
-      display: flex;
+      opacity: 1; visibility: visible; pointer-events: auto;
     }
     #ochko-iframe { width: 100%; height: 100%; border: none; }
 
@@ -456,7 +477,7 @@
     }
     .deck-cards {
       display: flex; align-items: flex-end; gap: 8px;
-      min-height: 134px;
+      min-height: 134px; perspective: 900px;
     }
     .scroll-arrow {
       position: relative; z-index: 5; flex-shrink: 0;
@@ -465,78 +486,92 @@
       border-radius: 5px; color: #f2e9dc; font-size: 13px;
       pointer-events: auto; touch-action: manipulation;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
-      transition: border-color 0.15s, transform 0.12s, background 0.15s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.85); transition: border-color 0.15s, transform 0.12s, background 0.15s;
     }
     .scroll-arrow:hover:not(:disabled) { border-color: #c59b61; background: rgba(30,24,18,0.96); transform: scale(1.05); }
     .scroll-arrow:disabled { opacity: 0.22; cursor: default; }
 
-    /* КАРТОЧКИ И СТАТИЧНАЯ ПРИОРИТЕТНАЯ ПОДСВЕТКА (.priority-card) БЕЗ БЕСКОНЕЧНОЙ 3D-АНИМАЦИИ */
+    /* КАРТОЧКИ И ПРИОРИТЕТНАЯ ПОДСВЕТКА (.priority-card) */
     .choice-card {
       position: relative; width: 97px; flex-shrink: 0;
       background: transparent; border: none; padding: 0; cursor: pointer; touch-action: manipulation;
-      font-family: inherit;
-      transition: transform 0.18s ease;
+      font-family: inherit; perspective: 800px; transform-style: preserve-3d;
+      transition: transform 0.22s cubic-bezier(0.22, 1.3, 0.36, 1), filter 0.2s ease;
     }
     .choice-card.deal-anim {
-      animation: cardDeal 0.34s ease-out backwards;
+      animation: cardDeal 0.52s cubic-bezier(0.2, 1.22, 0.32, 1) backwards;
       animation-delay: var(--deal-delay, 0ms);
     }
     .choice-card:hover:not(:disabled):not(.activating) {
-      transform: translateY(-9px) scale(1.05);
+      transform: translateY(-9px) scale(1.05) rotateX(5deg);
+      filter: drop-shadow(0 12px 20px rgba(240,168,84,0.28));
     }
     .choice-card.activating {
-      perspective: 800px; transform-style: preserve-3d;
       animation: cardActivateFlip 0.42s cubic-bezier(0.22, 1.25, 0.36, 1) forwards !important;
+      filter: none !important;
       pointer-events: none;
     }
     .choice-card:disabled:not(.activating) { opacity: 0.48; cursor: default; }
 
-    /* ПРИОРИТЕТНАЯ КАРТОЧКА НА 1-М МЕСТЕ (БЕЗ БЕСКОНЕЧНОГО KEYFRAMES) */
+    /* ПРИОРИТЕТНАЯ КАРТОЧКА НА 1-М МЕСТЕ */
     .choice-card.priority-card:not(.activating) {
-      transform: translateY(-6px) scale(1.04);
+      animation: priorityCardFloat 2.1s ease-in-out infinite;
       z-index: 4;
     }
-    .choice-card.priority-card:hover:not(:disabled):not(.activating) {
-      transform: translateY(-10px) scale(1.07);
-    }
     .choice-card.priority-card .card-inner {
-      border: 2px solid #2dd4bf;
-      box-shadow: 0 0 12px rgba(45, 212, 191, 0.42);
+      border: 1.5px solid #2dd4bf;
+      box-shadow:
+        0 0 14px rgba(45, 212, 191, 0.68),
+        0 0 26px rgba(234, 179, 8, 0.35),
+        inset 0 0 10px rgba(45, 212, 191, 0.25);
+      animation: priorityBorderGlow 1.75s ease-in-out infinite alternate;
     }
     .choice-card.priority-card .choice-caption {
       color: #99f6e4;
       text-shadow: 0 0 8px rgba(45, 212, 191, 0.65);
     }
 
+    @keyframes priorityCardFloat {
+      0%, 100% { transform: translateY(-4px) scale(1.03); }
+      50% { transform: translateY(-10px) scale(1.06); }
+    }
+    @keyframes priorityBorderGlow {
+      0% {
+        border-color: #2dd4bf;
+        box-shadow: 0 0 12px rgba(45, 212, 191, 0.65), 0 0 22px rgba(212, 165, 85, 0.28), inset 0 0 8px rgba(45, 212, 191, 0.22);
+      }
+      100% {
+        border-color: #f5c469;
+        box-shadow: 0 0 18px rgba(245, 196, 105, 0.8), 0 0 30px rgba(45, 212, 191, 0.55), inset 0 0 12px rgba(245, 196, 105, 0.28);
+      }
+    }
+
     .card-inner {
-      position: relative; width: 100%;
+      position: relative; width: 100%; transform-style: preserve-3d;
       background: linear-gradient(165deg, rgba(24,20,16,0.96) 0%, rgba(12,10,8,0.96) 100%);
       border: 1px solid rgba(195,160,115,0.48); border-radius: 6px;
       padding: 5px 5px 6px 5px; display: flex; flex-direction: column; align-items: center; gap: 4px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.82);
-    }
-    .choice-card.activating .card-inner {
-      transform-style: preserve-3d;
+      box-shadow: 0 7px 18px rgba(0,0,0,0.88), inset 0 1px 0 rgba(255,230,190,0.12);
       backface-visibility: hidden;
     }
     .choice-card:hover:not(:disabled) .card-inner {
       border-color: #d6a45c;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.92), 0 0 12px rgba(220,160,80,0.28);
     }
     .card-back {
       position: absolute; inset: 0; border-radius: 6px; backface-visibility: hidden;
       transform: rotateY(180deg);
       background: radial-gradient(circle at 50% 50%, #3a2b1c 0%, #17120d 85%);
       border: 1.5px solid #a88455;
-      display: none; align-items: center; justify-content: center;
-    }
-    .choice-card.activating .card-back {
-      display: flex;
+      box-shadow: inset 0 0 0 4px #1f1811, inset 0 0 0 6px rgba(168,132,85,0.45);
+      display: flex; align-items: center; justify-content: center;
     }
     .card-back::after { content: "★"; font-size: 25px; color: rgba(215,175,115,0.55); }
 
     @keyframes cardDeal {
-      0% { opacity: 0; transform: translate3d(0, 36px, 0) scale(0.9); }
-      100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+      0% { opacity: 0; transform: translate3d(0, 68px, -60px) rotateY(180deg) rotateZ(-8deg) scale(0.72); }
+      65% { opacity: 1; transform: translate3d(0, -7px, 12px) rotateY(-10deg) rotateZ(1.5deg) scale(1.03); }
+      100% { opacity: 1; transform: translate3d(0, 0, 0) rotateY(0deg) rotateZ(0deg) scale(1); }
     }
     @keyframes cardActivateFlip {
       0% { transform: translateY(-6px) scale(1.04) rotateY(0deg); }
@@ -557,12 +592,12 @@
       position: absolute; left: 50%; bottom: 0; margin-left: -48px;
       width: 96px; height: 134px;
       pointer-events: auto; cursor: grab;
-      touch-action: none; z-index: 25;
+      touch-action: none; will-change: transform; z-index: 25;
     }
-    #center-flame-canvas.dragging { cursor: grabbing; will-change: transform; }
+    #center-flame-canvas.dragging { cursor: grabbing; filter: none; }
   </style>
 </head>
-<body class="menu-open" data-lit="intro" data-fullbright="false">
+<body data-lit="intro" data-fullbright="false">
 
   <div id="stage-16x9">
     <!-- ГЛАВНОЕ МЕНЮ С ВИДЕО-ФОНОМ И АУДИОФОНОМ -->
@@ -675,13 +710,14 @@
       </div>
     </div>
 
-    <!-- ОВЕРЛЕЙ ПОДКЛЮЧЕННОЙ ИГРЫ ОЧКО.HTML -->
+    <!-- ОВЕРЛЕЙ ПОДКЛЮЧЕННОЙ ИГРЫ ОЧКО.HTML (ГРУЗИТСЯ ОДИН РАЗ В PRELOADER) -->
     <div id="ochko-modal-wrap">
       <iframe id="ochko-iframe" src="about:blank"></iframe>
     </div>
 
     <div id="darkness-solid"></div>
-    <canvas id="darkness-mask-overlay" width="320" height="180"></canvas>
+    <div id="darkness-mask-overlay"></div>
+    <div id="light-glow-overlay"></div>
     <div id="vignette"></div>
 
     <div id="top-event-box">
@@ -715,7 +751,7 @@
     } catch (e) {}
 
     /* ============================================================================
-       0.1. ГЛАВНОЕ МЕНЮ: ВИДЕО-ФОН БЕЗ ЗВУКА, МУЗЫКА «АУДИОФОН», ЛОГОТИП
+       0.1. ГЛАВНОЕ МЕНЮ: БЕСШОВНЫЙ ВИДЕО-ФОН БЕЗ ЗВУКА, МУЗЫКА «АУДИОФОН», ЛОГОТИП
     ============================================================================ */
     const menuEl = document.getElementById("main-menu");
     const menuVideo = document.getElementById("menu-bg-video");
@@ -727,7 +763,7 @@
     let menuToastTimer = null;
     let isMenuOpen = true;
 
-    // 1) Зацикленное видео без звука (нативный loop без timeupdate-дёрганья декодера)
+    // 1) Бесшовное зацикленное видео без звука
     const VIDEO_CANDIDATES = ["Фон.mp4", "фон.mp4", "события/Фон.mp4", "события/фон.mp4"];
     let videoCandidateIdx = 0;
     if (menuVideo) {
@@ -737,22 +773,28 @@
 
       menuVideo.addEventListener("error", () => {
         videoCandidateIdx++;
-        if (videoCandidateIdx < VIDEO_CANDIDATES.length && isMenuOpen) {
+        if (videoCandidateIdx < VIDEO_CANDIDATES.length) {
           menuVideo.src = encodeURI(VIDEO_CANDIDATES[videoCandidateIdx]);
           menuVideo.load();
           menuVideo.play().catch(() => {});
         }
       });
 
+      // Мгновенный перезапуск в самом конце без малейшего разрыва/черного кадра
+      menuVideo.addEventListener("timeupdate", () => {
+        if (menuVideo.duration && menuVideo.currentTime >= menuVideo.duration - 0.06) {
+          menuVideo.currentTime = 0;
+          menuVideo.play().catch(() => {});
+        }
+      });
       menuVideo.addEventListener("ended", () => {
-        if (!isMenuOpen) return;
         menuVideo.currentTime = 0;
         menuVideo.play().catch(() => {});
       });
       menuVideo.play().catch(() => {});
     }
 
-    // 2) Зацикленный аудиоассет «аудиофон» (нативный loop)
+    // 2) Зацикленный аудиоассет «аудиофон»
     const MENU_AUDIO_CANDIDATES = [
       "аудиофон.mp3", "Аудиофон.mp3", "АУДИОФОН.mp3",
       "АУДИО/аудиофон.mp3", "АУДИО/Аудиофон.mp3", "АУДИО/АУДИОФОН.mp3",
@@ -775,6 +817,14 @@
           menuAudio.src = encodeURI(MENU_AUDIO_CANDIDATES[menuAudioIdx]);
           menuAudio.load();
           menuAudio.play().then(() => { menuAudioStarted = true; }).catch(() => {});
+        }
+      });
+
+      // Бесшовный цикл аудиофона
+      menuAudio.addEventListener("timeupdate", () => {
+        if (menuAudio && menuAudio.duration && menuAudio.currentTime >= menuAudio.duration - 0.08) {
+          menuAudio.currentTime = 0;
+          menuAudio.play().catch(() => {});
         }
       });
 
@@ -801,12 +851,7 @@
     function stopMenuMedia() {
       isMenuOpen = false;
       if (menuVideo) {
-        try {
-          menuVideo.pause();
-          menuVideo.removeAttribute("src");
-          menuVideo.src = "";
-          menuVideo.load();
-        } catch (e) {}
+        try { menuVideo.pause(); } catch (e) {}
       }
       if (menuAudio) {
         const fade = setInterval(() => {
@@ -844,7 +889,7 @@
       });
     }
 
-    // 4) Переключение пунктов меню
+    // 4) Переключение пунктов меню (активный увеличивается и светится бирюзовым, остальные уменьшаются)
     function setActiveMenuItem(idx) {
       activeMenuIdx = (idx + menuButtons.length) % menuButtons.length;
       menuButtons.forEach((btn, i) => {
@@ -925,6 +970,7 @@
       ev_granny_cans: "события/бидоны.jpg"
     };
 
+    // 5 этажей: подъезд 1 (спуск сверху вниз с 5-го этажа — 18 кадров), подъезд 2 (подъём снизу вверх — 14 кадров)
     for (let i = 1; i <= 18; i++) SCENE_IMAGES[`p1_${i}`] = `события/подъезд 1/${i}.jpg`;
     for (let i = 1; i <= 14; i++) SCENE_IMAGES[`p2_${i}`] = `события/подъезд 2/${i}.jpg`;
     for (let apt = 16; apt <= 30; apt++) {
@@ -939,67 +985,35 @@
     for (let u = 1; u <= 16; u++) FULL_BRIGHT_SCENES.add(`street_${u}`);
 
     /* ============================================================================
-       1.1. ОПТИМИЗИРОВАННЫЙ ПРЕЛОАДЕР С IMG.DECODE() + ПОДГРУЗКА НА 1 ШАГ ВПЕРЁД
+       1.1. ПРЕДЗАГРУЗКА ВСЕХ РЕСУРСОВ (PRELOADER) И СРЫТЫЙ PRELOAD ОЧКО.HTML
     ============================================================================ */
     let ochkoIframeReady = false;
     let pendingOchkoMessage = null;
 
-    const CRITICAL_START_SCENES = [
-      "bedroom", "bedroom_rev",
-      "corridor_room", "corridor_room_rev",
-      "corridor_main", "corridor_main_rev",
-      "kitchen", "kitchen_rev",
-      "junkroom", "toilet", "bath", "entrance", "cabinet"
-    ];
-
-    const LAZY_PRELOAD_LIMIT = 12;
-    const lazyPreloadQueue = [];
-    const lazyPreloadMap = new Map();
-
-    function preloadSceneKeysLazy(keys) {
-      if (!Array.isArray(keys)) return;
-      for (const key of keys) {
-        const rawPath = SCENE_IMAGES[key];
-        if (!rawPath || lazyPreloadMap.has(rawPath)) continue;
-        const img = new Image();
-        img.onload = () => {
-          if (typeof img.decode === "function") img.decode().catch(() => {});
+    function setupOchkoIframePreload() {
+      const iframe = document.getElementById("ochko-iframe");
+      if (!iframe) return Promise.resolve();
+      return new Promise((resolve) => {
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          ochkoIframeReady = true;
+          if (pendingOchkoMessage && iframe.contentWindow) {
+            try { iframe.contentWindow.postMessage(pendingOchkoMessage, "*"); } catch (e) {}
+            pendingOchkoMessage = null;
+          }
+          resolve();
         };
-        img.src = encodeURI(rawPath);
-        lazyPreloadMap.set(rawPath, img);
-        lazyPreloadQueue.push(rawPath);
-        while (lazyPreloadQueue.length > LAZY_PRELOAD_LIMIT) {
-          const oldPath = lazyPreloadQueue.shift();
-          lazyPreloadMap.delete(oldPath);
+        iframe.onload = finish;
+        iframe.onerror = finish;
+        if (!iframe.src || iframe.src.endsWith("about:blank")) {
+          iframe.src = "Очко.html?preload=1";
+        } else {
+          finish();
         }
-      }
-    }
-
-    function preloadNextStepForRoom(roomKey) {
-      if (roomKey === "entrance") {
-        preloadSceneKeysLazy(["p1_9", "ev_peephole_empty_1", "ev_peephole_lit_1", "ev_dress", "ev_shoes"]);
-      } else if (roomKey === "kitchen") {
-        preloadSceneKeysLazy(["ev_window_2", "ev_tap", "radio"]);
-      } else if (roomKey === "junkroom") {
-        preloadSceneKeysLazy(["ev_search_junk", "junkroom_rev", "junkroom_empty"]);
-      } else if (roomKey === "bedroom") {
-        preloadSceneKeysLazy(["ev_thermometer", "ev_bed", "ev_robe"]);
-      } else if (roomKey === "landing") {
-        const f = state.landingFloor;
-        const toPreload = [];
-        const floorDoors = {
-          5: ["door_28", "door_29", "door_30"],
-          4: ["door_25", "door_26", "door_27"],
-          3: ["door_23", "door_24"],
-          2: ["door_19", "door_20", "door_21"],
-          1: ["door_16", "door_17", "door_18"]
-        };
-        if (floorDoors[f]) toPreload.push(...floorDoors[f]);
-        if (f > 1) toPreload.push(`p1_${{ 5: 2, 4: 6, 3: 10, 2: 14 }[f]}`);
-        if (f < 5) toPreload.push(`p2_${{ 1: 3, 2: 6, 3: 9, 4: 12 }[f]}`);
-        if (f === 1) toPreload.push("p1_18", "street_1");
-        preloadSceneKeysLazy(toPreload);
-      }
+        setTimeout(finish, 1800);
+      });
     }
 
     async function startNewGameWithPreloader() {
@@ -1009,13 +1023,13 @@
       preloader.classList.add("visible");
 
       const urlsToPreload = [
+        ...Object.values(SCENE_IMAGES),
         ...Object.values(ICON_SHEETS),
-        ...CRITICAL_START_SCENES.map((k) => SCENE_IMAGES[k]).filter(Boolean),
         "тушенка.png", "картошка.png", "сосед.png", "соседка.png"
       ];
       const uniqueUrls = [...new Set(urlsToPreload)];
       let loadedCount = 0;
-      const totalTasks = uniqueUrls.length;
+      const totalTasks = uniqueUrls.length + 1; // +1 для #ochko-iframe
 
       function updateProgress() {
         loadedCount++;
@@ -1029,6 +1043,7 @@
         const img = new Image();
         window.__preloadedImages.push(img);
         let settled = false;
+        const safetyTimer = setTimeout(() => done(), 15000);
         const done = () => {
           if (settled) return;
           settled = true;
@@ -1036,34 +1051,20 @@
           updateProgress();
           res();
         };
-        const safetyTimer = setTimeout(done, 15000);
-        img.onload = () => {
-          if (typeof img.decode === "function") {
-            img.decode().catch(() => {}).finally(done);
-          } else {
-            done();
-          }
-        };
+        img.onload = done;
         img.onerror = done;
         img.src = encodeURI(rawUrl);
       }));
 
-      await Promise.all(imagePromises);
+      const iframePromise = setupOchkoIframePreload().then(() => updateProgress());
+
+      await Promise.all([...imagePromises, iframePromise]);
 
       stopMenuMedia();
       startNeighborArrivalCountdown();
-      document.body.classList.remove("menu-open");
       menuEl.classList.add("hidden");
-      menuEl.style.display = "none";
-
-      applyBackgroundToSlot(slotA, "bedroom");
-      updateFlameVisibility();
-      updateBackpackBadge();
-      renderUI(false);
       syncStaticLightingState();
-      syncFlameIntervalState();
-      preloadNextStepForRoom(state.logicalRoom);
-
+      ensureAnimateLoop();
       preloader.style.opacity = "0";
       setTimeout(() => {
         preloader.classList.remove("visible");
@@ -1072,10 +1073,9 @@
     }
 
     /* ============================================================================
-       2. ЗВУКОВОЙ ДВИЖОК С КЭШИРОВАНИЕМ ПУТЕЙ
+       2. ЗВУКОВОЙ ДВИЖОК
     ============================================================================ */
     let stepBareToggle = 0, stepShoesToggle = 0, doorCreakToggle = 0, knockTimerId = null, knockToggle = 0, audioCtx = null;
-    const resolvedAudioCache = new Map();
 
     function playCardSound(type) {
       try {
@@ -1101,50 +1101,27 @@
     function playAudioSmart(folders, names, vol = 0.85) {
       const fList = Array.isArray(folders) ? folders : [folders];
       const nList = Array.isArray(names) ? names : [names];
-      const cacheKey = fList.join(",") + "|" + nList.join(",");
-
-      if (resolvedAudioCache.has(cacheKey)) {
-        const cachedPath = resolvedAudioCache.get(cacheKey);
-        if (!cachedPath) return Promise.resolve(false);
-        return new Promise((res) => {
-          const a = new Audio(cachedPath);
-          a.volume = vol;
-          a.onended = () => res(true);
-          a.onerror = () => res(false);
-          a.play().catch(() => res(false));
-        });
-      }
-
       const queue = [];
       for (const f of fList) {
         for (const n of nList) {
           const cap = n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
           [n, n.toUpperCase(), n.toLowerCase(), cap].forEach((variant) => {
-            const path = encodeURI(`${f}/${variant}.mp3`);
+            const path = `${f}/${variant}.mp3`;
             if (!queue.includes(path)) queue.push(path);
           });
         }
       }
-
       return new Promise((res) => {
         let idx = 0;
-        let errorCount = 0;
-        function tryNext(wasLoadError) {
-          if (wasLoadError) errorCount++;
-          if (idx >= queue.length) {
-            if (errorCount >= queue.length) resolvedAudioCache.set(cacheKey, null);
-            return res(false);
-          }
-          const path = queue[idx++];
-          const a = new Audio(path);
+        function tryNext() {
+          if (idx >= queue.length) return res(false);
+          const a = new Audio(encodeURI(queue[idx++]));
           a.volume = vol;
           a.onended = () => res(true);
-          a.onerror = () => tryNext(true);
-          a.play()
-            .then(() => { resolvedAudioCache.set(cacheKey, path); })
-            .catch(() => tryNext(false));
+          a.onerror = () => tryNext();
+          a.play().catch(() => tryNext());
         }
-        tryNext(false);
+        tryNext();
       });
     }
 
@@ -1197,19 +1174,75 @@
     }
 
     /* ============================================================================
-       4. СПРАЙТЫ СОСЕДЕЙ (СОСЕД.PNG И СОСЕДКА.PNG) — ПРЯМОЙ CSS-СПРАЙТ БЕЗ CANVAS
+       4. СПРАЙТЫ СОСЕДЕЙ (СОСЕД.PNG И СОСЕДКА.PNG)
     ============================================================================ */
     const NPC_FILES = { neighbor: "сосед.png", woman: "соседка.png" };
+    const npcCutoutCache = { neighbor: {}, woman: {} };
     let npcTalkInterval = null;
+
+    function preloadNpcSprites() {
+      ["neighbor", "woman"].forEach((k) => {
+        const img = new Image();
+        img.onload = () => {
+          for (let p = 1; p <= 8; p++) {
+            try { npcCutoutCache[k][p] = cutoutNpcPose(img, p); } catch (e) { break; }
+          }
+        };
+        img.src = encodeURI(NPC_FILES[k]);
+      });
+    }
+
+    function cutoutNpcPose(img, pose) {
+      const idx = pose - 1, col = idx % 4, row = (idx / 4) | 0;
+      const cw = (img.naturalWidth / 4) | 0, ch = (img.naturalHeight / 2) | 0;
+      const c = document.createElement("canvas"); c.width = cw; c.height = ch;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img, col * cw, row * ch, cw, ch, 0, 0, cw, ch);
+      const imgData = ctx.getImageData(0, 0, cw, ch), d = imgData.data;
+
+      if (d[3] < 30 && d[(cw - 1) * 4 + 3] < 30) {
+        return c.toDataURL("image/png");
+      }
+
+      const bgR = d[0], bgG = d[1], bgB = d[2];
+      const vis = new Uint8Array(cw * ch), q = new Int32Array(cw * ch);
+      let head = 0, tail = 0;
+      function push(x, y) {
+        const p = y * cw + x; if (vis[p]) return;
+        const i = p * 4, r = d[i], g = d[i+1], b = d[i+2];
+        const diff = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
+        const sat = Math.max(r, g, b) - Math.min(r, g, b);
+        if ((diff < 95 && sat < 38) || (r > 235 && g > 235 && b > 235)) {
+          vis[p] = 1; q[tail++] = p;
+        }
+      }
+      for (let x = 0; x < cw; x++) { push(x, 0); push(x, ch - 1); }
+      for (let y = 0; y < ch; y++) { push(0, y); push(cw - 1, y); }
+      while (head < tail) {
+        const p = q[head++]; d[p * 4 + 3] = 0;
+        const x = p % cw, y = (p / cw) | 0;
+        if (x > 0) push(x - 1, y); if (x < cw - 1) push(x + 1, y);
+        if (y > 0) push(x, y - 1); if (y < ch - 1) push(x, y + 1);
+      }
+      ctx.putImageData(imgData, 0, 0);
+      return c.toDataURL("image/png");
+    }
 
     function setNpcPose(npcKey, pose) {
       const layer = document.getElementById("npc-layer"), box = document.getElementById("npc-sprite-box");
       if (!npcKey) { layer.classList.remove("visible"); return; }
       layer.classList.add("visible");
-      const idx = pose - 1, col = idx % 4, row = (idx / 4) | 0;
-      box.style.backgroundImage = `url("${encodeURI(NPC_FILES[npcKey])}")`;
-      box.style.backgroundSize = "400% 200%";
-      box.style.backgroundPosition = `${((col / 3) * 100).toFixed(2)}% ${(row * 100).toFixed(2)}%`;
+      const cached = npcCutoutCache[npcKey]?.[pose];
+      if (cached) {
+        box.style.backgroundImage = `url("${cached}")`;
+        box.style.backgroundSize = "contain";
+        box.style.backgroundPosition = "center bottom";
+      } else {
+        const idx = pose - 1, col = idx % 4, row = (idx / 4) | 0;
+        box.style.backgroundImage = `url("${encodeURI(NPC_FILES[npcKey])}")`;
+        box.style.backgroundSize = "400% 200%";
+        box.style.backgroundPosition = `${((col / 3) * 100).toFixed(2)}% ${(row * 100).toFixed(2)}%`;
+      }
     }
 
     async function playNpcSpeech(npcKey, audioName, seqOverride = null) {
@@ -1353,12 +1386,13 @@
       lightMode: "intro",
       matchStart: 0,
       candleStart: 0,
-      candleBurnedMs: 0,
+      candleBurnedMs: 0, // Сколько мс свеча уже прогорела (сохраняется при взгляде в глазок и окно!)
       candleIgniteStart: 0, candleWickLitTime: 0, candleIgniteEnd: 0,
 
       firstMatchTutorialShown: false,
       matchTutorialSweepActive: false,
 
+      // Начальная последовательность:
       robeDone: false, waterDone: false, toiletUsed: false, radiatorTouched: false,
       basicNavUnlocked: false,
       roomNavUnlocked: false,
@@ -1425,6 +1459,7 @@
     function removeStoryCard(id) { state.storyCardIds = state.storyCardIds.filter((x) => x !== id); }
 
     function checkInitialStepsProgress() {
+      // Если свеча уже найдена и зажжена, либо выполнены базовые шаги — открываем карточку «Потрогать батарею»
       if (!state.radiatorTouched && ((state.hasCandle && (state.lightMode === "candle" || state.lightMode === "kerosene")) || (state.robeDone && state.waterDone && state.toiletUsed))) {
         addStoryCard("touch_radiator", true);
       }
@@ -1450,6 +1485,7 @@
       return false;
     }
 
+    /* ИКОНКИ В ИНВЕНТАРЕ */
     function getInventoryItemsList() {
       const list = [];
       if (state.invStew > 0) list.push({ key: "stew", sheet: 2, icon: 3, caption: `Тушёнка (${state.invStew} шт.)` });
@@ -1476,6 +1512,7 @@
       document.getElementById("backpack-badge").textContent = count;
     }
 
+    /* МОДАЛКА НАХОДОК ПО ЦЕНТРУ ЭКРАНА */
     function showLootModal(titleText, cardsArray) {
       const modal = document.getElementById("loot-center-modal");
       const row = document.getElementById("loot-cards-row");
@@ -1517,6 +1554,7 @@
       renderUI(true);
     }
 
+    /* ПОЛНОЭКРАННЫЙ ИНВЕНТАРЬ */
     function openInventoryScreen() {
       renderInventoryGrid();
       document.getElementById("inventory-screen").classList.add("visible");
@@ -1639,6 +1677,7 @@
 
       const msg = { type: "OCHKO_OPEN", ...payload };
 
+      // Если фрейм уже предзагружен — отправляем postMessage и мгновенно показываем оверлей без перезагрузки!
       if (ochkoIframeReady && iframe.contentWindow && iframe.src && !iframe.src.endsWith("about:blank")) {
         try {
           iframe.contentWindow.postMessage(msg, "*");
@@ -1666,6 +1705,8 @@
     }
 
     function openOchkoMatch(opponentId = 1) {
+      // Первый сосед (в глазке и в кв. 20) соглашается играть и на тушёнку, и на картошку!
+      // Остальные соседи играют только на тушёнку.
       if (opponentId === 1) {
         if (state.invStew <= 0 && state.invPotato <= 0) {
           state.needsFoodForDice = true;
@@ -1707,6 +1748,7 @@
         }
         const wrap = document.getElementById("ochko-modal-wrap");
         wrap.classList.remove("visible");
+        // НЕ сбрасываем iframe.src = "about:blank", чтобы фрейм оставался в памяти!
         renderInventoryGrid();
       } else if (data.type === "OCHKO_MATCH_FINISHED") {
         if (data.ownedCounts) {
@@ -1718,6 +1760,7 @@
 
         const wrap = document.getElementById("ochko-modal-wrap");
         wrap.classList.remove("visible");
+        // НЕ сбрасываем iframe.src = "about:blank"!
 
         const oppId = Number(data.opponentId) || state.activeOpponentId || 1;
         if (data.won) {
@@ -1749,15 +1792,40 @@
     /* ============================================================================
        9. СПИЧКА, СВЕЧА, ОБУЧАЮЩИЙ ПРОЛЁТ И СОХРАНЕНИЕ ОГАРКА (candleBurnedMs)
     ============================================================================ */
-    let tutorialSweepStart = 0;
-    const TUTORIAL_SWEEP_DURATION = 2900;
-
     function startMatchTutorialSweep() {
       const hintEl = document.getElementById("match-tutorial-hint");
       if (hintEl) hintEl.classList.add("visible");
       state.matchTutorialSweepActive = true;
-      tutorialSweepStart = performance.now();
-      ensureAnimateLoop();
+      const sweepStart = performance.now();
+      const sweepDuration = 2900;
+
+      function stepSweep(now) {
+        if (!state.matchTutorialSweepActive || isDraggingTorch || state.lightMode !== "match") {
+          state.matchTutorialSweepActive = false;
+          if (!isDraggingTorch) {
+            torchOffsetX = 0;
+            torchOffsetY = 0;
+          }
+          return;
+        }
+        const p = Math.min(1, (now - sweepStart) / sweepDuration);
+        const ampX = STAGE_W * 0.28;
+        const ampY = STAGE_H * 0.22;
+
+        // Плавный пролёт влево -> вправо -> возврат в центр
+        const env = Math.sin(p * Math.PI);
+        torchOffsetX = Math.sin(p * Math.PI * 2) * ampX * env;
+        torchOffsetY = -Math.sin(p * Math.PI) * ampY;
+
+        if (p < 1) {
+          requestAnimationFrame(stepSweep);
+        } else {
+          state.matchTutorialSweepActive = false;
+          torchOffsetX = 0;
+          torchOffsetY = 0;
+        }
+      }
+      requestAnimationFrame(stepSweep);
     }
 
     function hideMatchTutorialHint() {
@@ -1773,9 +1841,7 @@
       flameCanvas.style.display = "block";
       document.body.setAttribute("data-lit", "true");
 
-      renderCenterMatchAndCandle(performance.now());
-      syncStaticLightingState();
-      syncFlameIntervalState();
+      ensureAnimateLoop();
       if (!state.firstMatchTutorialShown) {
         state.firstMatchTutorialShown = true;
         startMatchTutorialSweep();
@@ -1785,6 +1851,7 @@
     function igniteCandle(playSoundAlreadyDone = false) {
       if (!playSoundAlreadyDone) playSnd1("СПИЧКА", 0.9);
       state.hasCandle = true;
+      // Если свеча ранее полностью догорела до конца, начинаем новую; иначе продолжаем с того же огарка state.candleBurnedMs!
       if (state.candleBurnedMs >= CANDLE_DURATION - 500) {
         state.candleBurnedMs = 0;
       }
@@ -1796,13 +1863,12 @@
       state.candleIgniteEnd = now + 2200;
       flameCanvas.style.display = "block";
       document.body.setAttribute("data-lit", "true");
-      renderCenterMatchAndCandle(performance.now());
-      syncStaticLightingState();
-      syncFlameIntervalState();
+      ensureAnimateLoop();
       checkInitialStepsProgress();
       updateBackpackBadge();
     }
 
+    // Сохранение огарка и тушение при взгляде в глазок или в окно
     function pauseAndExtinguishLightForView() {
       const now = performance.now();
       if (state.lightMode === "candle") {
@@ -1816,7 +1882,6 @@
         flameCanvas.style.display = "none";
         document.body.setAttribute("data-lit", "false");
         syncStaticLightingState();
-        syncFlameIntervalState();
         addStoryCard(state.hasCandle ? "light_candle" : "light_match", true);
       }
     }
@@ -1828,9 +1893,13 @@
       if (roomKey === "bedroom") return state.stoveBuilt ? "ev_stove" : (state.carpetsHung ? "ev_all_covered" : "bedroom");
       if (roomKey === "junkroom") return state.carpetsTaken ? "junkroom_empty" : "junkroom";
       if (roomKey === "landing") {
+        // Папка события/подъезд 1/ (18 картинок, спуск сверху вниз с 5-го этажа):
+        // 5 этаж: p1_1, 4 этаж: p1_5, 3 этаж (наш): p1_9, 2 этаж: p1_13, 1 этаж: p1_17
         if (state.landingDir === "down") {
           return `p1_${{ 5: 1, 4: 5, 3: 9, 2: 13, 1: 17 }[state.landingFloor] || 9}`;
         }
+        // Папка события/подъезд 2/ (14 картинок, подъём снизу вверх с 1-го на 5-й этаж):
+        // 1 этаж: p2_2, 2 этаж: p2_5, 3 этаж (наш): p2_8, 4 этаж: p2_11, 5 этаж: p2_14
         return `p2_${{ 1: 2, 2: 5, 3: 8, 4: 11, 5: 14 }[state.landingFloor] || 8}`;
       }
       return roomKey;
@@ -1887,6 +1956,7 @@
     }
 
     const slotA = document.getElementById("slot-a"), slotB = document.getElementById("slot-b");
+    let walkBobIntensity = 0;
 
     function isSceneHidingTorch(sceneKey) {
       if (!sceneKey) return false;
@@ -1937,6 +2007,7 @@
       if (state.autoReturnTimer) { clearTimeout(state.autoReturnTimer); state.autoReturnTimer = null; }
     }
 
+    /* ЕДИНСТВЕННЫЙ ФОНОВЫЙ СЛОЙ БЕЗ МНОЖЕСТВЕННЫХ ВАРИАНТОВ */
     function buildFallbackBgUrls(rawPath, sceneKey = "") {
       return `url("${encodeURI(rawPath)}")`;
     }
@@ -1958,24 +2029,21 @@
         const out = state.activeSlot === "a" ? slotA : slotB;
         document.getElementById("cabinet-items-layer").classList.remove("visible");
         applyBackgroundToSlot(inc, sceneKey);
-        const noDarkCls = FULL_BRIGHT_SCENES.has(sceneKey) ? " no-darkness" : "";
-        const outNoDarkCls = out.classList.contains("no-darkness") ? " no-darkness" : "";
-        inc.className = "scene-slot incoming-prep" + noDarkCls;
+        inc.style.transform = "";
+        out.style.transform = "";
+        lastSceneSlot = null;
+        lastSceneTransform = "";
+        inc.className = "scene-slot incoming-prep" + (FULL_BRIGHT_SCENES.has(sceneKey) ? " no-darkness" : "");
+        void inc.offsetWidth;
+        inc.className = "scene-slot current" + (FULL_BRIGHT_SCENES.has(sceneKey) ? " no-darkness" : "");
+        out.className = "scene-slot outgoing" + (out.classList.contains("no-darkness") ? " no-darkness" : "");
         state.activeSlot = state.activeSlot === "a" ? "b" : "a";
         state.currentScene = sceneKey;
         updateFlameVisibility();
         syncStaticLightingState();
-        syncFlameIntervalState();
+        ensureAnimateLoop();
         if (playStep) playFootstepSound();
-
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            inc.className = "scene-slot current" + noDarkCls;
-            out.className = "scene-slot outgoing" + outNoDarkCls;
-          });
-        });
-
-        setTimeout(resolve, 580);
+        setTimeout(resolve, 860);
       });
     }
 
@@ -2015,7 +2083,7 @@
       }
       const fromRoom = state.logicalRoom;
       const frames = buildApartmentRoute(fromRoom, targetRoom);
-      state.isWalking = true; renderUI(false);
+      state.isWalking = true; renderUI(false); walkBobIntensity = 1; ensureAnimateLoop();
 
       if (ROOMS_WITH_DOORS.has(fromRoom)) playDoorCreakSound();
       for (const frameKey of frames) {
@@ -2025,8 +2093,7 @@
 
       state.logicalRoom = targetRoom;
       state.actOffset = 0; state.movOffset = 0;
-      state.isWalking = false;
-      preloadNextStepForRoom(targetRoom);
+      walkBobIntensity = 0; state.isWalking = false;
       renderCabinetItems();
       renderUI(true);
     }
@@ -2037,14 +2104,12 @@
       state.inPeepholeDialog = false;
       removeStoryCard("play_dice_door");
       removeStoryCard("leave_door_view");
-      state.isWalking = true; renderUI(false);
-      for (let i = 0; i < frames.length; i++) {
-        if (i + 1 < frames.length) preloadSceneKeysLazy([frames[i + 1]]);
-        await crossfadeToScene(frames[i], true);
+      state.isWalking = true; renderUI(false); walkBobIntensity = 1; ensureAnimateLoop();
+      for (const f of frames) {
+        await crossfadeToScene(f, true);
       }
-      state.isWalking = false;
+      walkBobIntensity = 0; state.isWalking = false;
       state.actOffset = 0; state.movOffset = 0;
-      preloadNextStepForRoom("landing");
       renderUI(true);
     }
 
@@ -2092,6 +2157,7 @@
       if (!state.basicNavUnlocked && !state.roomNavUnlocked) return [];
       if (isNeighborCenterChoiceActive()) return [];
 
+      // Пока батарея не потрогана и свеча не горит, свободное передвижение по всей квартире ограничено
       if (!state.roomNavUnlocked) {
         const earlyRooms = new Set(["bedroom", "kitchen", "toilet", "junkroom"]);
         return APARTMENT_MOVE_CARDS
@@ -2147,12 +2213,11 @@
           const seq = buildStairwellFrames(state.landingFloor, "street");
           await playStairwellSequence(seq);
 
-          state.isWalking = true; renderUI(false);
+          state.isWalking = true; renderUI(false); walkBobIntensity = 1; ensureAnimateLoop();
           playSnd2("ШАГИ СНЕГ", 0.9); playSnd2("СИЛЬНАЯ МЕТЕЛЬ", 0.85);
           setEventText("Вы выходите из подъезда в слепящую метель и пробираетесь сквозь сугробы к уличной колонке...");
 
           for (let u = 1; u <= 16; u++) {
-            if (u < 16) preloadSceneKeysLazy([`street_${u + 1}`]);
             if (u === 8) {
               playSnd2("колонка", 0.9);
               setEventText("Вы качаете обледеневший рычаг колонки и набираете ледяную воду...");
@@ -2306,6 +2371,7 @@
         }
       },
 
+      /* ПОИСК В ХЛАМЕ */
       room_search_junk: {
         sheet: 1, icon: 6, caption: "Порыться в хламе",
         action: async () => {
@@ -2366,12 +2432,14 @@
         }
       },
 
+      /* АВТО-МАРШРУТ ЗА ТУШЁНКОЙ / КАРТОШКОЙ */
       go_take_stew: {
         sheet: 2, icon: 3, caption: "Взять тушёнку",
         action: async () => {
           removeStoryCard("go_take_stew");
           state.needsFoodForDice = false;
 
+          // Если мы в подъезде, сначала автоматически заходим в свою квартиру на 3-м этаже
           if (state.logicalRoom === "landing") {
             hideNpc();
             setBackButtonTarget(null);
@@ -2402,6 +2470,7 @@
         }
       },
 
+      /* ОКНО НА КУХНЕ (СВЕЧА ТУХНЕТ И СОХРАНЯЕТ СВОЙ ОГАРОК) */
       room_look_window: {
         sheet: 1, icon: 4, caption: "Посмотреть в окно",
         action: async () => {
@@ -2519,6 +2588,7 @@
         }
       },
 
+      /* ГЛАЗОК И ЦЕНТРАЛЬНЫЙ ВЫБОР С СОСЕДОМ (СВЕЧА ТУХНЕТ И СОХРАНЯЕТ СВОЙ ОГАРОК) */
       room_peephole: {
         sheet: 3, icon: 15, caption: "Посмотреть в глазок",
         action: async () => {
@@ -2533,7 +2603,7 @@
           await showActionCloseup(firstImg, false, false);
           const slot = state.activeSlot === "a" ? slotA : slotB;
           slot.classList.add("peephole-zoom");
-          await new Promise((r) => setTimeout(r, 980));
+          await new Promise((r) => setTimeout(r, 1050));
           slot.classList.remove("peephole-zoom");
 
           await showActionCloseup(secondImg, false, false);
@@ -2661,7 +2731,6 @@
           playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
           state.logicalRoom = "landing"; state.landingFloor = 3; state.landingDir = "down";
           state.actOffset = 0; state.movOffset = 0;
-          preloadNextStepForRoom("landing");
           await crossfadeToScene("p1_9", true);
           setEventText("Вы на площадке 3-го этажа (кв. 22, 23, 24). Справа — переход между этажами (с 1 по 5 этаж) и выход на улицу.");
           renderUI(true);
@@ -2845,9 +2914,7 @@
           flameCanvas.style.display = "block";
           updateBackpackBadge();
           document.body.setAttribute("data-lit", "true");
-          renderCenterMatchAndCandle(performance.now());
-          syncStaticLightingState();
-          syncFlameIntervalState();
+          ensureAnimateLoop();
           await showActionCloseup("ev_stove", false, false);
           if (totalStewAvailable() > 0) addStoryCard("heat_stew", true);
           setEventText("Печка из консервной банки, свечи и кирпичей собрана! В спальне наконец-то стало тепло.");
@@ -2953,11 +3020,11 @@
       CARDS_DB[`knock_${apt}`] = {
         sheet: 3, icon: 12, caption: `Постучать в кв. ${apt}`,
         action: async () => {
-          const info = APT_DESCRIPTIONS[apt];
-          if (info && info.inhabited) preloadSceneKeysLazy([`door_${apt}_open`]);
           state.isWalking = true; renderUI(false);
           await crossfadeToScene(`door_${apt}`, false);
           await playSnd2(knockToggle++ % 2 === 0 ? "СТУК" : "СТУК 2", 0.85);
+
+          const info = APT_DESCRIPTIONS[apt];
 
           if (info.inhabited) {
             playDoorCreakSound();
@@ -3406,7 +3473,6 @@
       flameCanvas.classList.remove("dragging");
       torchOffsetX = 0;
       torchOffsetY = 0;
-      ensureAnimateLoop();
     }
     window.addEventListener("pointerup", stopTorchDrag);
     window.addEventListener("pointercancel", stopTorchDrag);
@@ -3452,8 +3518,6 @@
           hideMatchTutorialHint();
           updateFlameVisibility();
           document.body.setAttribute("data-lit", "false");
-          syncStaticLightingState();
-          syncFlameIntervalState();
           addStoryCard(state.hasCandle ? "light_candle" : "light_match", true);
           renderUI(true);
           return;
@@ -3492,8 +3556,6 @@
           stopTorchDrag();
           updateFlameVisibility();
           document.body.setAttribute("data-lit", "false");
-          syncStaticLightingState();
-          syncFlameIntervalState();
           addStoryCard("light_candle", true);
           renderUI(true);
           return;
@@ -3539,19 +3601,20 @@
     }
 
     /* ============================================================================
-       15. ОПТИМИЗИРОВАННЫЙ СВЕТ НА ХОЛСТЕ 320×180 + ОДИН rAF ТОЛЬКО ПРИ ДВИЖЕНИИ
+       15. ГЛАВНЫЙ ЦИКЛ ПО ЗАПРОСУ: GPU-СВЕТ БЕЗ CPU-МАСОК И НУЛЕВАЯ НАГРУЗКА В ПРОСТОЕ
     ============================================================================ */
     const darkMaskEl = document.getElementById("darkness-mask-overlay");
-    const darkCtx = darkMaskEl.getContext("2d");
-    const DARK_W = 320, DARK_H = 180;
-    const DARK_SCALE_X = DARK_W / STAGE_W;
-    const DARK_SCALE_Y = DARK_H / STAGE_H;
+    const lightGlowEl = document.getElementById("light-glow-overlay");
 
-    const LIGHT_MODE_SCALE = { match: 0.8, candle: 1.3, kerosene: 1.7 };
+    let currentLightRadius = 0;
     let rafId = null;
-    let flameIntervalId = null;
     let lastTorchTransform = "";
-    let lastDrawKey = "";
+    let lastMaskTransform = "";
+    let lastGlowTransform = "";
+    let lastMaskOpacity = "";
+    let lastGlowOpacity = "";
+    let lastSceneTransform = "";
+    let lastSceneSlot = null;
 
     function isFlameVisibleNow() {
       return (
@@ -3560,107 +3623,61 @@
       );
     }
 
-    function needsMovementFrame() {
+    function needsAnimationFrame() {
       if (isMenuOpen) return false;
+      if (isFlameVisibleNow()) return true;
+      if (walkBobIntensity > 0) return true;
       if (isDraggingTorch || state.matchTutorialSweepActive) return true;
-      if (Math.abs(smoothTorchX - torchOffsetX) > 0.2 || Math.abs(smoothTorchY - torchOffsetY) > 0.2) return true;
+      if (Math.abs(smoothTorchX - torchOffsetX) > 0.25 || Math.abs(smoothTorchY - torchOffsetY) > 0.25) return true;
       return false;
     }
 
-    function updateDarknessMaskTransform() {
-      const flameRatioY = Math.max(0.1, Math.min(0.9, lastFlameCanvasY / flameCanvas.height));
-      const cx = (FLAME_BASE_CENTER_X + smoothTorchX) * DARK_SCALE_X;
-      const cy = (FLAME_BASE_TOP + FLAME_BASE_H * flameRatioY + smoothTorchY) * DARK_SCALE_Y;
-      const modeScale = LIGHT_MODE_SCALE[state.lightMode] || 0.8;
-      const key = `${Math.round(cx)}_${Math.round(cy)}_${modeScale}`;
-      if (key === lastDrawKey) return;
-      lastDrawKey = key;
-
-      const rMax = 380 * modeScale * DARK_SCALE_X;
-      const g = darkCtx.createRadialGradient(cx, cy, 0, cx, cy, rMax);
-      g.addColorStop(0, "rgba(0,0,0,0)");
-      g.addColorStop(0.43, "rgba(0,0,0,0)");
-      g.addColorStop(0.58, "rgba(255,175,75,0.18)");
-      g.addColorStop(0.70, "rgba(55,28,12,0.48)");
-      g.addColorStop(0.88, "rgba(2,6,15,0.88)");
-      g.addColorStop(1, "rgba(2,6,15,0.94)");
-
-      darkCtx.clearRect(0, 0, DARK_W, DARK_H);
-      darkCtx.fillStyle = g;
-      darkCtx.fillRect(0, 0, DARK_W, DARK_H);
-    }
-
     function syncStaticLightingState() {
-      const isLit = !isMenuOpen && isFlameVisibleNow() && !FULL_BRIGHT_SCENES.has(state.currentScene);
-      if (isLit) {
-        darkMaskEl.style.display = "block";
-        updateDarknessMaskTransform();
-      } else {
-        darkMaskEl.style.display = "none";
-        lastDrawKey = "";
-      }
-    }
-
-    function stopFlameInterval() {
-      if (flameIntervalId !== null) {
-        clearInterval(flameIntervalId);
-        flameIntervalId = null;
-      }
-    }
-
-    function syncFlameIntervalState() {
-      const shouldRun = !isMenuOpen && !document.hidden && isFlameVisibleNow();
-      if (shouldRun && flameIntervalId === null) {
-        flameIntervalId = setInterval(() => {
-          if (isMenuOpen || document.hidden || !isFlameVisibleNow()) {
-            stopFlameInterval();
-            return;
-          }
-          renderCenterMatchAndCandle(performance.now());
-          if (isFlameVisibleNow() && !FULL_BRIGHT_SCENES.has(state.currentScene)) {
-            updateDarknessMaskTransform();
-          }
-        }, 100);
-      } else if (!shouldRun) {
-        stopFlameInterval();
-      }
-    }
-
-    document.addEventListener("visibilitychange", syncFlameIntervalState);
-
-    function ensureAnimateLoop() {
-      if (rafId !== null || !needsMovementFrame()) return;
-      rafId = requestAnimationFrame(animateLoop);
-    }
-
-    function animateLoop(now) {
-      rafId = null;
-      if (!needsMovementFrame()) return;
-
-      const ts = now || performance.now();
-
-      if (state.matchTutorialSweepActive) {
-        if (isDraggingTorch || state.lightMode !== "match") {
-          state.matchTutorialSweepActive = false;
-        } else {
-          const p = Math.min(1, (ts - tutorialSweepStart) / TUTORIAL_SWEEP_DURATION);
-          const env = Math.sin(p * Math.PI);
-          torchOffsetX = Math.sin(p * Math.PI * 2) * (STAGE_W * 0.28) * env;
-          torchOffsetY = -Math.sin(p * Math.PI) * (STAGE_H * 0.22);
-          if (p >= 1) {
-            state.matchTutorialSweepActive = false;
-            torchOffsetX = 0;
-            torchOffsetY = 0;
+      const lit = isFlameVisibleNow() && !FULL_BRIGHT_SCENES.has(state.currentScene);
+      if (!lit) {
+        currentLightRadius = 0;
+        if (lastMaskOpacity !== "0") {
+          lastMaskOpacity = "0";
+          darkMaskEl.style.opacity = "0";
+        }
+        if (lastGlowOpacity !== "0") {
+          lastGlowOpacity = "0";
+          lightGlowEl.style.opacity = "0";
+        }
+        const curSlot = state.activeSlot === "a" ? slotA : slotB;
+        if (walkBobIntensity === 0 && curSlot && !curSlot.classList.contains("peephole-zoom")) {
+          const restTransform = "translate3d(0px, 0px, 0) scale(1.03)";
+          if (lastSceneSlot !== curSlot || lastSceneTransform !== restTransform) {
+            lastSceneSlot = curSlot;
+            lastSceneTransform = restTransform;
+            curSlot.style.transform = restTransform;
           }
         }
       }
+    }
 
+    function ensureAnimateLoop() {
+      if (rafId !== null) return;
+      if (!needsAnimationFrame()) {
+        syncStaticLightingState();
+        return;
+      }
+      rafId = requestAnimationFrame(animateLoop);
+    }
+
+    function animateLoop(ts) {
+      rafId = null;
+      if (!needsAnimationFrame()) {
+        syncStaticLightingState();
+        return;
+      }
+
+      const t = ts * 0.001;
       const movingTorch = isDraggingTorch || state.matchTutorialSweepActive;
-      const lerpSpeed = movingTorch ? 0.28 : 0.16;
+      const lerpSpeed = movingTorch ? 0.25 : 0.14;
       const dx = torchOffsetX - smoothTorchX;
       const dy = torchOffsetY - smoothTorchY;
-
-      if (Math.abs(dx) > 0.2 || Math.abs(dy) > 0.2) {
+      if (Math.abs(dx) > 0.08 || Math.abs(dy) > 0.08) {
         smoothTorchX += dx * lerpSpeed;
         smoothTorchY += dy * lerpSpeed;
       } else {
@@ -3675,16 +3692,97 @@
         flameCanvas.style.transform = nextTorchTransform;
       }
 
-      if (isFlameVisibleNow() && !FULL_BRIGHT_SCENES.has(state.currentScene)) {
-        updateDarknessMaskTransform();
+      const litNow = isFlameVisibleNow();
+      if (litNow) {
+        renderCenterMatchAndCandle(ts);
       }
 
-      if (needsMovementFrame()) {
+      // Повторно проверяем после renderCenterMatchAndCandle (спичка/свеча могла догореть в этом кадре)
+      const isLit = isFlameVisibleNow() && !FULL_BRIGHT_SCENES.has(state.currentScene);
+      const flameRatioY = Math.max(0.1, Math.min(0.9, lastFlameCanvasY / flameCanvas.height));
+      const flameStageX = FLAME_BASE_CENTER_X + smoothTorchX;
+      const flameStageY = FLAME_BASE_TOP + FLAME_BASE_H * flameRatioY + smoothTorchY;
+
+      const isStatic = (state.currentScene === "cabinet" || FULL_BRIGHT_SCENES.has(state.currentScene)) && !state.isWalking;
+      const curSlot = state.activeSlot === "a" ? slotA : slotB;
+
+      // Параллакс и покачивание камеры обновляем только при движении спички или ходьбе (без холостых перерисовок)
+      if (curSlot && !curSlot.classList.contains("peephole-zoom")) {
+        const normX = (flameStageX / STAGE_W - 0.5) * 2;
+        const normY = (flameStageY / STAGE_H - 0.5) * 2;
+        const px = isStatic ? 0 : -normX * 10;
+        const py = isStatic ? 0 : -normY * 7;
+        const bobX = (!isStatic && walkBobIntensity) ? Math.sin(t * 7.5) * 8 : 0;
+        const bobY = (!isStatic && walkBobIntensity) ? Math.abs(Math.cos(t * 7.5)) * 10 : 0;
+        const nextSceneTransform = `translate3d(${(px + bobX).toFixed(1)}px, ${(py + bobY).toFixed(1)}px, 0) scale(1.03)`;
+        if (lastSceneSlot !== curSlot || lastSceneTransform !== nextSceneTransform) {
+          lastSceneSlot = curSlot;
+          lastSceneTransform = nextSceneTransform;
+          curSlot.style.transform = nextSceneTransform;
+        }
+      }
+
+      if (isLit) {
+        // Плавное дрожание пламени на GPU через scale/opacity (без CPU-перекрашивания масок)
+        const fl = Math.sin(t * 6.3) * 0.4 + Math.sin(t * 14.7) * 0.35 + Math.cos(t * 23.1) * 0.25;
+        let tr = 0;
+        if (state.lightMode === "match") tr = STAGE_W * 0.26 + fl * (STAGE_W * 0.015);
+        else if (state.lightMode === "candle") {
+          const wickLit = ts >= state.candleWickLitTime;
+          tr = (wickLit ? STAGE_W * 0.44 : STAGE_W * 0.26) + fl * (STAGE_W * 0.018);
+        } else if (state.lightMode === "kerosene") {
+          tr = STAGE_W * 0.58 + fl * (STAGE_W * 0.012);
+        }
+
+        if (currentLightRadius === 0) currentLightRadius = tr;
+        else currentLightRadius += (tr - currentLightRadius) * 0.12;
+
+        // 108px — радиус прозрачного окна в 1200x1200 текстуре #darkness-mask-overlay (18% от 600px)
+        const maskScale = Math.max(0.5, currentLightRadius / 108);
+        const glowScale = Math.max(0.2, currentLightRadius / 300);
+
+        // Квантуем координаты до 0.5px и масштаб до 0.005 для стабильности GPU-слоёв
+        const qx = (Math.round(flameStageX * 2) * 0.5).toFixed(1);
+        const qy = (Math.round(flameStageY * 2) * 0.5).toFixed(1);
+        const qMaskScale = (Math.round(maskScale * 200) / 200).toFixed(3);
+        const qGlowScale = (Math.round(glowScale * 200) / 200).toFixed(3);
+
+        const nextMaskTransform = `translate3d(${qx}px, ${qy}px, 0) scale(${qMaskScale})`;
+        if (nextMaskTransform !== lastMaskTransform) {
+          lastMaskTransform = nextMaskTransform;
+          darkMaskEl.style.transform = nextMaskTransform;
+        }
+        if (lastMaskOpacity !== "1") {
+          lastMaskOpacity = "1";
+          darkMaskEl.style.opacity = "1";
+        }
+
+        const nextGlowTransform = `translate3d(${qx}px, ${qy}px, 0) scale(${qGlowScale})`;
+        if (nextGlowTransform !== lastGlowTransform) {
+          lastGlowTransform = nextGlowTransform;
+          lightGlowEl.style.transform = nextGlowTransform;
+        }
+        const glowAlpha = (Math.round((0.39 + fl * 0.025) * 50) / 50).toFixed(2);
+        if (glowAlpha !== lastGlowOpacity) {
+          lastGlowOpacity = glowAlpha;
+          lightGlowEl.style.opacity = glowAlpha;
+        }
+      } else {
+        syncStaticLightingState();
+      }
+
+      if (needsAnimationFrame()) {
         rafId = requestAnimationFrame(animateLoop);
       }
     }
 
     updateStageScale();
+    applyBackgroundToSlot(slotA, "bedroom");
+    updateFlameVisibility();
+    updateBackpackBadge();
+    renderUI(true);
+    preloadNpcSprites();
+    syncStaticLightingState();
   </script>
 </body>
 </html>
