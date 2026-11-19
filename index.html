@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -14,409 +15,243 @@
       padding-bottom: env(safe-area-inset-bottom, 0px);
       padding-left: env(safe-area-inset-left, 0px);
     }
-    body.pseudo-fullscreen {
-      position: fixed; inset: 0; width: 100%; height: 100dvh;
-    }
+    body.pseudo-fullscreen { position: fixed; inset: 0; width: 100%; height: 100dvh; }
     #stage-16x9 {
       position: relative; width: 1280px; height: 720px; flex-shrink: 0;
-      overflow: hidden; background: #040507; box-shadow: 0 0 60px rgba(0,0,0,0.95);
-      transform-origin: center center;
+      overflow: hidden; background: #040507; transform-origin: center center;
     }
 
-    /* ==========================================================================
-       1. ГЛАВНОЕ МЕНЮ С ВИДЕО-ФОНОМ И ЭКРАН ПРЕДЗАГРУЗКИ (PRELOADER)
-    ========================================================================== */
+    /* 1. ГЛАВНОЕ МЕНЮ И PRELOADER */
     #main-menu {
-      position: absolute; inset: 0; z-index: 100;
-      background: #020406; overflow: hidden;
+      position: absolute; inset: 0; z-index: 100; background: #020406; overflow: hidden;
       display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-      padding-bottom: 41px;
-      transition: opacity 0.65s ease, visibility 0.65s ease;
+      padding-bottom: 41px; transition: opacity 0.65s ease, visibility 0.65s ease;
     }
-    #main-menu.hidden {
-      opacity: 0; visibility: hidden; pointer-events: none;
-    }
+    #main-menu.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
     #menu-bg-video {
       position: absolute; inset: 0; width: 100%; height: 100%;
       object-fit: cover; z-index: 1; pointer-events: none;
-      filter: brightness(0.92) contrast(1.05);
     }
     .menu-vignette {
       position: absolute; inset: 0; z-index: 2; pointer-events: none;
       background:
-        radial-gradient(circle at 50% 45%, transparent 35%, rgba(2, 5, 9, 0.72) 100%),
-        linear-gradient(to top, rgba(2, 4, 7, 0.92) 0%, rgba(2, 4, 7, 0.45) 38%, transparent 72%);
+        radial-gradient(circle at 50% 45%, transparent 35%, rgba(2, 5, 9, 0.76) 100%),
+        linear-gradient(to top, rgba(2, 4, 7, 0.94) 0%, rgba(2, 4, 7, 0.5) 38%, rgba(2, 4, 7, 0.14) 100%);
     }
     .menu-content {
-      position: relative; z-index: 3;
-      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-      width: 100%; max-width: 780px; gap: 26px;
+      position: relative; z-index: 3; display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-end; width: 100%; max-width: 780px; gap: 26px;
     }
-    .menu-items {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 15px; margin-bottom: 6px;
-    }
+    .menu-items { display: flex; flex-direction: column; align-items: center; gap: 15px; margin-bottom: 6px; }
     .menu-item-btn {
       background: transparent; border: none; outline: none; cursor: pointer;
-      font-family: 'Georgia', serif; font-weight: bold;
-      font-size: 24px; letter-spacing: 1.6px;
-      text-transform: uppercase; color: rgba(214, 224, 222, 0.62);
-      padding: 4px 22px;
-      transform: scale(0.88);
-      opacity: 0.62;
-      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-                  color 0.28s ease,
-                  text-shadow 0.28s ease,
-                  opacity 0.28s ease;
+      font-family: 'Georgia', serif; font-weight: bold; font-size: 24px; letter-spacing: 1.6px;
+      text-transform: uppercase; color: rgba(214, 224, 222, 0.62); padding: 4px 22px;
+      transform: scale(0.88); opacity: 0.62;
+      transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), color 0.25s ease, opacity 0.25s ease;
     }
     .menu-item-btn.active,
     .menu-item-btn:hover,
     .menu-item-btn:focus-visible {
-      transform: scale(1.22);
-      color: #2dd4bf;
-      opacity: 1;
-      text-shadow:
-        0 0 14px rgba(45, 212, 191, 0.85),
-        0 0 32px rgba(45, 212, 191, 0.45),
-        0 2px 6px rgba(0, 0, 0, 0.95);
+      transform: scale(1.22); color: #2dd4bf; opacity: 1;
+      text-shadow: 0 0 14px rgba(45, 212, 191, 0.72), 0 2px 6px rgba(0, 0, 0, 0.95);
     }
     #menu-sub-toast {
-      min-height: 1.4em;
-      font-size: 13px;
-      color: rgba(45, 212, 191, 0.88);
-      font-style: italic;
-      letter-spacing: 0.4px;
-      text-shadow: 0 2px 8px #000;
-      opacity: 0;
-      transition: opacity 0.25s ease;
+      min-height: 1.4em; font-size: 13px; color: rgba(45, 212, 191, 0.88);
+      font-style: italic; letter-spacing: 0.4px; text-shadow: 0 2px 8px #000;
+      opacity: 0; transition: opacity 0.25s ease;
     }
     #menu-sub-toast.show { opacity: 1; }
-
     .menu-logo-wrap {
-      width: 560px;
-      height: 122px;
-      display: flex; align-items: center; justify-content: center;
-      transform: translateY(6px);
-      pointer-events: none;
+      width: 560px; height: 122px; display: flex; align-items: center; justify-content: center;
+      transform: translateY(6px); pointer-events: none;
     }
-    #menu-logo-img {
-      max-width: 100%; max-height: 100%; width: auto; height: auto;
-      object-fit: contain;
-    }
-    #menu-logo-img.blend-screen {
-      mix-blend-mode: screen;
-      filter: contrast(1.15) brightness(1.08);
-    }
+    #menu-logo-img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+    #menu-logo-img.blend-screen { mix-blend-mode: screen; }
     #menu-logo-fallback-text {
-      display: none;
-      font-size: 46px;
-      font-weight: bold; letter-spacing: 5px;
-      color: #5ea8a7;
-      text-shadow: 0 0 22px rgba(45, 212, 191, 0.5), 0 6px 18px #000;
+      display: none; font-size: 46px; font-weight: bold; letter-spacing: 5px;
+      color: #5ea8a7; text-shadow: 0 0 20px rgba(45, 212, 191, 0.45), 0 6px 14px #000;
     }
 
-    /* ЭКРАН ПРЕДЗАГРУЗКИ (PRELOADER) */
     #preloader-overlay {
       position: absolute; inset: 0; z-index: 110;
       background: radial-gradient(circle at 50% 45%, #081114 0%, #020406 100%);
       display: none; flex-direction: column; align-items: center; justify-content: center;
-      gap: 18px; padding: 28px;
-      transition: opacity 0.45s ease;
+      gap: 18px; padding: 28px; transition: opacity 0.45s ease;
     }
     #preloader-overlay.visible { display: flex; }
-    .preloader-title {
-      font-size: 18.5px;
-      color: #2dd4bf; letter-spacing: 2px; text-transform: uppercase;
-      text-shadow: 0 0 16px rgba(45, 212, 191, 0.45);
-    }
+    .preloader-title { font-size: 18.5px; color: #2dd4bf; letter-spacing: 2px; text-transform: uppercase; }
     .preloader-bar-wrap {
-      width: min(440px, 76%); height: 8px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(45, 212, 191, 0.38);
-      border-radius: 999px; overflow: hidden;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.85);
+      width: min(440px, 76%); height: 8px; background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(45, 212, 191, 0.38); border-radius: 999px; overflow: hidden;
     }
     #preloader-bar-fill {
       width: 0%; height: 100%;
       background: linear-gradient(90deg, #0d9488 0%, #2dd4bf 60%, #99f6e4 100%);
-      box-shadow: 0 0 14px rgba(45, 212, 191, 0.8);
       transition: width 0.15s ease;
     }
-    #preloader-status {
-      font-size: 13px;
-      color: rgba(214, 224, 222, 0.72);
-      font-style: italic;
-    }
+    #preloader-status { font-size: 13px; color: rgba(214, 224, 222, 0.72); font-style: italic; }
 
-    /* ==========================================================================
-       2. СЦЕНА И GPU-СЛОИ ОСВЕЩЕНИЯ (БЕЗ ДУБЛИРОВАНИЯ ФОНА И CPU-МАСОК)
-    ========================================================================== */
+    /* 2. СЦЕНА И ХОЛСТ ОСВЕЩЕНИЯ */
     .scene-slot {
       position: absolute; inset: -3%; width: 106%; height: 106%; pointer-events: none;
-      will-change: transform, opacity;
       transition: opacity 0.85s cubic-bezier(0.25,0.1,0.25,1), transform 0.85s cubic-bezier(0.22,0.61,0.36,1);
     }
-    .scene-slot.current {
-      opacity: 1; z-index: 2;
-      transform: translate3d(0px, 0px, 0) scale(1.03);
-    }
+    .scene-slot.transitioning { will-change: transform, opacity; }
+    .scene-slot.current { opacity: 1; z-index: 2; transform: translate3d(0px, 0px, 0) scale(1.03); }
     .scene-slot.current.peephole-zoom {
+      will-change: transform;
       transition: transform 1.1s cubic-bezier(0.2,0.7,0.3,1) !important;
       transform: translate3d(0,0,0) scale(1.32) !important;
     }
-    .scene-slot.outgoing {
-      opacity: 0; z-index: 1;
-      transform: translate3d(0px, -8px, 0) scale(1.1);
-    }
-    .scene-slot.incoming-prep {
-      opacity: 0; z-index: 3; transform: translate3d(0,8px,0) scale(0.97); transition: none !important;
-    }
+    .scene-slot.outgoing { opacity: 0; z-index: 1; transform: translate3d(0px, -8px, 0) scale(1.1); }
+    .scene-slot.incoming-prep { opacity: 0; z-index: 3; transform: translate3d(0,8px,0) scale(0.97); transition: none !important; }
     .layer-bg {
       position: absolute; inset: 0; width: 100%; height: 100%;
       background-position: center; background-size: 100% 100%; background-repeat: no-repeat;
     }
 
-    /* ЕДИНЫЙ GPU-СЛОЙ ТЕМНОТЫ И ТЁПЛОГО СВЕТА (СТАТИЧЕСКИЕ ГРАДИЕНТЫ, ДВИГАЮТСЯ ТОЛЬКО ЧЕРЕЗ TRANSFORM) */
-    #darkness-solid {
-      position: absolute; inset: 0; z-index: 4; pointer-events: none;
-      background: rgba(2, 6, 15, 0.92);
-      opacity: 0;
-      transition: opacity 0.22s ease;
+    #darkness-canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      z-index: 4; pointer-events: none; display: none;
     }
-    body[data-lit="intro"]:not([data-fullbright="true"]) #darkness-solid {
-      background: rgba(5, 9, 16, 0.56);
-      opacity: 1;
+    #vignette {
+      position: absolute; inset: 0; z-index: 5; pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.86) 100%);
     }
-    body[data-lit="false"]:not([data-fullbright="true"]) #darkness-solid {
-      background: rgba(2, 6, 15, 0.92);
-      opacity: 1;
+    #vignette.fullbright {
+      background: radial-gradient(ellipse at center, transparent 74%, rgba(0, 0, 0, 0.35) 100%);
     }
-    #darkness-mask-overlay {
-      position: absolute; left: -1280px; top: -720px; width: 2560px; height: 1440px;
-      z-index: 4; pointer-events: none;
-      will-change: transform;
-      transform-origin: center center;
-      opacity: 0;
-      background: radial-gradient(
-        circle at 50% 50%,
-        transparent 0px,
-        transparent 165px,
-        rgba(255, 175, 75, 0.18) 220px,
-        rgba(55, 28, 12, 0.48) 265px,
-        rgba(2, 6, 15, 0.88) 335px,
-        rgba(2, 6, 15, 0.94) 100%
-      );
-    }
-    body[data-fullbright="true"] #darkness-solid,
-    body[data-fullbright="true"] #darkness-mask-overlay { opacity: 0 !important; }
-    body[data-fullbright="true"] #vignette { box-shadow: inset 0 0 50px 10px rgba(0,0,0,0.35); }
-    #vignette { position: absolute; inset: 0; z-index: 5; pointer-events: none; box-shadow: inset 0 0 110px 25px rgba(0,0,0,0.85); }
 
-    /* СПРАЙТЫ NPC */
+    /* СПРАЙТЫ NPC И ШКАФ */
     #npc-layer {
       position: absolute; inset: 0; z-index: 6; pointer-events: none;
       display: none; align-items: flex-end; justify-content: center;
     }
     #npc-layer.visible { display: flex; }
-    #npc-sprite-box {
-      height: 93%; aspect-ratio: 0.565; width: auto; margin-bottom: 0.8%;
-      background-repeat: no-repeat;
-    }
-
-    /* ШКАФ С ПРИПАСАМИ */
+    #npc-sprite-box { height: 93%; aspect-ratio: 0.565; width: auto; margin-bottom: 0.8%; background-repeat: no-repeat; }
     #cabinet-items-layer { position: absolute; inset: 0; z-index: 8; pointer-events: none; display: none; }
     #cabinet-items-layer.visible { display: block; }
     .shelf-item {
       position: absolute; transform: translate(-50%, -50%); pointer-events: auto;
-      background-repeat: no-repeat; cursor: pointer;
-      transition: transform 0.16s ease;
+      background-repeat: no-repeat; cursor: pointer; transition: transform 0.16s ease;
     }
-    .shelf-item:hover {
-      transform: translate(-50%, -53%) scale(1.05);
-    }
+    .shelf-item:hover { transform: translate(-50%, -53%) scale(1.05); }
 
-    /* ВЕРХНИЙ ТЕКСТ СОБЫТИЙ */
+    /* ВЕРХНИЙ ТЕКСТ И ПОДСКАЗКА */
     #top-event-box {
       position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 820px; z-index: 12;
       background: rgba(10, 9, 8, 0.94); border: 1px solid rgba(165,135,95,0.38); border-radius: 5px; padding: 8px 18px;
-      text-align: center; pointer-events: none;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.85);
+      text-align: center; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.8);
     }
     #narrative-text { font-size: 15.5px; line-height: 1.35; color: #e8dfd1; }
-
-    /* ПОДСКАЗКА ОБУЧАЮЩЕГО ПРОЛЁТА СПИЧКИ */
     #match-tutorial-hint {
       position: absolute; bottom: 205px; left: 50%; transform: translateX(-50%);
-      z-index: 26; pointer-events: none;
-      background: rgba(10, 16, 18, 0.92);
-      border: 1px solid rgba(45, 212, 191, 0.65);
-      border-radius: 6px; padding: 9px 18px;
-      color: #e6f7f5; font-size: 14px;
-      text-align: center; max-width: 560px;
-      box-shadow: 0 8px 26px rgba(0,0,0,0.9), 0 0 18px rgba(45, 212, 191, 0.28);
-      opacity: 0; visibility: hidden;
+      z-index: 26; pointer-events: none; background: rgba(10, 16, 18, 0.92);
+      border: 1px solid rgba(45, 212, 191, 0.65); border-radius: 6px; padding: 9px 18px;
+      color: #e6f7f5; font-size: 14px; text-align: center; max-width: 560px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.85); opacity: 0; visibility: hidden;
       transition: opacity 0.35s ease, visibility 0.35s ease;
     }
-    #match-tutorial-hint.visible {
-      opacity: 1; visibility: visible;
-    }
+    #match-tutorial-hint.visible { opacity: 1; visibility: visible; }
 
-    /* ИКОНКА ВЕЩМЕШКА */
+    /* КНОПКИ УПРАВЛЕНИЯ */
     #backpack-btn {
-      position: absolute; top: 10px; right: 14px; z-index: 18;
-      width: 55px; height: 55px;
-      background: #12100e;
-      border: 1px solid rgba(168,138,98,0.48); border-radius: 5px;
-      padding: 6px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.92), inset 0 0 0 1px rgba(255,235,205,0.06);
-      transition: border-color 0.18s ease, transform 0.15s ease, background 0.18s ease;
+      position: absolute; top: 10px; right: 14px; z-index: 18; width: 55px; height: 55px;
+      background: #12100e; border: 1px solid rgba(168,138,98,0.48); border-radius: 5px;
+      padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.85); transition: border-color 0.18s ease, transform 0.15s ease, background 0.18s ease;
     }
-    #backpack-btn:hover {
-      border-color: #c9a368; background: #1b1714; transform: translateY(-1px);
-    }
+    #backpack-btn:hover { border-color: #c9a368; background: #1b1714; transform: translateY(-1px); }
     #backpack-btn svg {
       width: 100%; height: 100%; stroke: #b89f7d; fill: #26201a;
-      stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
-      transition: stroke 0.18s ease;
+      stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.18s ease;
     }
     #backpack-btn:hover svg { stroke: #dfd0b8; }
     #backpack-badge {
-      position: absolute; bottom: -5px; right: -5px;
-      min-width: 18px; height: 18px; padding: 0 4px;
-      background: #1f1913; color: #d8c3a5;
-      font: bold 10.5px/16px 'Georgia', serif; text-align: center;
+      position: absolute; bottom: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px;
+      background: #1f1913; color: #d8c3a5; font: bold 10.5px/16px 'Georgia', serif; text-align: center;
       border: 1px solid #8c7352; border-radius: 3px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.95);
     }
-
-    /* КНОПКА ПОЛНОЭКРАННОГО РЕЖИМА (ДОСТУПНА В МЕНЮ И В ИГРЕ) */
     #fullscreen-btn {
-      position: absolute; top: 10px; right: 78px; z-index: 120;
-      width: 55px; height: 55px;
-      background: #12100e;
-      border: 1px solid rgba(168,138,98,0.48); border-radius: 5px;
+      position: absolute; top: 10px; right: 78px; z-index: 120; width: 55px; height: 55px;
+      background: #12100e; border: 1px solid rgba(168,138,98,0.48); border-radius: 5px;
       padding: 10px; cursor: pointer; touch-action: manipulation;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.92), inset 0 0 0 1px rgba(255,235,205,0.06);
-      transition: border-color 0.18s ease, transform 0.15s ease, background 0.18s ease;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.85); transition: border-color 0.18s ease, transform 0.15s ease, background 0.18s ease;
     }
-    #fullscreen-btn:hover {
-      border-color: #c9a368; background: #1b1714; transform: translateY(-1px);
-    }
+    #fullscreen-btn:hover { border-color: #c9a368; background: #1b1714; transform: translateY(-1px); }
     #fullscreen-btn svg {
       width: 100%; height: 100%; stroke: #b89f7d; fill: none;
-      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
-      transition: stroke 0.18s ease;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.18s ease;
     }
     #fullscreen-btn:hover svg { stroke: #dfd0b8; }
 
-    /* ЕДИНЫЙ СТРОГИЙ СТИЛЬ КНОПОК */
     .grim-btn {
-      position: relative; cursor: pointer;
-      padding: 8px 24px;
-      background: #14110e;
-      color: #dfd3c0;
-      border: 1px solid #7a6345;
-      border-radius: 4px;
-      font: bold 13.5px 'Georgia', serif;
-      letter-spacing: 0.4px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.92), inset 0 0 0 2px #0b0908, inset 0 0 12px rgba(0,0,0,0.8);
+      position: relative; cursor: pointer; padding: 8px 24px; background: #14110e; color: #dfd3c0;
+      border: 1px solid #7a6345; border-radius: 4px; font: bold 13.5px 'Georgia', serif; letter-spacing: 0.4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.85);
       transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease, transform 0.14s ease;
     }
-    .grim-btn:hover {
-      background: #1e1914;
-      border-color: #c59b61;
-      color: #f5ebd9;
-    }
+    .grim-btn:hover { background: #1e1914; border-color: #c59b61; color: #f5ebd9; }
     .grim-btn:active { transform: translateY(1px); }
 
-    #scene-back-btn {
-      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-      z-index: 22; display: none;
-    }
+    #scene-back-btn { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 22; display: none; }
     #scene-back-btn.visible { display: block; }
     #scene-back-btn:hover { transform: translateX(-50%) translateY(-1px); }
 
-    /* ЦЕНТРАЛЬНЫЙ ВЫБОР В ДИАЛОГЕ С СОСЕДОМ (БЕЗ ЛИШНИХ ПЛАШЕК И РАМОК) */
     #neighbor-choice-overlay {
-      position: absolute; inset: 0; z-index: 28;
-      display: none; align-items: center; justify-content: center;
-      gap: 20px; flex-wrap: wrap;
-      padding: 20px; pointer-events: none;
+      position: absolute; inset: 0; z-index: 28; display: none; align-items: center; justify-content: center;
+      gap: 20px; flex-wrap: wrap; padding: 20px; pointer-events: none;
     }
-    #neighbor-choice-overlay.visible {
-      display: flex;
-    }
-    #neighbor-choice-overlay .choice-card {
-      pointer-events: auto;
-      width: 118px;
-    }
+    #neighbor-choice-overlay.visible { display: flex; }
+    #neighbor-choice-overlay .choice-card { pointer-events: auto; width: 118px; }
 
-    /* ОКНО НАХОДОК ПО ЦЕНТРУ ЭКРАНА */
     #loot-center-modal {
-      position: absolute; inset: 0; z-index: 30;
-      background: rgba(5, 5, 6, 0.92);
-      display: none; flex-direction: column; align-items: center; justify-content: center;
-      gap: 18px; padding: 20px;
+      position: absolute; inset: 0; z-index: 30; background: rgba(5, 5, 6, 0.92);
+      display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 20px;
     }
     #loot-center-modal.visible { display: flex; }
     .loot-modal-title {
-      font-size: 20px; color: #dfd1b8; font-weight: normal;
-      font-style: italic; letter-spacing: 0.5px; text-shadow: 0 2px 10px #000;
+      font-size: 20px; color: #dfd1b8; font-weight: normal; font-style: italic;
+      letter-spacing: 0.5px; text-shadow: 0 2px 10px #000;
       border-bottom: 1px solid rgba(168,138,98,0.35); padding-bottom: 6px;
     }
-    #loot-cards-row {
-      display: flex; align-items: stretch; justify-content: center;
-      gap: 18px; flex-wrap: wrap;
-    }
+    #loot-cards-row { display: flex; align-items: stretch; justify-content: center; gap: 18px; flex-wrap: wrap; }
 
-    /* ПОЛНОЭКРАННЫЙ ИНВЕНТАРЬ (ВЕЩМЕШОК) */
     #inventory-screen {
       position: absolute; inset: 0; z-index: 35;
       background: radial-gradient(circle at 50% 45%, #14110d 0%, #060504 100%);
-      display: none; flex-direction: column; align-items: center; justify-content: space-between;
-      padding: 33px;
+      display: none; flex-direction: column; align-items: center; justify-content: space-between; padding: 33px;
     }
     #inventory-screen.visible { display: flex; }
     .inv-header {
       width: 100%; max-width: 960px; display: flex; align-items: center; justify-content: space-between;
       border-bottom: 1px solid rgba(165,135,95,0.28); padding-bottom: 12px;
     }
-    .inv-title-wrap {
-      display: flex; align-items: center; gap: 10px;
-    }
+    .inv-title-wrap { display: flex; align-items: center; gap: 10px; }
     .inv-title-wrap svg {
       width: 24px; height: 24px; stroke: #b89f7d; fill: #26201a;
       stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
     }
-    .inv-title {
-      font-size: 21px; color: #dfd1b8;
-      font-weight: normal; letter-spacing: 0.6px;
-    }
+    .inv-title { font-size: 21px; color: #dfd1b8; font-weight: normal; letter-spacing: 0.6px; }
     #inventory-grid {
-      width: 100%; max-width: 960px; flex: 1;
-      display: flex; align-items: center; justify-content: center;
-      gap: 18px; flex-wrap: wrap; overflow-y: auto; padding: 14px 4px;
+      width: 100%; max-width: 960px; flex: 1; display: flex; align-items: center;
+      justify-content: center; gap: 18px; flex-wrap: wrap; overflow-y: auto; padding: 14px 4px;
     }
     .inv-empty-msg { font-style: italic; color: rgba(215,200,178,0.45); font-size: 15px; }
-    .inv-item-wrap {
-      display: flex; flex-direction: column; align-items: center; gap: 6px;
-    }
+    .inv-item-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
     .inv-sub-btn {
-      width: 100%; padding: 4px 8px; font: 11px 'Georgia', serif;
-      background: #14110e; color: #d6c5aa;
+      width: 100%; padding: 4px 8px; font: 11px 'Georgia', serif; background: #14110e; color: #d6c5aa;
       border: 1px solid rgba(155,125,85,0.45); border-radius: 3px; cursor: pointer;
       transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
     .inv-sub-btn:hover { border-color: #c59b61; color: #fff; background: #211b15; }
     #inventory-hint {
-      font-size: 13.5px; color: rgba(210,192,165,0.75); font-style: italic;
-      text-align: center; min-height: 1.5em; border-top: 1px solid rgba(165,135,95,0.18);
-      padding-top: 10px; width: 100%; max-width: 960px;
+      font-size: 13.5px; color: rgba(210,192,165,0.75); font-style: italic; text-align: center;
+      min-height: 1.5em; border-top: 1px solid rgba(165,135,95,0.18); padding-top: 10px; width: 100%; max-width: 960px;
     }
 
-    /* МОДАЛКА ПАМЯТКИ ГО И ИНСТРУКЦИИ К КОСТЯМ */
     #brochure-modal {
       position: absolute; inset: 0; z-index: 40; background: rgba(5,5,6,0.68);
       display: none; align-items: center; justify-content: center; padding: 20px;
@@ -424,8 +259,9 @@
     #brochure-modal.visible { display: flex; }
     .brochure-paper {
       width: min(640px, 90%); max-height: 82%; overflow-y: auto;
-      background: linear-gradient(135deg, rgba(215,201,174,0.96) 0%, rgba(196,178,147,0.96) 100%); color: #1f1a16;
-      border: 2px solid #5c4b37; box-shadow: 0 20px 60px rgba(0,0,0,0.95); border-radius: 4px; padding: 20px 24px; font-family: 'Courier New', monospace;
+      background: linear-gradient(135deg, rgba(215,201,174,0.96) 0%, rgba(196,178,147,0.96) 100%);
+      color: #1f1a16; border: 2px solid #5c4b37; box-shadow: 0 12px 32px rgba(0,0,0,0.9);
+      border-radius: 4px; padding: 20px 24px; font-family: 'Courier New', monospace;
     }
     .brochure-stamp { display: inline-block; border: 2px solid #7a231d; color: #7a231d; font-weight: bold; font-size: 11px; padding: 2px 8px; margin-bottom: 10px; text-transform: uppercase; }
     .brochure-title { font-size: 17.5px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #3a2e21; padding-bottom: 8px; margin-bottom: 12px; }
@@ -433,102 +269,76 @@
     .brochure-section-title { font-size: 14.5px; font-weight: bold; margin: 14px 0 6px 0; text-decoration: underline; }
     .brochure-close-btn { margin-top: 12px; width: 100%; padding: 10px; background: #2b2219; color: #f0e6d6; border: 1px solid #6e563f; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
-    /* ОВЕРЛЕЙ ПОДКЛЮЧЕНИЯ ОТДЕЛЬНОГО ФАЙЛА ОЧКО.HTML (DISPLAY: NONE В СКРЫТОМ СОСТОЯНИИ) */
-    #ochko-modal-wrap {
-      position: absolute; inset: 0; z-index: 50; background: #050403;
-      display: none; flex-direction: column;
-    }
-    #ochko-modal-wrap.visible {
-      display: flex;
-    }
+    #ochko-modal-wrap { position: absolute; inset: 0; z-index: 50; background: #050403; display: none; flex-direction: column; }
+    #ochko-modal-wrap.visible { display: flex; }
     #ochko-iframe { width: 100%; height: 100%; border: none; }
 
     /* НИЖНЯЯ ЗОНА КАРТОЧЕК */
     #bottom-hud {
       position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 15;
-      display: flex; align-items: flex-end; justify-content: space-between;
-      gap: 6px; pointer-events: none;
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; pointer-events: none;
     }
     #bottom-hud.hidden-hud .deck-group { visibility: hidden !important; pointer-events: none !important; }
     .deck-group {
-      position: relative; z-index: 20;
-      display: flex; align-items: center; gap: 5px; pointer-events: auto;
-      flex: 0 1 auto; max-width: calc(50% - 54px);
+      position: relative; z-index: 20; display: flex; align-items: center;
+      gap: 5px; pointer-events: auto; flex: 0 1 auto; max-width: calc(50% - 54px);
     }
-    .deck-cards {
-      display: flex; align-items: flex-end; gap: 8px;
-      min-height: 134px; perspective: 900px;
-    }
+    .deck-cards { display: flex; align-items: flex-end; gap: 8px; min-height: 134px; }
     .scroll-arrow {
-      position: relative; z-index: 5; flex-shrink: 0;
-      width: 24px; height: 105px;
+      position: relative; z-index: 5; flex-shrink: 0; width: 24px; height: 105px;
       background: rgba(14,12,10,0.92); border: 1px solid rgba(185,155,115,0.48);
-      border-radius: 5px; color: #f2e9dc; font-size: 13px;
-      pointer-events: auto; touch-action: manipulation;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.85); transition: border-color 0.15s, transform 0.12s, background 0.15s;
+      border-radius: 5px; color: #f2e9dc; font-size: 13px; pointer-events: auto;
+      touch-action: manipulation; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.8); transition: border-color 0.15s, transform 0.12s, background 0.15s;
     }
     .scroll-arrow:hover:not(:disabled) { border-color: #c59b61; background: rgba(30,24,18,0.96); transform: scale(1.05); }
     .scroll-arrow:disabled { opacity: 0.22; cursor: default; }
 
-    /* КАРТОЧКИ И ПРИОРИТЕТНАЯ ПОДСВЕТКА (.priority-card) */
     .choice-card {
-      position: relative; width: 97px; flex-shrink: 0;
-      background: transparent; border: none; padding: 0; cursor: pointer; touch-action: manipulation;
-      font-family: inherit; perspective: 800px; transform-style: preserve-3d;
-      transition: transform 0.22s cubic-bezier(0.22, 1.3, 0.36, 1);
+      position: relative; width: 97px; flex-shrink: 0; background: transparent; border: none; padding: 0;
+      cursor: pointer; touch-action: manipulation; font-family: inherit;
+      transition: transform 0.18s cubic-bezier(0.22, 1.3, 0.36, 1);
     }
     .choice-card.deal-anim {
+      perspective: 800px; transform-style: preserve-3d;
       animation: cardDeal 0.52s cubic-bezier(0.2, 1.22, 0.32, 1) backwards;
       animation-delay: var(--deal-delay, 0ms);
     }
-    .choice-card:hover:not(:disabled):not(.activating) {
-      transform: translateY(-9px) scale(1.05) rotateX(5deg);
-    }
+    .choice-card:hover:not(:disabled):not(.activating) { transform: translateY(-9px) scale(1.04); }
     .choice-card.activating {
+      perspective: 800px; transform-style: preserve-3d;
       animation: cardActivateFlip 0.42s cubic-bezier(0.22, 1.25, 0.36, 1) forwards !important;
       pointer-events: none;
     }
     .choice-card:disabled:not(.activating) { opacity: 0.48; cursor: default; }
 
-    /* ПРИОРИТЕТНАЯ КАРТОЧКА НА 1-М МЕСТЕ */
-    .choice-card.priority-card:not(.activating) {
-      animation: priorityCardFloat 2.1s ease-in-out infinite;
-      z-index: 4;
-    }
+    .choice-card.priority-card:not(.activating) { transform: translateY(-7px); z-index: 4; }
+    .choice-card.priority-card:hover:not(:disabled):not(.activating) { transform: translateY(-11px) scale(1.04); }
     .choice-card.priority-card .card-inner {
       border: 1.5px solid #2dd4bf;
+      box-shadow: 0 5px 12px rgba(0,0,0,0.85), 0 0 12px rgba(45, 212, 191, 0.38);
     }
-    .choice-card.priority-card .choice-caption {
-      color: #99f6e4;
-      text-shadow: 0 0 8px rgba(45, 212, 191, 0.65);
-    }
-
-    @keyframes priorityCardFloat {
-      0%, 100% { transform: translateY(-4px) scale(1.03); }
-      50% { transform: translateY(-10px) scale(1.06); }
-    }
+    .choice-card.priority-card .choice-caption { color: #99f6e4; text-shadow: 0 0 8px rgba(45, 212, 191, 0.55); }
 
     .card-inner {
-      position: relative; width: 100%; transform-style: preserve-3d;
+      position: relative; width: 100%;
       background: linear-gradient(165deg, rgba(24,20,16,0.96) 0%, rgba(12,10,8,0.96) 100%);
       border: 1px solid rgba(195,160,115,0.48); border-radius: 6px;
       padding: 5px 5px 6px 5px; display: flex; flex-direction: column; align-items: center; gap: 4px;
-      box-shadow: 0 7px 18px rgba(0,0,0,0.88), inset 0 1px 0 rgba(255,230,190,0.12);
-      backface-visibility: hidden;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.82);
     }
-    .choice-card:hover:not(:disabled) .card-inner {
-      border-color: #d6a45c;
-      box-shadow: 0 10px 22px rgba(0,0,0,0.92), 0 0 12px rgba(220,160,80,0.28);
-    }
+    .choice-card.deal-anim .card-inner,
+    .choice-card.activating .card-inner { transform-style: preserve-3d; backface-visibility: hidden; }
+    .choice-card:hover:not(:disabled) .card-inner { border-color: #d6a45c; }
     .card-back {
-      position: absolute; inset: 0; border-radius: 6px; backface-visibility: hidden;
+      display: none; position: absolute; inset: 0; border-radius: 6px; backface-visibility: hidden;
       transform: rotateY(180deg);
       background: radial-gradient(circle at 50% 50%, #3a2b1c 0%, #17120d 85%);
-      border: 1.5px solid #a88455;
-      box-shadow: inset 0 0 0 4px #1f1811, inset 0 0 0 6px rgba(168,132,85,0.45);
-      display: flex; align-items: center; justify-content: center;
+      border: 1.5px solid #a88455; box-shadow: inset 0 0 0 4px #1f1811;
+      align-items: center; justify-content: center;
     }
+    .choice-card.deal-anim .card-back,
+    .choice-card.activating .card-back { display: flex; }
     .card-back::after { content: "★"; font-size: 25px; color: rgba(215,175,115,0.55); }
 
     @keyframes cardDeal {
@@ -545,29 +355,23 @@
 
     .card-icon-frame { width: 100%; aspect-ratio: 1/1; border-radius: 4px; overflow: hidden; background-color: #161412; background-repeat: no-repeat; }
     .choice-caption {
-      font-size: 10.5px; line-height: 1.12; color: #f5ecdf;
-      text-align: center; font-weight: bold; min-height: 2.25em;
-      display: flex; align-items: center; justify-content: center; word-break: break-word;
+      font-size: 10.5px; line-height: 1.12; color: #f5ecdf; text-align: center;
+      font-weight: bold; min-height: 2.25em; display: flex; align-items: center; justify-content: center; word-break: break-word;
     }
 
-    /* СПИЧКА И СВЕЧА (ВСЕГДА СТРОГО ПО ЦЕНТРУ СЦЕНЫ) */
     #center-flame-canvas {
-      position: absolute; left: 50%; bottom: 0; margin-left: -48px;
-      width: 96px; height: 134px;
-      pointer-events: auto; cursor: grab;
-      touch-action: none; will-change: transform; z-index: 25;
+      position: absolute; left: 50%; bottom: 0; margin-left: -48px; width: 96px; height: 134px;
+      pointer-events: auto; cursor: grab; touch-action: none; will-change: transform; z-index: 25;
     }
-    #center-flame-canvas.dragging { cursor: grabbing; filter: none; }
+    #center-flame-canvas.dragging { cursor: grabbing; }
   </style>
 </head>
-<body data-lit="intro" data-fullbright="false">
+<body>
 
   <div id="stage-16x9">
-    <!-- ГЛАВНОЕ МЕНЮ С ВИДЕО-ФОНОМ И АУДИОФОНОМ -->
     <div id="main-menu">
       <video id="menu-bg-video" src="Фон.mp4" autoplay loop muted playsinline preload="auto"></video>
       <div class="menu-vignette"></div>
-
       <div class="menu-content">
         <div id="menu-sub-toast"></div>
         <div class="menu-items" id="menu-items-list">
@@ -575,7 +379,6 @@
           <button type="button" class="menu-item-btn" data-menu-idx="1" onclick="handleMenuClick('load')">Загрузки</button>
           <button type="button" class="menu-item-btn" data-menu-idx="2" onclick="handleMenuClick('settings')">Настройки</button>
         </div>
-
         <div class="menu-logo-wrap">
           <img id="menu-logo-img" src="лого.png" alt="KOLA PATHOGEN" />
           <div id="menu-logo-fallback-text">KOLA PATHOGEN</div>
@@ -583,12 +386,9 @@
       </div>
     </div>
 
-    <!-- ЭКРАН ПРЕДЗАГРУЗКИ (PRELOADER) -->
     <div id="preloader-overlay">
       <div class="preloader-title">Загрузка мира...</div>
-      <div class="preloader-bar-wrap">
-        <div id="preloader-bar-fill"></div>
-      </div>
+      <div class="preloader-bar-wrap"><div id="preloader-bar-fill"></div></div>
       <div id="preloader-status">Подготовка сцен и игровых ресурсов (0%)</div>
     </div>
 
@@ -598,54 +398,39 @@
     <div id="npc-layer"><div id="npc-sprite-box"></div></div>
     <div id="cabinet-items-layer"></div>
 
-    <!-- КНОПКА ПОЛНОЭКРАННОГО РЕЖИМА -->
     <button type="button" id="fullscreen-btn" title="На весь экран" aria-label="На весь экран" onclick="toggleFullscreenMode()">
       <svg id="fullscreen-icon-enter" viewBox="0 0 24 24" aria-hidden="true">
-        <polyline points="4 9 4 4 9 4"/>
-        <polyline points="15 4 20 4 20 9"/>
-        <polyline points="20 15 20 20 15 20"/>
-        <polyline points="9 20 4 20 4 15"/>
+        <polyline points="4 9 4 4 9 4"/><polyline points="15 4 20 4 20 9"/>
+        <polyline points="20 15 20 20 15 20"/><polyline points="9 20 4 20 4 15"/>
       </svg>
       <svg id="fullscreen-icon-exit" viewBox="0 0 24 24" aria-hidden="true" style="display:none">
-        <polyline points="9 4 9 9 4 9"/>
-        <polyline points="15 4 15 9 20 9"/>
-        <polyline points="20 15 15 15 15 20"/>
-        <polyline points="4 15 9 15 9 20"/>
+        <polyline points="9 4 9 9 4 9"/><polyline points="15 4 15 9 20 9"/>
+        <polyline points="20 15 15 15 15 20"/><polyline points="4 15 9 15 9 20"/>
       </svg>
     </button>
 
-    <!-- КНОПКА ВЕЩМЕШКА -->
     <button id="backpack-btn" title="Вещмешок (Инвентарь)" onclick="openInventoryScreen()">
       <svg viewBox="0 0 32 32" aria-hidden="true">
         <path d="M11 7 C11 3.5, 21 3.5, 21 7" fill="none"/>
         <path d="M7 11 C7 8, 25 8, 25 11 L26 26 C26 28, 24 29, 22 29 L10 29 C8 29, 6 28, 6 26 Z"/>
         <path d="M6.5 13 C6.5 16, 25.5 16, 25.5 13"/>
         <rect x="10" y="18" width="12" height="8" rx="1.2"/>
-        <line x1="12" y1="12" x2="12" y2="21"/>
-        <line x1="20" y1="12" x2="20" y2="21"/>
-        <rect x="11" y="15" width="2" height="2.2"/>
-        <rect x="19" y="15" width="2" height="2.2"/>
+        <line x1="12" y1="12" x2="12" y2="21"/><line x1="20" y1="12" x2="20" y2="21"/>
+        <rect x="11" y="15" width="2" height="2.2"/><rect x="19" y="15" width="2" height="2.2"/>
       </svg>
       <span id="backpack-badge">0</span>
     </button>
 
-    <!-- КНОПКА «НАЗАД» -->
     <button id="scene-back-btn" class="grim-btn" onclick="handleSceneBackBtn()">Отойти назад</button>
-
-    <!-- ЦЕНТРАЛЬНЫЙ ВЫБОР В ДИАЛОГЕ С СОСЕДОМ ПОВЕРХ СЦЕНЫ -->
     <div id="neighbor-choice-overlay"></div>
-
-    <!-- ПОДСКАЗКА ПРОЛЁТА СПИЧКИ -->
     <div id="match-tutorial-hint">Зажмите спичку или свечу мышью и перетаскивайте по экрану, чтобы подсветить себе комнату</div>
 
-    <!-- ОКНО НАХОДОК ПО ЦЕНТРУ ЭКРАНА (ПРИ ПОИСКЕ В ХЛАМЕ) -->
     <div id="loot-center-modal">
       <div class="loot-modal-title" id="loot-modal-title">Вы нашли в коробках с хламом:</div>
       <div id="loot-cards-row"></div>
       <button class="grim-btn" onclick="closeLootModal()">Убрать в вещмешок</button>
     </div>
 
-    <!-- ПОЛНОЭКРАННЫЙ ИНВЕНТАРЬ -->
     <div id="inventory-screen">
       <div class="inv-header">
         <div class="inv-title-wrap">
@@ -663,7 +448,6 @@
       <div id="inventory-hint">Нажмите на предмет, чтобы осмотреть его, прочитать документ или открыть ящик с костями.</div>
     </div>
 
-    <!-- МОДАЛКА ПАМЯТКИ ГО И ИНСТРУКЦИИ К ИГРЕ В КОСТИ -->
     <div id="brochure-modal">
       <div class="brochure-paper">
         <div class="brochure-stamp" id="brochure-stamp">Гражданская оборона СССР • Памятка жильцу</div>
@@ -673,13 +457,9 @@
       </div>
     </div>
 
-    <!-- ОВЕРЛЕЙ ПОДКЛЮЧЕННОЙ ИГРЫ ОЧКО.HTML (ГРУЗИТСЯ ОДИН РАЗ В PRELOADER) -->
-    <div id="ochko-modal-wrap">
-      <iframe id="ochko-iframe" src="about:blank"></iframe>
-    </div>
+    <div id="ochko-modal-wrap"><iframe id="ochko-iframe" src="about:blank"></iframe></div>
 
-    <div id="darkness-solid"></div>
-    <div id="darkness-mask-overlay"></div>
+    <canvas id="darkness-canvas" width="640" height="360"></canvas>
     <div id="vignette"></div>
 
     <div id="top-event-box">
@@ -692,9 +472,7 @@
         <div class="deck-cards" id="left-action-cards"></div>
         <button class="scroll-arrow" id="act-next" title="Вправо">&#9654;</button>
       </div>
-
       <canvas id="center-flame-canvas" width="140" height="180" title="Зажмите и двигайте спичку/свечу по всему экрану"></canvas>
-
       <div class="deck-group" id="right-move-group" style="visibility:hidden">
         <button class="scroll-arrow" id="mov-prev" title="Влево">&#9664;</button>
         <div class="deck-cards" id="right-move-cards"></div>
@@ -704,17 +482,13 @@
   </div>
 
   <script>
-    /* ============================================================================
-       0. СБРОС ПРОГРЕССА КОСТЕЙ ПРИ НОВОМ ЗАПУСКЕ ИГРЫ INDEX.HTML
-    ============================================================================ */
+    /* 0. СБРОС ПРОГРЕССА КОСТЕЙ */
     try {
       localStorage.setItem("ochko_owned_counts", JSON.stringify([6, 0, 0, 0, 0, 0, 0, 0]));
       localStorage.setItem("ochko_player_skins", JSON.stringify([0, 0, 0, 0, 0, 0]));
     } catch (e) {}
 
-    /* ============================================================================
-       0.1. ГЛАВНОЕ МЕНЮ: БЕСШОВНЫЙ ВИДЕО-ФОН БЕЗ ЗВУКА, МУЗЫКА «АУДИОФОН», ЛОГОТИП
-    ============================================================================ */
+    /* 0.1. ГЛАВНОЕ МЕНЮ */
     const menuEl = document.getElementById("main-menu");
     const menuVideo = document.getElementById("menu-bg-video");
     const menuLogoImg = document.getElementById("menu-logo-img");
@@ -724,16 +498,16 @@
     let activeMenuIdx = 0;
     let menuToastTimer = null;
     let isMenuOpen = true;
+    let gameStarting = false;
 
-    // 1) Бесшовное зацикленное видео без звука
     const VIDEO_CANDIDATES = ["Фон.mp4", "фон.mp4", "события/Фон.mp4", "события/фон.mp4"];
     let videoCandidateIdx = 0;
     if (menuVideo) {
       menuVideo.muted = true;
       menuVideo.defaultMuted = true;
       menuVideo.volume = 0;
-
       menuVideo.addEventListener("error", () => {
+        if (!isMenuOpen) return;
         videoCandidateIdx++;
         if (videoCandidateIdx < VIDEO_CANDIDATES.length) {
           menuVideo.src = encodeURI(VIDEO_CANDIDATES[videoCandidateIdx]);
@@ -741,22 +515,9 @@
           menuVideo.play().catch(() => {});
         }
       });
-
-      // Мгновенный перезапуск в самом конце без малейшего разрыва/черного кадра
-      menuVideo.addEventListener("timeupdate", () => {
-        if (menuVideo.duration && menuVideo.currentTime >= menuVideo.duration - 0.06) {
-          menuVideo.currentTime = 0;
-          menuVideo.play().catch(() => {});
-        }
-      });
-      menuVideo.addEventListener("ended", () => {
-        menuVideo.currentTime = 0;
-        menuVideo.play().catch(() => {});
-      });
       menuVideo.play().catch(() => {});
     }
 
-    // 2) Зацикленный аудиоассет «аудиофон»
     const MENU_AUDIO_CANDIDATES = [
       "аудиофон.mp3", "Аудиофон.mp3", "АУДИОФОН.mp3",
       "АУДИО/аудиофон.mp3", "АУДИО/Аудиофон.mp3", "АУДИО/АУДИОФОН.mp3",
@@ -765,41 +526,29 @@
     ];
     let menuAudio = null;
     let menuAudioIdx = 0;
-    let menuAudioStarted = false;
 
     function initMenuBackgroundAudio() {
-      if (menuAudio) return;
+      if (menuAudio || !isMenuOpen) return;
       menuAudio = new Audio();
       menuAudio.loop = true;
       menuAudio.volume = 0.65;
-
       menuAudio.addEventListener("error", () => {
+        if (!isMenuOpen) return;
         menuAudioIdx++;
-        if (menuAudioIdx < MENU_AUDIO_CANDIDATES.length && isMenuOpen) {
+        if (menuAudioIdx < MENU_AUDIO_CANDIDATES.length) {
           menuAudio.src = encodeURI(MENU_AUDIO_CANDIDATES[menuAudioIdx]);
           menuAudio.load();
-          menuAudio.play().then(() => { menuAudioStarted = true; }).catch(() => {});
-        }
-      });
-
-      // Бесшовный цикл аудиофона
-      menuAudio.addEventListener("timeupdate", () => {
-        if (menuAudio && menuAudio.duration && menuAudio.currentTime >= menuAudio.duration - 0.08) {
-          menuAudio.currentTime = 0;
           menuAudio.play().catch(() => {});
         }
       });
-
       menuAudio.src = encodeURI(MENU_AUDIO_CANDIDATES[0]);
-      menuAudio.play().then(() => { menuAudioStarted = true; }).catch(() => {});
+      menuAudio.play().catch(() => {});
     }
 
     function ensureMenuAudioPlaying() {
       if (!isMenuOpen) return;
       if (!menuAudio) initMenuBackgroundAudio();
-      else if (menuAudio.paused) {
-        menuAudio.play().then(() => { menuAudioStarted = true; }).catch(() => {});
-      }
+      else if (menuAudio.paused) menuAudio.play().catch(() => {});
       if (menuVideo && menuVideo.paused) {
         menuVideo.muted = true;
         menuVideo.play().catch(() => {});
@@ -816,7 +565,6 @@
         try {
           menuVideo.pause();
           menuVideo.removeAttribute("src");
-          menuVideo.src = "";
           menuVideo.load();
         } catch (e) {}
       }
@@ -833,7 +581,6 @@
       }
     }
 
-    // 3) Фолбэк логотипа: лого.png -> название.png -> текст фон.jpg
     const LOGO_CANDIDATES = ["лого.png", "Лого.png", "название.png", "Название.png", "текст фон.jpg", "Текст фон.jpg"];
     let logoCandidateIdx = 0;
     if (menuLogoImg) {
@@ -856,12 +603,9 @@
       });
     }
 
-    // 4) Переключение пунктов меню (активный увеличивается и светится бирюзовым, остальные уменьшаются)
     function setActiveMenuItem(idx) {
       activeMenuIdx = (idx + menuButtons.length) % menuButtons.length;
-      menuButtons.forEach((btn, i) => {
-        btn.classList.toggle("active", i === activeMenuIdx);
-      });
+      menuButtons.forEach((btn, i) => btn.classList.toggle("active", i === activeMenuIdx));
     }
     menuButtons.forEach((btn, idx) => {
       btn.addEventListener("mouseenter", () => {
@@ -871,7 +615,7 @@
     });
 
     window.addEventListener("keydown", (e) => {
-      if (!isMenuOpen) return;
+      if (!isMenuOpen || gameStarting) return;
       if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
         playCardSound("click");
         setActiveMenuItem(activeMenuIdx - 1);
@@ -893,20 +637,15 @@
     }
 
     function handleMenuClick(action) {
+      if (gameStarting) return;
       ensureMenuAudioPlaying();
       playCardSound("flip");
-      if (action === "new") {
-        startNewGameWithPreloader();
-      } else if (action === "load") {
-        showMenuToast("Сохранённых игр пока нет.");
-      } else if (action === "settings") {
-        showMenuToast("Настройки по умолчанию: звук 100%, экран 16:9.");
-      }
+      if (action === "new") startNewGameWithPreloader();
+      else if (action === "load") showMenuToast("Сохранённых игр пока нет.");
+      else if (action === "settings") showMenuToast("Настройки по умолчанию: звук 100%, экран 16:9.");
     }
 
-    /* ============================================================================
-       1. КАРТА КАРТИНОК (ВКЛЮЧАЯ 5 ЭТАЖЕЙ ПОДЪЕЗДА 18/14 КАРТИНОК, ДВЕРИ 16–30 И УЛИЦУ)
-    ============================================================================ */
+    /* 1. КАРТА КАРТИНОК */
     const SCENE_IMAGES = {
       bedroom: "спальня.jpg", bedroom_rev: "спальня обратная.jpg",
       corridor_room: "коридор комнаты.jpg", corridor_room_rev: "коридор комнаты обратная.jpg",
@@ -919,25 +658,18 @@
       ev_switch: "события/выключатель.jpg", ev_flush: "события/смыв туалет.jpg",
       ev_glass: "события/стакан.jpg", ev_thermometer: "события/термометр.jpg",
       ev_robe: "события/халат.jpg",
-      ev_window_1: "события/окно.jpg",
-      ev_window_2: "события/окно 2.jpg",
-      ev_window_climb: "события/вылазит в окно.jpg",
-      ev_yard_window: "события/двор с окна.jpg",
-      ev_defense: "события/оборона.jpg",
-      ev_search_junk: "события/поиск хлам.jpg",
-      ev_peephole_empty_1: "события/глазок.jpg",
-      ev_peephole_empty_2: "события/глазок 3.jpg",
-      ev_peephole_lit_1: "события/глазок 1.jpg",
-      ev_peephole_lit_2: "события/глазок 2.jpg",
-      ev_tap: "события/кран.jpg",
-      ev_dress: "события/одеться.jpg", ev_shoes: "события/обуться.jpg",
+      ev_window_1: "события/окно.jpg", ev_window_2: "события/окно 2.jpg",
+      ev_window_climb: "события/вылазит в окно.jpg", ev_yard_window: "события/двор с окна.jpg",
+      ev_defense: "события/оборона.jpg", ev_search_junk: "события/поиск хлам.jpg",
+      ev_peephole_empty_1: "события/глазок.jpg", ev_peephole_empty_2: "события/глазок 3.jpg",
+      ev_peephole_lit_1: "события/глазок 1.jpg", ev_peephole_lit_2: "события/глазок 2.jpg",
+      ev_tap: "события/кран.jpg", ev_dress: "события/одеться.jpg", ev_shoes: "события/обуться.jpg",
       ev_carpets_roll: "события/ковры скатаны.jpg", ev_carpets_wall: "события/только ковры.jpg",
       ev_all_covered: "события/всё завешано.jpg", ev_bricks: "события/кирпичи.jpg",
-      ev_stove: "события/печка.jpg", ev_dumbbells: "события/гантели.jpg", ev_bed: "события/кровать.jpg",
-      ev_granny_cans: "события/бидоны.jpg"
+      ev_stove: "события/печка.jpg", ev_dumbbells: "события/гантели.jpg",
+      ev_bed: "события/кровать.jpg", ev_granny_cans: "события/бидоны.jpg"
     };
 
-    // 5 этажей: подъезд 1 (спуск сверху вниз с 5-го этажа — 18 кадров), подъезд 2 (подъём снизу вверх — 14 кадров)
     for (let i = 1; i <= 18; i++) SCENE_IMAGES[`p1_${i}`] = `события/подъезд 1/${i}.jpg`;
     for (let i = 1; i <= 14; i++) SCENE_IMAGES[`p2_${i}`] = `события/подъезд 2/${i}.jpg`;
     for (let apt = 16; apt <= 30; apt++) {
@@ -951,17 +683,13 @@
     ]);
     for (let u = 1; u <= 16; u++) FULL_BRIGHT_SCENES.add(`street_${u}`);
 
-    /* ============================================================================
-       1.1. ОПТИМИЗИРОВАННЫЙ ПРЕЛОАДЕР (ТОЛЬКО СТАРТОВЫЕ РЕСУРСЫ) + ПОДГРУЗКА НА 1 ШАГ ВПЕРЁД
-    ============================================================================ */
+    /* 1.1. ПРЕЛОАДЕР С ДЕКОДИРОВАНИЕМ (img.decode) */
     let ochkoIframeReady = false;
     let pendingOchkoMessage = null;
 
     const CRITICAL_START_SCENES = [
-      "bedroom", "bedroom_rev",
-      "corridor_room", "corridor_room_rev",
-      "corridor_main", "corridor_main_rev",
-      "kitchen", "kitchen_rev",
+      "bedroom", "bedroom_rev", "corridor_room", "corridor_room_rev",
+      "corridor_main", "corridor_main_rev", "kitchen", "kitchen_rev",
       "junkroom", "toilet", "bath", "entrance", "cabinet"
     ];
 
@@ -975,6 +703,10 @@
         const rawPath = SCENE_IMAGES[key];
         if (!rawPath || lazyPreloadMap.has(rawPath)) continue;
         const img = new Image();
+        img.decoding = "async";
+        img.onload = () => {
+          if (typeof img.decode === "function") img.decode().catch(() => {});
+        };
         img.src = encodeURI(rawPath);
         lazyPreloadMap.set(rawPath, img);
         lazyPreloadQueue.push(rawPath);
@@ -1007,12 +739,37 @@
         if (floorDoors[f]) toPreload.push(...floorDoors[f]);
         if (f > 1) toPreload.push(`p1_${{ 5: 2, 4: 6, 3: 10, 2: 14 }[f]}`);
         if (f < 5) toPreload.push(`p2_${{ 1: 3, 2: 6, 3: 9, 4: 12 }[f]}`);
-        if (f === 1) toPreload.push("p1_18", "street_1");
+        if (f === 1) toPreload.push("p1_18", "street_1", "street_2");
         preloadSceneKeysLazy(toPreload);
       }
     }
 
+    function loadAndDecodeImage(rawUrl) {
+      return new Promise((res) => {
+        const img = new Image();
+        img.decoding = "async";
+        window.__preloadedImages.push(img);
+        let settled = false;
+        const done = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(safetyTimer);
+          res();
+        };
+        const safetyTimer = setTimeout(done, 12000);
+        img.onload = () => {
+          if (typeof img.decode === "function") img.decode().catch(() => {}).finally(done);
+          else done();
+        };
+        img.onerror = done;
+        img.src = encodeURI(rawUrl);
+      });
+    }
+
     async function startNewGameWithPreloader() {
+      if (gameStarting) return;
+      gameStarting = true;
+
       const preloader = document.getElementById("preloader-overlay");
       const barFill = document.getElementById("preloader-bar-fill");
       const statusEl = document.getElementById("preloader-status");
@@ -1035,30 +792,25 @@
       }
 
       window.__preloadedImages = [];
-      const imagePromises = uniqueUrls.map((rawUrl) => new Promise((res) => {
-        const img = new Image();
-        window.__preloadedImages.push(img);
-        let settled = false;
-        const safetyTimer = setTimeout(() => done(), 15000);
-        const done = () => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(safetyTimer);
+      let cursor = 0;
+      const CONCURRENCY = 4;
+      const workers = Array.from({ length: Math.min(CONCURRENCY, uniqueUrls.length) }, async () => {
+        while (cursor < uniqueUrls.length) {
+          const url = uniqueUrls[cursor++];
+          await loadAndDecodeImage(url);
           updateProgress();
-          res();
-        };
-        img.onload = done;
-        img.onerror = done;
-        img.src = encodeURI(rawUrl);
-      }));
+        }
+      });
 
-      await Promise.all(imagePromises);
+      await Promise.all(workers);
 
       stopMenuMedia();
       startNeighborArrivalCountdown();
       menuEl.classList.add("hidden");
       menuEl.style.display = "none";
       syncStaticLightingState();
+      syncFlameIntervalState();
+      renderUI(true);
       preloadNextStepForRoom(state.logicalRoom);
       preloader.style.opacity = "0";
       setTimeout(() => {
@@ -1067,10 +819,9 @@
       }, 460);
     }
 
-    /* ============================================================================
-       2. ЗВУКОВОЙ ДВИЖОК
-    ============================================================================ */
+    /* 2. ЗВУКОВОЙ ДВИЖОК */
     let stepBareToggle = 0, stepShoesToggle = 0, doorCreakToggle = 0, knockTimerId = null, knockToggle = 0, audioCtx = null;
+    const resolvedAudioCache = new Map();
 
     function playCardSound(type) {
       try {
@@ -1096,12 +847,26 @@
     function playAudioSmart(folders, names, vol = 0.85) {
       const fList = Array.isArray(folders) ? folders : [folders];
       const nList = Array.isArray(names) ? names : [names];
+      const cacheKey = `${fList.join("|")}::${nList.join("|")}`;
+
+      if (resolvedAudioCache.has(cacheKey)) {
+        const cachedPath = resolvedAudioCache.get(cacheKey);
+        if (!cachedPath) return Promise.resolve(false);
+        return new Promise((res) => {
+          const a = new Audio(cachedPath);
+          a.volume = vol;
+          a.onended = () => res(true);
+          a.onerror = () => res(false);
+          a.play().catch(() => res(false));
+        });
+      }
+
       const queue = [];
       for (const f of fList) {
         for (const n of nList) {
           const cap = n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
           [n, n.toUpperCase(), n.toLowerCase(), cap].forEach((variant) => {
-            const path = `${f}/${variant}.mp3`;
+            const path = encodeURI(`${f}/${variant}.mp3`);
             if (!queue.includes(path)) queue.push(path);
           });
         }
@@ -1109,12 +874,18 @@
       return new Promise((res) => {
         let idx = 0;
         function tryNext() {
-          if (idx >= queue.length) return res(false);
-          const a = new Audio(encodeURI(queue[idx++]));
+          if (idx >= queue.length) {
+            resolvedAudioCache.set(cacheKey, null);
+            return res(false);
+          }
+          const path = queue[idx++];
+          const a = new Audio(path);
           a.volume = vol;
           a.onended = () => res(true);
           a.onerror = () => tryNext();
-          a.play().catch(() => tryNext());
+          a.play().then(() => {
+            resolvedAudioCache.set(cacheKey, path);
+          }).catch(() => tryNext());
         }
         tryNext();
       });
@@ -1147,9 +918,7 @@
       if (knockTimerId) { clearTimeout(knockTimerId); knockTimerId = null; }
     }
 
-    /* ============================================================================
-       3. ЛИСТЫ ИКОНОК 1–5
-    ============================================================================ */
+    /* 3. ЛИСТЫ ИКОНОК 1–5 */
     const ICON_SHEETS = { 1: "ИКОНКИ.jpg", 2: "ИКОНКИ 2.jpg", 3: "ИКОНКИ 3.jpg", 4: "иконки 4.jpg", 5: "иконки 5.jpg" };
     const SHEET_METRICS = {
       1: { colX: [1.8, 21.4, 41.0, 60.6, 80.2], rowY: [7.2, 38.8, 70.3], boxW: 18.0, boxH: 25.0 },
@@ -1168,9 +937,7 @@
       el.style.backgroundPosition = `${posX.toFixed(2)}% ${posY.toFixed(2)}%`;
     }
 
-    /* ============================================================================
-       4. СПРАЙТЫ СОСЕДЕЙ (СОСЕД.PNG И СОСЕДКА.PNG) — ПРЯМОЙ CSS-СПРАЙТ БЕЗ CANVAS
-    ============================================================================ */
+    /* 4. СПРАЙТЫ СОСЕДЕЙ */
     const NPC_FILES = { neighbor: "сосед.png", woman: "соседка.png" };
     let npcTalkInterval = null;
 
@@ -1194,9 +961,7 @@
     }
     function hideNpc() { if (npcTalkInterval) { clearInterval(npcTalkInterval); npcTalkInterval = null; } setNpcPose(null); }
 
-    /* ============================================================================
-       5. ШКАФ С ПРИПАСАМИ (ТУШЁНКА И ИСПРАВЛЕННЫЙ МЕШОК С КАРТОШКОЙ)
-    ============================================================================ */
+    /* 5. ШКАФ С ПРИПАСАМИ */
     const STEW_CROP = { rx: 0.048, ry: 0.082, rw: 0.148, rh: 0.368, aspect: 0.72 };
     const POTATO_CROPS = {
       5: { rx: 0.018, ry: 0.065, rw: 0.362, rh: 0.355, aspect: 1.81 },
@@ -1268,9 +1033,7 @@
       }
     }
 
-    /* ============================================================================
-       6. ТЕКСТЫ ПАМЯТОК ГО И ИНСТРУКЦИИ К КОСТЯМ
-    ============================================================================ */
+    /* 6. ПАМЯТКИ ГО И ИНСТРУКЦИЯ */
     const BROCHURE_TEXTS = {
       1: `<p>В случае падения температуры ниже +12°C жильцам надлежит незамедлительно приступить к герметизации дверных и оконных проемов ветошью и малярным скотчем.</p><div class="brochure-section-title">РАЗДЕЛ I. Защита от сквозняков и таганок</div><p>Первым делом плотно подоткните щель под входной дверью. В стенках пустой консервной емкости пробиваются вентиляционные отверстия, внутрь ставится свеча («таганок»).</p>`,
       2: `<div class="brochure-section-title">РАЗДЕЛ II. Обогрев помещения и теплоаккумулятор</div><p>Оклейте стыки оконных рам малярным скотчем. Над зоной горения свечи обязательно устанавливается керамический элемент (строительный кирпич) как теплоаккумулятор.</p>`,
@@ -1278,9 +1041,7 @@
     };
 
     async function openBrochure(part) {
-      if (part === 1 || part === 2) {
-        await showActionCloseup("ev_defense", false, false);
-      }
+      if (part === 1 || part === 2) await showActionCloseup("ev_defense", false, false);
       if (part === 1) {
         state.readBrochure1 = true;
         removeStoryCard("read_brochure_1");
@@ -1313,9 +1074,7 @@
       renderUI(false);
     }
 
-    /* ============================================================================
-       7. СОСТОЯНИЕ ИГРЫ, ОГАРОК СВЕЧИ (candleBurnedMs) И ИНВЕНТАРЬ
-    ============================================================================ */
+    /* 7. СОСТОЯНИЕ ИГРЫ И ИНВЕНТАРЬ */
     const MATCH_DURATION = 30000;
     const CANDLE_DURATION = 360000;
     const NEIGHBOR_ARRIVAL_DELAY = 180000;
@@ -1323,52 +1082,26 @@
     const state = {
       logicalRoom: "bedroom", currentScene: "bedroom",
       lightMode: "intro",
-      matchStart: 0,
-      candleStart: 0,
-      candleBurnedMs: 0, // Сколько мс свеча уже прогорела (сохраняется при взгляде в глазок и окно!)
+      matchStart: 0, candleStart: 0, candleBurnedMs: 0,
       candleIgniteStart: 0, candleWickLitTime: 0, candleIgniteEnd: 0,
-
-      firstMatchTutorialShown: false,
-      matchTutorialSweepActive: false,
-
-      // Начальная последовательность:
+      firstMatchTutorialShown: false, matchTutorialSweepActive: false, matchTutorialSweepStart: 0,
       robeDone: false, waterDone: false, toiletUsed: false, radiatorTouched: false,
-      basicNavUnlocked: false,
-      roomNavUnlocked: false,
-
-      wentOutside: false,
-      neighborVisited: false,
-      neighborPendingArrival: false,
-      neighborReturnTimer: null,
-      neighborArrivalTimerId: null,
-      inPeepholeDialog: false,
-      needsFoodForDice: false,
-      activeBetType: "stew",
-
+      basicNavUnlocked: false, roomNavUnlocked: false,
+      wentOutside: false, neighborVisited: false, neighborPendingArrival: false,
+      neighborReturnTimer: null, neighborArrivalTimerId: null,
+      inPeepholeDialog: false, needsFoodForDice: false, activeBetType: "stew",
       hasCandle: false, hasDiceSet: false, hasBrochure1: false, hasDiceRules: false,
       hasBrochure2: false, hasTape: false, hasEmptyCan: false,
       hasGrannyCans: false, grannyCansFilled: false, grannyHelped: false,
-      hasBricks: false,
-      readBrochure1: false, readBrochure2: false,
+      hasBricks: false, readBrochure1: false, readBrochure2: false,
       doorSealed: false, windowsTaped: false,
-
-      hasShoes: false, hasCoat: false,
-      carpetsTaken: false, carpetsHung: false, stoveBuilt: false,
-      junkSearches: 0,
-      landingFloor: 3, landingDir: "down",
-      activeDoorApt: null,
-      activeOpponentId: 1,
-      oppProgress: { 1: 1, 2: 1, 3: 1, 4: 1 },
-      opp3Beaten: false,
-
+      hasShoes: false, hasCoat: false, carpetsTaken: false, carpetsHung: false, stoveBuilt: false,
+      junkSearches: 0, landingFloor: 3, landingDir: "down",
+      activeDoorApt: null, activeOpponentId: 1,
+      oppProgress: { 1: 1, 2: 1, 3: 1, 4: 1 }, opp3Beaten: false,
       isWalking: false, isKnocking: false, activeSlot: "a",
-
-      stewCount: 3, potatoStage: 5,
-      invStew: 0, invPotato: 0,
-
-      actOffset: 0, movOffset: 0,
-      autoReturnTimer: null,
-      backBtnTarget: null,
+      stewCount: 3, potatoStage: 5, invStew: 0, invPotato: 0,
+      actOffset: 0, movOffset: 0, autoReturnTimer: null, backBtnTarget: null,
       storyCardIds: ["check_switch"]
     };
 
@@ -1385,9 +1118,7 @@
 
     function startNeighborArrivalCountdown() {
       if (state.neighborArrivalTimerId) clearTimeout(state.neighborArrivalTimerId);
-      state.neighborArrivalTimerId = setTimeout(() => {
-        triggerNeighborArrivalNow();
-      }, NEIGHBOR_ARRIVAL_DELAY);
+      state.neighborArrivalTimerId = setTimeout(triggerNeighborArrivalNow, NEIGHBOR_ARRIVAL_DELAY);
     }
 
     const setEventText = (t) => { document.getElementById("narrative-text").textContent = t; };
@@ -1398,7 +1129,6 @@
     function removeStoryCard(id) { state.storyCardIds = state.storyCardIds.filter((x) => x !== id); }
 
     function checkInitialStepsProgress() {
-      // Если свеча уже найдена и зажжена, либо выполнены базовые шаги — открываем карточку «Потрогать батарею»
       if (!state.radiatorTouched && ((state.hasCandle && (state.lightMode === "candle" || state.lightMode === "kerosene")) || (state.robeDone && state.waterDone && state.toiletUsed))) {
         addStoryCard("touch_radiator", true);
       }
@@ -1407,24 +1137,19 @@
       }
     }
 
-    function totalStewAvailable() {
-      return state.invStew + state.stewCount;
-    }
+    function totalStewAvailable() { return state.invStew + state.stewCount; }
     function spendOneStew() {
       if (state.invStew > 0) { state.invStew--; updateBackpackBadge(); return true; }
       if (state.stewCount > 0) { state.stewCount--; return true; }
       return false;
     }
-    function totalPotatoAvailable() {
-      return state.invPotato + state.potatoStage;
-    }
+    function totalPotatoAvailable() { return state.invPotato + state.potatoStage; }
     function spendOnePotato() {
       if (state.invPotato > 0) { state.invPotato--; updateBackpackBadge(); return true; }
       if (state.potatoStage > 0) { state.potatoStage--; return true; }
       return false;
     }
 
-    /* ИКОНКИ В ИНВЕНТАРЕ */
     function getInventoryItemsList() {
       const list = [];
       if (state.invStew > 0) list.push({ key: "stew", sheet: 2, icon: 3, caption: `Тушёнка (${state.invStew} шт.)` });
@@ -1447,39 +1172,29 @@
     }
 
     function updateBackpackBadge() {
-      const count = getInventoryItemsList().length;
-      document.getElementById("backpack-badge").textContent = count;
+      document.getElementById("backpack-badge").textContent = getInventoryItemsList().length;
     }
 
-    /* МОДАЛКА НАХОДОК ПО ЦЕНТРУ ЭКРАНА */
     function showLootModal(titleText, cardsArray) {
       const modal = document.getElementById("loot-center-modal");
       const row = document.getElementById("loot-cards-row");
       document.getElementById("loot-modal-title").textContent = titleText;
       row.innerHTML = "";
-
       cardsArray.forEach((c, idx) => {
         const btn = document.createElement("button");
         btn.className = "choice-card deal-anim";
         btn.style.setProperty("--deal-delay", `${idx * 85}ms`);
-        const inner = document.createElement("div");
-        inner.className = "card-inner";
-        const iconDiv = document.createElement("div");
-        iconDiv.className = "card-icon-frame";
+        btn.addEventListener("animationend", (e) => {
+          if (e.animationName === "cardDeal") btn.classList.remove("deal-anim");
+        }, { once: true });
+        const inner = document.createElement("div"); inner.className = "card-inner";
+        const iconDiv = document.createElement("div"); iconDiv.className = "card-icon-frame";
         applyIconSprite(iconDiv, c.sheet, c.icon);
-        const cap = document.createElement("div");
-        cap.className = "choice-caption";
-        cap.textContent = c.caption;
-        inner.appendChild(iconDiv);
-        inner.appendChild(cap);
-        btn.appendChild(inner);
-        btn.onclick = () => {
-          playCardSound("click");
-          setEventText(c.desc || c.caption);
-        };
+        const cap = document.createElement("div"); cap.className = "choice-caption"; cap.textContent = c.caption;
+        inner.appendChild(iconDiv); inner.appendChild(cap); btn.appendChild(inner);
+        btn.onclick = () => { playCardSound("click"); setEventText(c.desc || c.caption); };
         row.appendChild(btn);
       });
-
       playCardSound("deal");
       modal.classList.add("visible");
     }
@@ -1493,7 +1208,6 @@
       renderUI(true);
     }
 
-    /* ПОЛНОЭКРАННЫЙ ИНВЕНТАРЬ */
     function openInventoryScreen() {
       renderInventoryGrid();
       document.getElementById("inventory-screen").classList.add("visible");
@@ -1518,24 +1232,14 @@
       }
 
       const inKitchenOrCabinet = (state.logicalRoom === "kitchen" || state.currentScene === "cabinet");
-
       items.forEach((item) => {
-        const wrap = document.createElement("div");
-        wrap.className = "inv-item-wrap";
-
-        const btn = document.createElement("button");
-        btn.className = "choice-card";
-        const inner = document.createElement("div");
-        inner.className = "card-inner";
-        const iconDiv = document.createElement("div");
-        iconDiv.className = "card-icon-frame";
+        const wrap = document.createElement("div"); wrap.className = "inv-item-wrap";
+        const btn = document.createElement("button"); btn.className = "choice-card";
+        const inner = document.createElement("div"); inner.className = "card-inner";
+        const iconDiv = document.createElement("div"); iconDiv.className = "card-icon-frame";
         applyIconSprite(iconDiv, item.sheet, item.icon);
-        const cap = document.createElement("div");
-        cap.className = "choice-caption";
-        cap.textContent = item.caption;
-        inner.appendChild(iconDiv);
-        inner.appendChild(cap);
-        btn.appendChild(inner);
+        const cap = document.createElement("div"); cap.className = "choice-caption"; cap.textContent = item.caption;
+        inner.appendChild(iconDiv); inner.appendChild(cap); btn.appendChild(inner);
 
         btn.onclick = () => {
           playCardSound("click");
@@ -1543,27 +1247,19 @@
           else if (item.key === "brochure_2") { closeInventoryScreen(); openBrochure(2); }
           else if (item.key === "dice_rules") { closeInventoryScreen(); openBrochure("dice"); }
           else if (item.key === "dice_set") { openOchkoBoxOnly(); }
-          else if (item.key === "candle") {
-            igniteCandle();
-            hint.textContent = "Вы зажгли восковую свечу.";
-          } else if (item.key === "stew") {
-            hint.textContent = "Банка мясной тушёнки в вещмешке. Можно съесть, поставить на кон в кости или выложить обратно в шкаф.";
-          } else if (item.key === "potato") {
-            hint.textContent = "Сырая картошка из шкафа. Первый сосед (кв. 20) согласен играть в кости и на картошку!";
-          } else if (item.key === "granny_cans") {
+          else if (item.key === "candle") { igniteCandle(); hint.textContent = "Вы зажгли восковую свечу."; }
+          else if (item.key === "stew") hint.textContent = "Банка мясной тушёнки в вещмешке. Можно съесть, поставить на кон в кости или выложить обратно в шкаф.";
+          else if (item.key === "potato") hint.textContent = "Сырая картошка из шкафа. Первый сосед (кв. 20) согласен играть в кости и на картошку!";
+          else if (item.key === "granny_cans") {
             hint.textContent = state.grannyCansFilled
               ? "Полные бидоны с водой для бабушки из кв. 17. Отнесите их ей на 1-й этаж!"
               : "Пустые бидоны бабушки из кв. 17. Наберите в них воды на уличной колонке.";
-          } else {
-            hint.textContent = item.caption;
-          }
+          } else hint.textContent = item.caption;
         };
         wrap.appendChild(btn);
 
         if (item.key === "stew") {
-          const eatBtn = document.createElement("button");
-          eatBtn.className = "inv-sub-btn";
-          eatBtn.textContent = "Съесть";
+          const eatBtn = document.createElement("button"); eatBtn.className = "inv-sub-btn"; eatBtn.textContent = "Съесть";
           eatBtn.onclick = () => {
             if (state.invStew <= 0) return;
             state.invStew--;
@@ -1574,9 +1270,7 @@
           wrap.appendChild(eatBtn);
 
           if (inKitchenOrCabinet && state.stewCount < 6) {
-            const putBtn = document.createElement("button");
-            putBtn.className = "inv-sub-btn";
-            putBtn.textContent = "На полку шкафа";
+            const putBtn = document.createElement("button"); putBtn.className = "inv-sub-btn"; putBtn.textContent = "На полку шкафа";
             putBtn.onclick = () => {
               if (state.invStew <= 0 || state.stewCount >= 6) return;
               state.invStew--; state.stewCount++;
@@ -1589,9 +1283,7 @@
         }
 
         if (item.key === "potato" && inKitchenOrCabinet && state.potatoStage < 5) {
-          const putPotBtn = document.createElement("button");
-          putPotBtn.className = "inv-sub-btn";
-          putPotBtn.textContent = "В мешок на полке";
+          const putPotBtn = document.createElement("button"); putPotBtn.className = "inv-sub-btn"; putPotBtn.textContent = "В мешок на полке";
           putPotBtn.onclick = () => {
             if (state.invPotato <= 0 || state.potatoStage >= 5) return;
             state.invPotato--; state.potatoStage++;
@@ -1601,26 +1293,19 @@
           };
           wrap.appendChild(putPotBtn);
         }
-
         grid.appendChild(wrap);
       });
     }
 
-    /* ============================================================================
-       8. МГНОВЕННОЕ ОТКРЫТИЕ ОЧКО.HTML БЕЗ ПЕРЕЗАГРУЗКИ IFRAME (POSTMESSAGE)
-    ============================================================================ */
+    /* 8. ОЧКО.HTML */
     function sendOrOpenOchkoModal(payload) {
       const wrap = document.getElementById("ochko-modal-wrap");
       const iframe = document.getElementById("ochko-iframe");
       if (!iframe) return;
-
       const msg = { type: "OCHKO_OPEN", ...payload };
 
-      // Если фрейм уже предзагружен — отправляем postMessage и мгновенно показываем оверлей без перезагрузки!
       if (ochkoIframeReady && iframe.contentWindow && iframe.src && !iframe.src.endsWith("about:blank")) {
-        try {
-          iframe.contentWindow.postMessage(msg, "*");
-        } catch (e) {}
+        try { iframe.contentWindow.postMessage(msg, "*"); } catch (e) {}
         wrap.classList.add("visible");
       } else {
         pendingOchkoMessage = msg;
@@ -1632,20 +1317,15 @@
           }
           wrap.classList.add("visible");
         };
-        const q = payload.mode === "box"
+        iframe.src = payload.mode === "box"
           ? "Очко.html?mode=box"
           : `Очко.html?mode=match&opponent=${payload.opponent || 1}&game=${payload.game || 1}&bg=${encodeURIComponent(payload.bg || "вход.jpg")}`;
-        iframe.src = q;
       }
     }
 
-    function openOchkoBoxOnly() {
-      sendOrOpenOchkoModal({ mode: "box" });
-    }
+    function openOchkoBoxOnly() { sendOrOpenOchkoModal({ mode: "box" }); }
 
     function openOchkoMatch(opponentId = 1) {
-      // Первый сосед (в глазке и в кв. 20) соглашается играть и на тушёнку, и на картошку!
-      // Остальные соседи играют только на тушёнку.
       if (opponentId === 1) {
         if (state.invStew <= 0 && state.invPotato <= 0) {
           state.needsFoodForDice = true;
@@ -1665,29 +1345,20 @@
       state.needsFoodForDice = false;
       removeStoryCard("go_take_stew");
       state.activeOpponentId = opponentId;
-      const gameNum = state.oppProgress[opponentId] || 1;
-      const bgFile = SCENE_IMAGES[state.currentScene] || "вход.jpg";
-
       sendOrOpenOchkoModal({
-        mode: "match",
-        opponent: opponentId,
-        game: gameNum,
-        bg: bgFile,
-        betType: state.activeBetType
+        mode: "match", opponent: opponentId, game: state.oppProgress[opponentId] || 1,
+        bg: SCENE_IMAGES[state.currentScene] || "вход.jpg", betType: state.activeBetType
       });
     }
 
     window.addEventListener("message", (e) => {
       const data = e.data;
       if (!data || typeof data !== "object") return;
-
       if (data.type === "OCHKO_BOX_CLOSED") {
         if (Array.isArray(data.playerSkins)) {
           try { localStorage.setItem("ochko_player_skins", JSON.stringify(data.playerSkins)); } catch (err) {}
         }
-        const wrap = document.getElementById("ochko-modal-wrap");
-        wrap.classList.remove("visible");
-        // НЕ сбрасываем iframe.src = "about:blank", чтобы фрейм оставался в памяти!
+        document.getElementById("ochko-modal-wrap").classList.remove("visible");
         renderInventoryGrid();
       } else if (data.type === "OCHKO_MATCH_FINISHED") {
         if (data.ownedCounts) {
@@ -1696,10 +1367,7 @@
         if (Array.isArray(data.playerSkins)) {
           try { localStorage.setItem("ochko_player_skins", JSON.stringify(data.playerSkins)); } catch (err) {}
         }
-
-        const wrap = document.getElementById("ochko-modal-wrap");
-        wrap.classList.remove("visible");
-        // НЕ сбрасываем iframe.src = "about:blank"!
+        document.getElementById("ochko-modal-wrap").classList.remove("visible");
 
         const oppId = Number(data.opponentId) || state.activeOpponentId || 1;
         if (data.won) {
@@ -1717,55 +1385,31 @@
           }
           updateBackpackBadge();
         }
-
         if (state.inPeepholeDialog) {
           finishPeepholeNeighborDialog();
-          if (state.currentScene === "ev_peephole_lit_2") {
-            crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
-          }
+          if (state.currentScene === "ev_peephole_lit_2") crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
         }
         renderUI(true);
       }
     });
 
-    /* ============================================================================
-       9. СПИЧКА, СВЕЧА, ОБУЧАЮЩИЙ ПРОЛЁТ И СОХРАНЕНИЕ ОГАРКА (candleBurnedMs)
-    ============================================================================ */
+    /* 9. СПИЧКА, СВЕЧА, ОБУЧАЮЩИЙ ПРОЛЁТ */
+    function resetTorchPosition() {
+      isDraggingTorch = false;
+      state.matchTutorialSweepActive = false;
+      torchOffsetX = 0; torchOffsetY = 0;
+      smoothTorchX = 0; smoothTorchY = 0;
+      lastTorchTransform = "";
+      flameCanvas.classList.remove("dragging");
+      flameCanvas.style.transform = "";
+    }
+
     function startMatchTutorialSweep() {
       const hintEl = document.getElementById("match-tutorial-hint");
       if (hintEl) hintEl.classList.add("visible");
       state.matchTutorialSweepActive = true;
+      state.matchTutorialSweepStart = performance.now();
       ensureAnimateLoop();
-      const sweepStart = performance.now();
-      const sweepDuration = 2900;
-
-      function stepSweep(now) {
-        if (!state.matchTutorialSweepActive || isDraggingTorch || state.lightMode !== "match") {
-          state.matchTutorialSweepActive = false;
-          if (!isDraggingTorch) {
-            torchOffsetX = 0;
-            torchOffsetY = 0;
-          }
-          return;
-        }
-        const p = Math.min(1, (now - sweepStart) / sweepDuration);
-        const ampX = STAGE_W * 0.28;
-        const ampY = STAGE_H * 0.22;
-
-        // Плавный пролёт влево -> вправо -> возврат в центр
-        const env = Math.sin(p * Math.PI);
-        torchOffsetX = Math.sin(p * Math.PI * 2) * ampX * env;
-        torchOffsetY = -Math.sin(p * Math.PI) * ampY;
-
-        if (p < 1) {
-          requestAnimationFrame(stepSweep);
-        } else {
-          state.matchTutorialSweepActive = false;
-          torchOffsetX = 0;
-          torchOffsetY = 0;
-        }
-      }
-      requestAnimationFrame(stepSweep);
     }
 
     function hideMatchTutorialHint() {
@@ -1779,9 +1423,7 @@
       state.lightMode = "match";
       state.matchStart = performance.now();
       flameCanvas.style.display = "block";
-      document.body.setAttribute("data-lit", "true");
-
-      renderCenterMatchAndCandle(performance.now());
+      renderCenterMatchAndCandle(state.matchStart);
       syncStaticLightingState();
       syncFlameIntervalState();
       if (!state.firstMatchTutorialShown) {
@@ -1793,10 +1435,7 @@
     function igniteCandle(playSoundAlreadyDone = false) {
       if (!playSoundAlreadyDone) playSnd1("СПИЧКА", 0.9);
       state.hasCandle = true;
-      // Если свеча ранее полностью догорела до конца, начинаем новую; иначе продолжаем с того же огарка state.candleBurnedMs!
-      if (state.candleBurnedMs >= CANDLE_DURATION - 500) {
-        state.candleBurnedMs = 0;
-      }
+      if (state.candleBurnedMs >= CANDLE_DURATION - 500) state.candleBurnedMs = 0;
       state.lightMode = "candle";
       const now = performance.now();
       state.candleIgniteStart = now;
@@ -1804,47 +1443,35 @@
       state.candleStart = now + 720;
       state.candleIgniteEnd = now + 2200;
       flameCanvas.style.display = "block";
-      document.body.setAttribute("data-lit", "true");
-      renderCenterMatchAndCandle(performance.now());
+      renderCenterMatchAndCandle(now);
       syncStaticLightingState();
       syncFlameIntervalState();
       checkInitialStepsProgress();
       updateBackpackBadge();
     }
 
-    // Сохранение огарка и тушение при взгляде в глазок или в окно
     function pauseAndExtinguishLightForView() {
       const now = performance.now();
-      if (state.lightMode === "candle") {
-        if (now > state.candleStart) {
-          state.candleBurnedMs = Math.min(CANDLE_DURATION, state.candleBurnedMs + (now - state.candleStart));
-        }
+      if (state.lightMode === "candle" && now > state.candleStart) {
+        state.candleBurnedMs = Math.min(CANDLE_DURATION, state.candleBurnedMs + (now - state.candleStart));
       }
       if (state.lightMode !== "kerosene") {
         state.lightMode = "none";
-        stopTorchDrag();
+        resetTorchPosition();
+        hideMatchTutorialHint();
         flameCanvas.style.display = "none";
-        document.body.setAttribute("data-lit", "false");
         syncStaticLightingState();
         syncFlameIntervalState();
         addStoryCard(state.hasCandle ? "light_candle" : "light_match", true);
       }
     }
 
-    /* ============================================================================
-       9.1. 5 ЭТАЖЕЙ ПОДЪЕЗДА (18 И 14 КАРТИНОК) И МАРШРУТЫ
-    ============================================================================ */
+    /* 9.1. МАРШРУТЫ ПО КВАРТИРЕ И ПОДЪЕЗДУ */
     function resolveRoomSceneKey(roomKey) {
       if (roomKey === "bedroom") return state.stoveBuilt ? "ev_stove" : (state.carpetsHung ? "ev_all_covered" : "bedroom");
       if (roomKey === "junkroom") return state.carpetsTaken ? "junkroom_empty" : "junkroom";
       if (roomKey === "landing") {
-        // Папка события/подъезд 1/ (18 картинок, спуск сверху вниз с 5-го этажа):
-        // 5 этаж: p1_1, 4 этаж: p1_5, 3 этаж (наш): p1_9, 2 этаж: p1_13, 1 этаж: p1_17
-        if (state.landingDir === "down") {
-          return `p1_${{ 5: 1, 4: 5, 3: 9, 2: 13, 1: 17 }[state.landingFloor] || 9}`;
-        }
-        // Папка события/подъезд 2/ (14 картинок, подъём снизу вверх с 1-го на 5-й этаж):
-        // 1 этаж: p2_2, 2 этаж: p2_5, 3 этаж (наш): p2_8, 4 этаж: p2_11, 5 этаж: p2_14
+        if (state.landingDir === "down") return `p1_${{ 5: 1, 4: 5, 3: 9, 2: 13, 1: 17 }[state.landingFloor] || 9}`;
         return `p2_${{ 1: 2, 2: 5, 3: 8, 4: 11, 5: 14 }[state.landingFloor] || 8}`;
       }
       return roomKey;
@@ -1901,23 +1528,21 @@
     }
 
     const slotA = document.getElementById("slot-a"), slotB = document.getElementById("slot-b");
+    const vignetteEl = document.getElementById("vignette");
 
     function isSceneHidingTorch(sceneKey) {
       if (!sceneKey) return false;
-      return (
-        sceneKey.startsWith("ev_peephole_") ||
-        sceneKey.startsWith("ev_window_") ||
-        sceneKey === "ev_yard_window"
-      );
+      return sceneKey.startsWith("ev_peephole_") || sceneKey.startsWith("ev_window_") || sceneKey === "ev_yard_window";
     }
 
     function updateFlameVisibility() {
       const hasActiveFlame = state.lightMode === "match" || state.lightMode === "candle" || state.lightMode === "kerosene";
-      const hideByScene = isSceneHidingTorch(state.currentScene);
-      const nextDisplay = (hasActiveFlame && !hideByScene) ? "block" : "none";
-      if (flameCanvas.style.display !== nextDisplay) {
-        flameCanvas.style.display = nextDisplay;
-      }
+      const nextDisplay = (hasActiveFlame && !isSceneHidingTorch(state.currentScene)) ? "block" : "none";
+      if (flameCanvas.style.display !== nextDisplay) flameCanvas.style.display = nextDisplay;
+    }
+
+    function updateVignetteFullbright(sceneKey) {
+      if (vignetteEl) vignetteEl.classList.toggle("fullbright", FULL_BRIGHT_SCENES.has(sceneKey));
     }
 
     function setBackButtonTarget(sceneKeyOrNull, label = "Отойти назад") {
@@ -1926,8 +1551,7 @@
       const hud = document.getElementById("bottom-hud");
       btn.textContent = label;
       btn.classList.toggle("visible", Boolean(sceneKeyOrNull));
-      const hideHud = Boolean(sceneKeyOrNull) || isNeighborCenterChoiceActive();
-      hud.classList.toggle("hidden-hud", hideHud);
+      hud.classList.toggle("hidden-hud", Boolean(sceneKeyOrNull) || isNeighborCenterChoiceActive());
     }
 
     async function handleSceneBackBtn() {
@@ -1939,9 +1563,7 @@
       removeStoryCard("leave_door_view");
       setBackButtonTarget(null);
       hideNpc();
-      if (state.needsFoodForDice) {
-        addStoryCard("go_take_stew", true);
-      }
+      if (state.needsFoodForDice) addStoryCard("go_take_stew", true);
       await crossfadeToScene(target, false);
       renderCabinetItems();
       renderUI(true);
@@ -1951,19 +1573,15 @@
       if (state.autoReturnTimer) { clearTimeout(state.autoReturnTimer); state.autoReturnTimer = null; }
     }
 
-    /* ЕДИНСТВЕННЫЙ ФОНОВЫЙ СЛОЙ БЕЗ МНОЖЕСТВЕННЫХ ВАРИАНТОВ */
-    function buildFallbackBgUrls(rawPath, sceneKey = "") {
-      return `url("${encodeURI(rawPath)}")`;
-    }
+    function buildFallbackBgUrls(rawPath) { return `url("${encodeURI(rawPath)}")`; }
 
-    function applyBackgroundToSlot(slot, key) {
+    function applyBackgroundToSlot(slot, key, syncLightNow = true) {
       const rawPath = SCENE_IMAGES[key] || SCENE_IMAGES.bedroom;
-      const bgVal = buildFallbackBgUrls(rawPath, key);
-      const isFullBright = FULL_BRIGHT_SCENES.has(key);
-      slot.classList.toggle("no-darkness", isFullBright);
-      document.body.setAttribute("data-fullbright", isFullBright ? "true" : "false");
-      slot.querySelector(".layer-bg").style.backgroundImage = bgVal;
-      if (typeof syncStaticLightingState === "function") syncStaticLightingState();
+      slot.querySelector(".layer-bg").style.backgroundImage = buildFallbackBgUrls(rawPath);
+      if (syncLightNow) {
+        updateVignetteFullbright(key);
+        if (typeof syncStaticLightingState === "function") syncStaticLightingState();
+      }
     }
 
     function crossfadeToScene(sceneKey, playStep = true) {
@@ -1972,28 +1590,35 @@
         const inc = state.activeSlot === "a" ? slotB : slotA;
         const out = state.activeSlot === "a" ? slotA : slotB;
         document.getElementById("cabinet-items-layer").classList.remove("visible");
-        applyBackgroundToSlot(inc, sceneKey);
-        inc.className = "scene-slot incoming-prep" + (FULL_BRIGHT_SCENES.has(sceneKey) ? " no-darkness" : "");
-        void inc.offsetWidth;
-        inc.className = "scene-slot current" + (FULL_BRIGHT_SCENES.has(sceneKey) ? " no-darkness" : "");
-        out.className = "scene-slot outgoing" + (out.classList.contains("no-darkness") ? " no-darkness" : "");
-        state.activeSlot = state.activeSlot === "a" ? "b" : "a";
-        state.currentScene = sceneKey;
-        updateFlameVisibility();
-        syncStaticLightingState();
-        syncFlameIntervalState();
-        if (playStep) playFootstepSound();
-        setTimeout(resolve, 860);
+        applyBackgroundToSlot(inc, sceneKey, false);
+        inc.className = "scene-slot incoming-prep";
+        out.classList.add("transitioning");
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            inc.className = "scene-slot current transitioning";
+            out.className = "scene-slot outgoing transitioning";
+            state.activeSlot = state.activeSlot === "a" ? "b" : "a";
+            state.currentScene = sceneKey;
+            updateVignetteFullbright(sceneKey);
+            updateFlameVisibility();
+            syncStaticLightingState();
+            syncFlameIntervalState();
+            if (playStep) playFootstepSound();
+            setTimeout(() => {
+              inc.classList.remove("transitioning");
+              out.classList.remove("transitioning");
+              resolve();
+            }, 860);
+          });
+        });
       });
     }
 
     async function showActionCloseup(sceneKey, playStep = false, holdReturn = true) {
       clearAutoReturn();
-      if (state.currentScene !== sceneKey) {
-        await crossfadeToScene(sceneKey, playStep);
-      } else if (playStep) {
-        playFootstepSound();
-      }
+      if (state.currentScene !== sceneKey) await crossfadeToScene(sceneKey, playStep);
+      else if (playStep) playFootstepSound();
+
       const baseScene = resolveRoomSceneKey(state.logicalRoom);
       const nonAutoReturn = new Set([baseScene, "cabinet", "ev_peephole_lit_2", "ev_peephole_empty_2", "ev_yard_window", "ev_defense"]);
       if (holdReturn && !nonAutoReturn.has(sceneKey) && !sceneKey.startsWith("door_")) {
@@ -2012,10 +1637,8 @@
     async function walkToRoom(targetRoom) {
       if (state.isWalking) return;
       clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
-      state.activeDoorApt = null;
-      state.inPeepholeDialog = false;
-      removeStoryCard("play_dice_door");
-      removeStoryCard("leave_door_view");
+      state.activeDoorApt = null; state.inPeepholeDialog = false;
+      removeStoryCard("play_dice_door"); removeStoryCard("leave_door_view");
       if (state.logicalRoom === targetRoom) {
         const sc = resolveRoomSceneKey(targetRoom);
         if (state.currentScene !== sc) await crossfadeToScene(sc, false);
@@ -2026,9 +1649,7 @@
       state.isWalking = true; renderUI(false);
 
       if (ROOMS_WITH_DOORS.has(fromRoom)) playDoorCreakSound();
-      for (const frameKey of frames) {
-        await crossfadeToScene(frameKey, true);
-      }
+      for (const frameKey of frames) await crossfadeToScene(frameKey, true);
       if (ROOMS_WITH_DOORS.has(targetRoom)) playDoorCreakSound();
 
       state.logicalRoom = targetRoom;
@@ -2041,13 +1662,14 @@
 
     async function playStairwellSequence(frames) {
       clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
-      state.activeDoorApt = null;
-      state.inPeepholeDialog = false;
-      removeStoryCard("play_dice_door");
-      removeStoryCard("leave_door_view");
+      state.activeDoorApt = null; state.inPeepholeDialog = false;
+      removeStoryCard("play_dice_door"); removeStoryCard("leave_door_view");
       state.isWalking = true; renderUI(false);
       for (let i = 0; i < frames.length; i++) {
-        if (i + 1 < frames.length) preloadSceneKeysLazy([frames[i + 1]]);
+        const ahead = [];
+        if (i + 1 < frames.length) ahead.push(frames[i + 1]);
+        if (i + 2 < frames.length) ahead.push(frames[i + 2]);
+        if (ahead.length) preloadSceneKeysLazy(ahead);
         await crossfadeToScene(frames[i], true);
       }
       state.isWalking = false;
@@ -2056,9 +1678,7 @@
       renderUI(true);
     }
 
-    /* ============================================================================
-       10. ПЕРЕМЕЩЕНИЯ СПРАВА (КВАРТИРА + 5 ЭТАЖЕЙ ПОДЪЕЗДА + 16 КАДРОВ УЛИЦЫ)
-    ============================================================================ */
+    /* 10. ПЕРЕМЕЩЕНИЯ СПРАВА */
     const APARTMENT_MOVE_CARDS = [
       { room: "kitchen",  sheet: 5, icon: 1, caption: "Кухня" },
       { room: "bedroom",  sheet: 5, icon: 2, caption: "Спальня" },
@@ -2100,7 +1720,6 @@
       if (!state.basicNavUnlocked && !state.roomNavUnlocked) return [];
       if (isNeighborCenterChoiceActive()) return [];
 
-      // Пока батарея не потрогана и свеча не горит, свободное передвижение по всей квартире ограничено
       if (!state.roomNavUnlocked) {
         const earlyRooms = new Set(["bedroom", "kitchen", "toilet", "junkroom"]);
         return APARTMENT_MOVE_CARDS
@@ -2161,7 +1780,10 @@
           setEventText("Вы выходите из подъезда в слепящую метель и пробираетесь сквозь сугробы к уличной колонке...");
 
           for (let u = 1; u <= 16; u++) {
-            if (u < 16) preloadSceneKeysLazy([`street_${u + 1}`]);
+            const ahead = [];
+            if (u + 1 <= 16) ahead.push(`street_${u + 1}`);
+            if (u + 2 <= 16) ahead.push(`street_${u + 2}`);
+            if (ahead.length) preloadSceneKeysLazy(ahead);
             if (u === 8) {
               playSnd2("колонка", 0.9);
               setEventText("Вы качаете обледеневший рычаг колонки и набираете ледяную воду...");
@@ -2197,21 +1819,13 @@
       return moves;
     }
 
-    /* ============================================================================
-       11. БАЗА КАРТОЧЕК ДЕЙСТВИЙ И АВТО-МАРШРУТ ЗА ТУШЁНКОЙ
-    ============================================================================ */
+    /* 11. БАЗА КАРТОЧЕК ДЕЙСТВИЙ */
     function finishPeepholeNeighborDialog() {
       state.inPeepholeDialog = false;
-      removeStoryCard("agree_trade");
-      removeStoryCard("agree_trade_potato");
-      removeStoryCard("play_dice_neighbor");
-      removeStoryCard("refuse_trade");
-      addStoryCard("check_tap", true);
-      addStoryCard("put_coat", true);
-      addStoryCard("put_shoes", true);
-      if (state.needsFoodForDice) {
-        addStoryCard("go_take_stew", true);
-      }
+      removeStoryCard("agree_trade"); removeStoryCard("agree_trade_potato");
+      removeStoryCard("play_dice_neighbor"); removeStoryCard("refuse_trade");
+      addStoryCard("check_tap", true); addStoryCard("put_coat", true); addStoryCard("put_shoes", true);
+      if (state.needsFoodForDice) addStoryCard("go_take_stew", true);
       hideNpc();
     }
 
@@ -2235,10 +1849,7 @@
           if (wasIntro) {
             state.basicNavUnlocked = true;
             await showActionCloseup(resolveRoomSceneKey("bedroom"), false, false);
-            addStoryCard("put_robe");
-            addStoryCard("water");
-            addStoryCard("room_search_junk");
-            addStoryCard("go_toilet", true);
+            addStoryCard("put_robe"); addStoryCard("water"); addStoryCard("room_search_junk"); addStoryCard("go_toilet", true);
             setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
           } else if (!state.toiletUsed) {
             setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
@@ -2256,13 +1867,9 @@
           playSnd2("одежда", 0.9);
           await showActionCloseup("ev_robe", false, true);
           state.robeDone = true;
-          if (!state.toiletUsed) {
-            setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
-          } else if (!state.hasCandle) {
-            setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
-          } else {
-            setEventText("Вы надели тёплый махровый халат.");
-          }
+          if (!state.toiletUsed) setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
+          else if (!state.hasCandle) setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
+          else setEventText("Вы надели тёплый махровый халат.");
           checkInitialStepsProgress();
           renderUI(true);
         }
@@ -2275,13 +1882,9 @@
           playSnd1("СТАКАН С ВОДОЙ", 0.9);
           await showActionCloseup("ev_glass", false, true);
           state.waterDone = true;
-          if (!state.toiletUsed) {
-            setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
-          } else if (!state.hasCandle) {
-            setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
-          } else {
-            setEventText("Вы выпили стакан ледяной воды на кухне.");
-          }
+          if (!state.toiletUsed) setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
+          else if (!state.hasCandle) setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
+          else setEventText("Вы выпили стакан ледяной воды на кухне.");
           checkInitialStepsProgress();
           renderUI(true);
         }
@@ -2306,16 +1909,11 @@
           state.radiatorTouched = true;
           playFootstepSound();
           checkInitialStepsProgress();
-          if (!state.hasCandle) {
-            setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
-          } else {
-            setEventText("Батарея абсолютно ледяная — отопление отключили! Теперь в квартире доступны все комнаты и действия.");
-          }
+          if (!state.hasCandle) setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
+          else setEventText("Батарея абсолютно ледяная — отопление отключили! Теперь в квартире доступны все комнаты и действия.");
           renderUI(true);
         }
       },
-
-      /* ПОИСК В ХЛАМЕ */
       room_search_junk: {
         sheet: 1, icon: 6, caption: "Порыться в хламе",
         action: async () => {
@@ -2326,13 +1924,9 @@
 
           if (state.junkSearches === 1) {
             removeStoryCard("room_search_junk");
-            state.hasCandle = true;
-            state.hasDiceSet = true;
-            state.hasBrochure1 = true;
-            state.hasDiceRules = true;
+            state.hasCandle = true; state.hasDiceSet = true; state.hasBrochure1 = true; state.hasDiceRules = true;
             addStoryCard("light_candle", true);
             checkInitialStepsProgress();
-
             showLootModal("Вы нашли в коробках с хламом:", [
               { sheet: 1, icon: 7, caption: "Восковая свеча", desc: "Длинная восковая свеча. Зажгите её, чтобы не жечь спички!" },
               { sheet: 2, icon: 11, caption: "Набор 6 кубиков", desc: "Шесть карболитовых кубиков для игры в «Костяное Очко»." },
@@ -2341,11 +1935,8 @@
             ]);
             setEventText("Вы нашли восковую свечу и полезные вещи! Срочно зажгите свечу.");
           } else if (state.junkSearches === 2) {
-            state.hasBrochure2 = true;
-            state.hasTape = true;
-            state.hasEmptyCan = true;
+            state.hasBrochure2 = true; state.hasTape = true; state.hasEmptyCan = true;
             addStoryCard("tape_windows", true);
-
             showLootModal("При повторном поиске в хламе вы нашли:", [
               { sheet: 3, icon: 4, caption: "Памятка ГО (Ч. II)", desc: "Вторая часть памятки ГО о сборке печки с кирпичом." },
               { sheet: 3, icon: 5, caption: "Малярный скотч", desc: "Плотный рулон скотча — теперь можно заклеить окна на кухне!" },
@@ -2359,7 +1950,6 @@
           }
         }
       },
-
       light_candle: {
         sheet: 1, icon: 7, caption: "Зажечь свечу",
         instantSound: () => playSnd1("СПИЧКА", 0.9),
@@ -2375,19 +1965,13 @@
           renderUI(true);
         }
       },
-
-      /* АВТО-МАРШРУТ ЗА ТУШЁНКОЙ / КАРТОШКОЙ */
       go_take_stew: {
         sheet: 2, icon: 3, caption: "Взять тушёнку",
         action: async () => {
           removeStoryCard("go_take_stew");
           state.needsFoodForDice = false;
-
-          // Если мы в подъезде, сначала автоматически заходим в свою квартиру на 3-м этаже
           if (state.logicalRoom === "landing") {
-            hideNpc();
-            setBackButtonTarget(null);
-            state.activeDoorApt = null;
+            hideNpc(); setBackButtonTarget(null); state.activeDoorApt = null;
             if (state.landingFloor !== 3) {
               state.landingDir = state.landingFloor < 3 ? "up" : "down";
               const seq = buildStairwellFrames(state.landingFloor, 3);
@@ -2398,12 +1982,10 @@
             state.logicalRoom = "entrance";
             await crossfadeToScene("entrance", true);
           }
-
           if (state.lightMode === "none") {
             if (state.hasCandle) igniteCandle(false);
             else igniteMatch(false);
           }
-
           await walkToRoom("kitchen");
           playSnd1("ШКАФ С ЕДОЙ", 0.9);
           await showActionCloseup("cabinet", false, false);
@@ -2413,8 +1995,6 @@
           renderUI(false);
         }
       },
-
-      /* ОКНО НА КУХНЕ (СВЕЧА ТУХНЕТ И СОХРАНЯЕТ СВОЙ ОГАРОК) */
       room_look_window: {
         sheet: 1, icon: 4, caption: "Посмотреть в окно",
         action: async () => {
@@ -2444,7 +2024,6 @@
           setBackButtonTarget("kitchen", "Назад на кухню");
         }
       },
-
       room_supplies: {
         sheet: 1, icon: 9, caption: "Припасы",
         action: async () => {
@@ -2455,7 +2034,6 @@
           setBackButtonTarget("kitchen", "Закрыть шкафчик");
         }
       },
-
       room_radio: {
         sheet: 1, icon: 5, caption: "Включить радио",
         action: async () => {
@@ -2465,7 +2043,6 @@
           renderUI(false);
         }
       },
-
       room_thermometer: {
         sheet: 2, icon: 2, caption: "Термометр",
         action: async () => {
@@ -2475,7 +2052,6 @@
           renderUI(false);
         }
       },
-
       room_bed: {
         sheet: 1, icon: 12, caption: "Полежать",
         action: async () => {
@@ -2486,7 +2062,6 @@
           renderUI(false);
         }
       },
-
       room_dumbbells: {
         sheet: 4, icon: 3, caption: "Потягать гантели",
         action: async () => {
@@ -2496,7 +2071,6 @@
           renderUI(false);
         }
       },
-
       read_brochure_1: {
         sheet: 3, icon: 4, caption: "Прочитать памятку ГО",
         action: async () => {
@@ -2505,7 +2079,6 @@
           renderUI(true);
         }
       },
-
       seal_door: {
         sheet: 2, icon: 10, caption: "Подоткнуть дверь",
         action: async () => {
@@ -2517,7 +2090,6 @@
           renderUI(true);
         }
       },
-
       tape_windows: {
         sheet: 3, icon: 5, caption: "Заклеить окно",
         action: async () => {
@@ -2531,8 +2103,6 @@
           renderUI(true);
         }
       },
-
-      /* ГЛАЗОК И ЦЕНТРАЛЬНЫЙ ВЫБОР С СОСЕДОМ (СВЕЧА ТУХНЕТ И СОХРАНЯЕТ СВОЙ ОГАРОК) */
       room_peephole: {
         sheet: 3, icon: 15, caption: "Посмотреть в глазок",
         action: async () => {
@@ -2569,14 +2139,10 @@
           }
         }
       },
-
       agree_trade: {
         sheet: 1, icon: 13, caption: "Дать тушёнку",
         action: async () => {
-          if (totalStewAvailable() <= 0) {
-            setEventText("У вас не осталось ни одной банки тушёнки!");
-            return;
-          }
+          if (totalStewAvailable() <= 0) { setEventText("У вас не осталось ни одной банки тушёнки!"); return; }
           spendOneStew();
           finishPeepholeNeighborDialog();
           playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
@@ -2588,33 +2154,25 @@
           renderUI(true);
         }
       },
-
       agree_trade_potato: {
         sheet: 2, icon: 14, caption: "Дать картошку",
         action: async () => {
-          if (totalPotatoAvailable() <= 0) {
-            setEventText("У вас нет картошки для обмена!");
-            return;
-          }
+          if (totalPotatoAvailable() <= 0) { setEventText("У вас нет картошки для обмена!"); return; }
           spendOnePotato();
           finishPeepholeNeighborDialog();
           playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
           await showActionCloseup("ev_peephole_lit_2", false, false);
-          setEventText("Сосед взял картошку, дал свечи и сказал: «Воду перекрыли, пошли на колонку! И зайди в 17-ю квартиру на 1-м этаже — помоги бабушке воды принести!»");
+          setEventText("Сосед взял картошку, дал свечи и сказал: «Воду перекрыли, пошли на колонку! И зайди в 17-ю квартиру на 1-м этаже — там бабушка живёт, помоги ей воды принести!»");
           renderUI(true);
           await playNpcSpeech("neighbor", "голос мужской 2");
           hideNpc(); await crossfadeToScene("entrance", false);
           renderUI(true);
         }
       },
-
       play_dice_neighbor: {
         sheet: 2, icon: 11, caption: "Сыграть в костяшки",
-        action: async () => {
-          openOchkoMatch(1);
-        }
+        action: async () => openOchkoMatch(1)
       },
-
       refuse_trade: {
         sheet: 2, icon: 8, caption: "Отказаться",
         action: async () => {
@@ -2626,7 +2184,6 @@
           renderUI(true);
         }
       },
-
       check_tap: {
         sheet: 3, icon: 6, caption: "Проверить кран",
         action: async () => {
@@ -2637,7 +2194,6 @@
           renderUI(true);
         }
       },
-
       put_coat: {
         sheet: 3, icon: 7, caption: "Одеться",
         action: async () => {
@@ -2650,7 +2206,6 @@
           renderUI(true);
         }
       },
-
       put_shoes: {
         sheet: 2, icon: 15, caption: "Обуться",
         action: async () => {
@@ -2663,7 +2218,6 @@
           renderUI(true);
         }
       },
-
       room_exit_door: {
         sheet: 3, icon: 12, caption: "Выйти в подъезд",
         action: async () => {
@@ -2681,14 +2235,12 @@
           renderUI(true);
         }
       },
-
       landing_back_home: {
         sheet: 5, icon: 6, caption: "В кв. 22 (Домой)",
         action: async () => {
           hideNpc(); setBackButtonTarget(null);
           state.activeDoorApt = null;
-          removeStoryCard("play_dice_door");
-          removeStoryCard("leave_door_view");
+          removeStoryCard("play_dice_door"); removeStoryCard("leave_door_view");
           playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
           state.logicalRoom = "entrance"; state.actOffset = 0; state.movOffset = 0;
           await crossfadeToScene("entrance", true);
@@ -2704,8 +2256,6 @@
           }
         }
       },
-
-      /* КАРТОЧКИ ВЗАИМОДЕЙСТВИЯ У ОТКРЫТОЙ ДВЕРИ В ПОДЪЕЗДЕ (ПО ЦЕНТРУ ЭКРАНА) */
       play_dice_door: {
         sheet: 2, icon: 11, caption: "Сыграть в костяшки",
         action: async () => {
@@ -2718,32 +2268,23 @@
           openOchkoMatch(oppId);
         }
       },
-
       leave_door_view: {
         sheet: 5, icon: 6, caption: "Отойти от двери",
         action: async () => {
           state.activeDoorApt = null;
-          removeStoryCard("play_dice_door");
-          removeStoryCard("leave_door_view");
-          removeStoryCard("take_granny_cans");
-          removeStoryCard("give_granny_water");
-          if (state.needsFoodForDice) {
-            addStoryCard("go_take_stew", true);
-          }
+          removeStoryCard("play_dice_door"); removeStoryCard("leave_door_view");
+          removeStoryCard("take_granny_cans"); removeStoryCard("give_granny_water");
+          if (state.needsFoodForDice) addStoryCard("go_take_stew", true);
           await crossfadeToScene(resolveRoomSceneKey("landing"), false);
           setEventText(`Вы на лестничной площадке ${state.landingFloor}-го этажа.`);
           renderUI(true);
         }
       },
-
-      /* КВ. 17: ПОМОЩЬ БАБУШКЕ С БИДОНАМИ ДЛЯ ВОДЫ */
       take_granny_cans: {
         sheet: 1, icon: 2, caption: "Взять бидоны бабушки",
         action: async () => {
-          removeStoryCard("take_granny_cans");
-          removeStoryCard("leave_door_view");
-          state.activeDoorApt = null;
-          state.hasGrannyCans = true;
+          removeStoryCard("take_granny_cans"); removeStoryCard("leave_door_view");
+          state.activeDoorApt = null; state.hasGrannyCans = true;
           updateBackpackBadge();
           await crossfadeToScene("ev_granny_cans", false);
           setEventText("Вы взяли у бабушки из 17-й квартиры пустую тару для воды. Теперь выходите из подъезда на уличную колонку!");
@@ -2751,16 +2292,11 @@
           renderUI(false);
         }
       },
-
       give_granny_water: {
         sheet: 1, icon: 2, caption: "Отдать воду бабушке",
         action: async () => {
-          removeStoryCard("give_granny_water");
-          removeStoryCard("leave_door_view");
-          state.activeDoorApt = null;
-          state.hasGrannyCans = false;
-          state.grannyHelped = true;
-          state.invStew++;
+          removeStoryCard("give_granny_water"); removeStoryCard("leave_door_view");
+          state.activeDoorApt = null; state.hasGrannyCans = false; state.grannyHelped = true; state.invStew++;
           updateBackpackBadge();
           await crossfadeToScene("ev_granny_cans", false);
           setEventText("Бабушка из кв. 17 со слезами благодарит вас за принесённую воду и даёт вам из запасов банку тушёнки!");
@@ -2768,7 +2304,6 @@
           renderUI(false);
         }
       },
-
       collect_carpets: {
         sheet: 1, icon: 6, caption: "Собрать ковры",
         action: async () => {
@@ -2782,7 +2317,6 @@
           renderUI(true);
         }
       },
-
       hang_carpets: {
         sheet: 1, icon: 12, caption: "Завесить стены",
         action: async () => {
@@ -2799,7 +2333,6 @@
           renderUI(true);
         }
       },
-
       find_bricks: {
         sheet: 3, icon: 12, caption: "Найти кирпичи",
         action: async () => {
@@ -2816,7 +2349,6 @@
           await playNpcSpeech("woman", "женщина голос");
         }
       },
-
       help_woman: {
         sheet: 1, icon: 13, caption: "Дать банку",
         action: async () => {
@@ -2827,7 +2359,6 @@
           await playNpcSpeech("woman", "женщина голос");
         }
       },
-
       take_bricks: {
         sheet: 3, icon: 9, caption: "Взять кирпичи",
         action: async () => {
@@ -2845,7 +2376,6 @@
           renderUI(true);
         }
       },
-
       build_stove: {
         sheet: 3, icon: 10, caption: "Собрать печку",
         action: async () => {
@@ -2858,7 +2388,6 @@
           state.stoveBuilt = true; state.hasCandle = true; state.lightMode = "kerosene";
           flameCanvas.style.display = "block";
           updateBackpackBadge();
-          document.body.setAttribute("data-lit", "true");
           renderCenterMatchAndCandle(performance.now());
           syncStaticLightingState();
           syncFlameIntervalState();
@@ -2868,7 +2397,6 @@
           renderUI(true);
         }
       },
-
       heat_stew: {
         sheet: 1, icon: 14, caption: "Греть тушёнку",
         action: async () => {
@@ -2881,86 +2409,22 @@
       }
     };
 
-    /* ============================================================================
-       12. ДВЕРИ ВСЕХ КВАРТИР 1–5 ЭТАЖЕЙ (КВ. 16–30, КРОМЕ НАШЕЙ 22)
-    ============================================================================ */
+    /* 12. ДВЕРИ КВАРТИР 16–30 */
     const APT_DESCRIPTIONS = {
-      16: {
-        inhabited: false,
-        type: "creepy",
-        text: "Вы подошли к двери кв. 16 и постучали. За обшивкой раздались странные тяжёлые хрипы и глухое шарканье, но дверь никто не открыл..."
-      },
-      17: {
-        inhabited: true,
-        type: "granny",
-        text: "Дверь кв. 17 приоткрылась. Старенькая бабушка слабым голосом говорит: «Сынок, мне по гололёду до колонки не дойти... Возьми мои бидоны, принеси водички Христа ради!»"
-      },
-      18: {
-        inhabited: true,
-        type: "dice",
-        oppId: 2,
-        text: "Дверь кв. 18 открывается: «Азартный человек? Заходи за стол, перекинемся в Костяное Очко на банку тушёнки!»"
-      },
-      19: {
-        inhabited: false,
-        type: "go_away",
-        text: "На ваш стук в кв. 19 из-за двери грубо рявкнули: «Уходи отсюда! Никому не открываем, проваливай!»"
-      },
-      20: {
-        inhabited: true,
-        type: "dice",
-        oppId: 1,
-        text: "Дверь кв. 20 открывает ваш знакомый сосед с фонарём: «Зашёл перекинуться в костяшки? Ставь тушёнку или картошку на кон!»"
-      },
-      21: {
-        inhabited: false,
-        type: "silent",
-        text: "Вы долго стучите в обледеневшую дверь кв. 21, но внутри стоит мёртвая тишина — похоже, хозяева давно уехали."
-      },
-      23: {
-        inhabited: true,
-        type: "dice",
-        oppId: 3,
-        text: "Дверь кв. 23 открывается — на пороге хмурый сосед с резными костями: «В очко сыграть хочешь? Ставь банку тушёнки на кон!»"
-      },
-      24: {
-        inhabited: true,
-        type: "dice_4",
-        oppId: 4,
-        text: "Дверь кв. 24 приоткрывается — хозяин квартиры готов сыграть с вами в «Костяное Очко» на банку тушёнки!"
-      },
-      25: {
-        inhabited: false,
-        type: "silent",
-        text: "Вы постучали в дверь кв. 25 на 4-м этаже. За дверью слышен только вой ветра из разбитой форточки."
-      },
-      26: {
-        inhabited: true,
-        type: "dice",
-        oppId: 2,
-        text: "Дверь кв. 26 приоткрывается: «Холодно сидеть без дела... Есть банка тушёнки? Давай раскинем кости!»"
-      },
-      27: {
-        inhabited: false,
-        type: "go_away",
-        text: "Из-за двери кв. 27 глухо крикнули: «Света нет, воды нет! Нечего по подъезду шастать!»"
-      },
-      28: {
-        inhabited: false,
-        type: "creepy",
-        text: "Вы постучали в кв. 28 на верхнем этаже. За дверью что-то глухо упало, но к замку никто не подошёл."
-      },
-      29: {
-        inhabited: true,
-        type: "dice",
-        oppId: 3,
-        text: "Дверь кв. 29 открывается — сосед на 5-м этаже согласен перекинуться в костяшки, если поставишь банку тушёнки."
-      },
-      30: {
-        inhabited: false,
-        type: "silent",
-        text: "На двери кв. 30 висит замёрзший навесной замок — внутри никого нет."
-      }
+      16: { inhabited: false, type: "creepy", text: "Вы подошли к двери кв. 16 и постучали. За обшивкой раздались странные тяжёлые хрипы и глухое шарканье, но дверь никто не открыл..." },
+      17: { inhabited: true, type: "granny", text: "Дверь кв. 17 приоткрылась. Старенькая бабушка слабым голосом говорит: «Сынок, мне по гололёду до колонки не дойти... Возьми мои бидоны, принеси водички Христа ради!»" },
+      18: { inhabited: true, type: "dice", oppId: 2, text: "Дверь кв. 18 открывается: «Азартный человек? Заходи за стол, перекинемся в Костяное Очко на банку тушёнки!»" },
+      19: { inhabited: false, type: "go_away", text: "На ваш стук в кв. 19 из-за двери грубо рявкнули: «Уходи отсюда! Никому не открываем, проваливай!»" },
+      20: { inhabited: true, type: "dice", oppId: 1, text: "Дверь кв. 20 открывает ваш знакомый сосед с фонарём: «Зашёл перекинуться в костяшки? Ставь тушёнку или картошку на кон!»" },
+      21: { inhabited: false, type: "silent", text: "Вы долго стучите в обледеневшую дверь кв. 21, но внутри стоит мёртвая тишина — похоже, хозяева давно уехали." },
+      23: { inhabited: true, type: "dice", oppId: 3, text: "Дверь кв. 23 открывается — на пороге хмурый сосед с резными костями: «В очко сыграть хочешь? Ставь банку тушёнки на кон!»" },
+      24: { inhabited: true, type: "dice_4", oppId: 4, text: "Дверь кв. 24 приоткрывается — хозяин квартиры готов сыграть с вами в «Костяное Очко» на банку тушёнки!" },
+      25: { inhabited: false, type: "silent", text: "Вы постучали в дверь кв. 25 на 4-м этаже. За дверью слышен только вой ветра из разбитой форточки." },
+      26: { inhabited: true, type: "dice", oppId: 2, text: "Дверь кв. 26 приоткрывается: «Холодно сидеть без дела... Есть банка тушёнки? Давай раскинем кости!»" },
+      27: { inhabited: false, type: "go_away", text: "Из-за двери кв. 27 глухо крикнули: «Света нет, воды нет! Нечего по подъезду шастать!»" },
+      28: { inhabited: false, type: "creepy", text: "Вы постучали в кв. 28 на верхнем этаже. За дверью что-то глухо упало, но к замку никто не подошёл." },
+      29: { inhabited: true, type: "dice", oppId: 3, text: "Дверь кв. 29 открывается — сосед на 5-м этаже согласен перекинуться в костяшки, если поставишь банку тушёнки." },
+      30: { inhabited: false, type: "silent", text: "На двери кв. 30 висит замёрзший навесной замок — внутри никого нет." }
     };
 
     [16, 17, 18, 19, 20, 21, 23, 24, 25, 26, 27, 28, 29, 30].forEach((apt) => {
@@ -2984,22 +2448,17 @@
 
           if (info.type === "granny") {
             state.activeDoorApt = apt;
-            removeStoryCard("play_dice_door");
-            addStoryCard("leave_door_view", true);
-            if (!state.hasGrannyCans && !state.grannyHelped) {
-              addStoryCard("take_granny_cans", true);
-            } else if (state.hasGrannyCans && state.grannyCansFilled && !state.grannyHelped) {
+            removeStoryCard("play_dice_door"); addStoryCard("leave_door_view", true);
+            if (!state.hasGrannyCans && !state.grannyHelped) addStoryCard("take_granny_cans", true);
+            else if (state.hasGrannyCans && state.grannyCansFilled && !state.grannyHelped) {
               addStoryCard("give_granny_water", true);
               setEventText("Бабушка из кв. 17 радостно всплеснула руками: «Принёс водички! Дай Бог тебе здоровья, передавай бидоны!»");
             }
-            state.actOffset = 0;
-            renderUI(true);
+            state.actOffset = 0; renderUI(true);
           } else if (info.type === "dice" || info.type === "dice_4") {
             state.activeDoorApt = apt;
-            addStoryCard("leave_door_view", true);
-            addStoryCard("play_dice_door", true);
-            state.actOffset = 0;
-            renderUI(true);
+            addStoryCard("leave_door_view", true); addStoryCard("play_dice_door", true);
+            state.actOffset = 0; renderUI(true);
           } else {
             setBackButtonTarget(resolveRoomSceneKey("landing"), "Отойти от двери");
           }
@@ -3007,48 +2466,21 @@
       };
     });
 
-    /* ============================================================================
-       12.1. СИСТЕМА ПРИОРИТЕТНЫХ КАРТОЧЕК И РАЗДЕЛЕНИЕ КВАРТИРНЫХ / ПОДЪЕЗДНЫХ СОБЫТИЙ
-    ============================================================================ */
+    /* 12.1. ПРИОРИТЕТЫ И КОЛОДЫ */
     const LANDING_ALLOWED_STORY_CARDS = new Set([
-      "light_candle", "light_match", "go_take_stew",
-      "find_bricks", "help_woman", "take_bricks"
+      "light_candle", "light_match", "go_take_stew", "find_bricks", "help_woman", "take_bricks"
     ]);
 
     function getPriorityCardId() {
-      // Спец-приоритет: если сосед отказался играть без еды, подсвечиваем «Взять тушёнку»
       if (state.storyCardIds.includes("go_take_stew")) return "go_take_stew";
-
-      // 1) В самом начале: «Включить свет» -> затем «Зажечь спичку»
       if (state.storyCardIds.includes("check_switch")) return "check_switch";
-
-      // 5) Если в любой момент погасла спичка или свеча (lightMode === "none")
-      if (state.lightMode === "none") {
-        return state.hasCandle ? "light_candle" : "light_match";
-      }
-
-      if (state.lightMode === "intro" && state.storyCardIds.includes("light_match")) {
-        return "light_match";
-      }
-
-      // В подъезде квартирные приоритеты не действуют
+      if (state.lightMode === "none") return state.hasCandle ? "light_candle" : "light_match";
+      if (state.lightMode === "intro" && state.storyCardIds.includes("light_match")) return "light_match";
       if (state.logicalRoom === "landing") return null;
-
-      // 3) Сразу после зажигания первой спички — «Сходить в туалет»
       if (!state.toiletUsed) return "go_toilet";
-
-      // 4) Когда сходил в туалет — «Порыться в хламе» (пока не найдена свеча)
       if (!state.hasCandle) return "room_search_junk";
-
-      // 6) Когда нашёл свечку в хламе, но она ещё не горит — «Зажечь свечу»
-      if (state.hasCandle && state.lightMode !== "candle" && state.lightMode !== "kerosene") {
-        return "light_candle";
-      }
-
-      // 7) Когда свеча зажжена, но ещё не потрогана батарея — «Потрогать батарею»
+      if (state.hasCandle && state.lightMode !== "candle" && state.lightMode !== "kerosene") return "light_candle";
       if (!state.radiatorTouched) return "touch_radiator";
-
-      // 8) Как только батарея потрогана и свеча горит, приоритетная подсветка снимается
       return null;
     }
 
@@ -3073,13 +2505,10 @@
     }
 
     function getLeftActionDeck() {
-      // Если открыт диалог с соседом по центру экрана, левая колода не отображается
       if (isNeighborCenterChoiceActive()) return [];
-
       const ids = [];
       const r = state.logicalRoom;
 
-      // КОГДА ИГРОК В ПОДЪЕЗДЕ — ВСЕ КВАРТИРНЫЕ КАРТОЧКИ ПОЛНОСТЬЮ СКРЫТЫ!
       if (r === "landing") {
         state.storyCardIds.forEach((id) => {
           if (LANDING_ALLOWED_STORY_CARDS.has(id) && !ids.includes(id)) ids.push(id);
@@ -3090,7 +2519,6 @@
         else if (state.landingFloor === 2) ["knock_19", "knock_20", "knock_21"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
         else if (state.landingFloor === 1) ["knock_16", "knock_17", "knock_18"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
       } else {
-        // ВНУТРИ КВАРТИРЫ:
         const apartmentExcluded = new Set([
           "play_dice_neighbor", "agree_trade", "agree_trade_potato", "refuse_trade",
           "play_dice_door", "take_granny_cans", "give_granny_water", "leave_door_view",
@@ -3099,59 +2527,34 @@
         state.storyCardIds.forEach((id) => {
           if (!apartmentExcluded.has(id) && !ids.includes(id)) ids.push(id);
         });
-
-        if (state.hasBrochure1 && !state.readBrochure1 && !ids.includes("read_brochure_1")) {
-          ids.unshift("read_brochure_1");
-        }
-
-        // Гарантируем наличие приоритетных карточек ранней фазы
-        if (state.basicNavUnlocked && !state.hasCandle && !ids.includes("room_search_junk")) {
-          ids.push("room_search_junk");
-        }
+        if (state.hasBrochure1 && !state.readBrochure1 && !ids.includes("read_brochure_1")) ids.unshift("read_brochure_1");
+        if (state.basicNavUnlocked && !state.hasCandle && !ids.includes("room_search_junk")) ids.push("room_search_junk");
         if (state.hasCandle && (state.lightMode === "candle" || state.lightMode === "kerosene") && !state.radiatorTouched && !ids.includes("touch_radiator")) {
           ids.unshift("touch_radiator");
         }
-
-        // Бытовые события строго привязаны к своим комнатам:
         if (state.roomNavUnlocked) {
-          if (r === "kitchen") {
-            ["room_supplies", "room_look_window", "room_radio"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
-          } else if (r === "bedroom") {
-            ["room_thermometer", "room_bed"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
-          } else if (r === "junkroom") {
+          if (r === "kitchen") ["room_supplies", "room_look_window", "room_radio"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+          else if (r === "bedroom") ["room_thermometer", "room_bed"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+          else if (r === "junkroom") {
             if (!ids.includes("room_search_junk")) ids.push("room_search_junk");
             if (state.wentOutside && !ids.includes("room_dumbbells")) ids.push("room_dumbbells");
-          } else if (r === "entrance") {
-            ["room_peephole", "room_exit_door"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
-          }
+          } else if (r === "entrance") ["room_peephole", "room_exit_door"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
         }
       }
 
-      // Принудительно ставим приоритетную карточку на 1-е место!
       const priorityId = getPriorityCardId();
       if (priorityId) {
         if (!ids.includes(priorityId) && CARDS_DB[priorityId]) {
-          // В подъезде добавляем только допустимые для подъезда приоритетные карточки
-          if (r !== "landing" || LANDING_ALLOWED_STORY_CARDS.has(priorityId)) {
-            ids.unshift(priorityId);
-          }
+          if (r !== "landing" || LANDING_ALLOWED_STORY_CARDS.has(priorityId)) ids.unshift(priorityId);
         } else if (ids.includes(priorityId)) {
           const idx = ids.indexOf(priorityId);
-          if (idx > 0) {
-            ids.splice(idx, 1);
-            ids.unshift(priorityId);
-          }
+          if (idx > 0) { ids.splice(idx, 1); ids.unshift(priorityId); }
         }
       }
-
-      return ids
-        .map((id) => CARDS_DB[id] ? { id, isPriority: id === priorityId, ...CARDS_DB[id] } : null)
-        .filter(Boolean);
+      return ids.map((id) => CARDS_DB[id] ? { id, isPriority: id === priorityId, ...CARDS_DB[id] } : null).filter(Boolean);
     }
 
-    /* ============================================================================
-       13. РЕНДЕР ДВУХ КАРУСЕЛЕЙ КАРТОЧЕК И ЦЕНТРАЛЬНОГО ВЫБОРА СОСЕДА
-    ============================================================================ */
+    /* 13. РЕНДЕР КАРУСЕЛЕЙ КАРТОЧЕК */
     const leftCardsEl = document.getElementById("left-action-cards");
     const rightCardsEl = document.getElementById("right-move-cards");
     const rightGroupEl = document.getElementById("right-move-group");
@@ -3166,25 +2569,21 @@
       if (animateDeal) cls += " deal-anim";
       if (card.isPriority) cls += " priority-card";
       btn.className = cls;
-      if (animateDeal) btn.style.setProperty("--deal-delay", `${idx * 75}ms`);
+      if (animateDeal) {
+        btn.style.setProperty("--deal-delay", `${idx * 75}ms`);
+        btn.addEventListener("animationend", (e) => {
+          if (e.animationName === "cardDeal") btn.classList.remove("deal-anim");
+        }, { once: true });
+      }
       btn.disabled = state.isWalking;
 
-      const inner = document.createElement("div");
-      inner.className = "card-inner";
-      const iconDiv = document.createElement("div");
-      iconDiv.className = "card-icon-frame";
+      const inner = document.createElement("div"); inner.className = "card-inner";
+      const iconDiv = document.createElement("div"); iconDiv.className = "card-icon-frame";
       applyIconSprite(iconDiv, card.sheet, card.icon);
-      const cap = document.createElement("div");
-      cap.className = "choice-caption";
-      cap.textContent = card.caption;
-      inner.appendChild(iconDiv);
-      inner.appendChild(cap);
-
-      const back = document.createElement("div");
-      back.className = "card-back";
-
-      btn.appendChild(inner);
-      btn.appendChild(back);
+      const cap = document.createElement("div"); cap.className = "choice-caption"; cap.textContent = card.caption;
+      inner.appendChild(iconDiv); inner.appendChild(cap);
+      const back = document.createElement("div"); back.className = "card-back";
+      btn.appendChild(inner); btn.appendChild(back);
 
       btn.onclick = () => {
         if (state.isWalking || cardActivatingLock) return;
@@ -3193,44 +2592,45 @@
         if (typeof card.instantSound === "function") card.instantSound();
         btn.classList.remove("deal-anim");
         btn.classList.add("activating");
-        setTimeout(() => {
-          cardActivatingLock = false;
-          card.action();
-        }, 360);
+        setTimeout(() => { cardActivatingLock = false; card.action(); }, 360);
       };
       return btn;
     }
 
     function renderDeckSlice(container, items, offset, animateDeal = false) {
+      const slice = items.slice(offset, offset + 3);
+      const sig = slice.map((c) => `${c.id}:${c.isPriority ? 1 : 0}:${state.isWalking ? 1 : 0}`).join("|");
+      if (!animateDeal && container._deckSig === sig) return;
+      container._deckSig = sig;
       container.innerHTML = "";
-      items.slice(offset, offset + 3).forEach((card, idx) => {
-        container.appendChild(createChoiceCardElement(card, idx, animateDeal));
-      });
+      slice.forEach((card, idx) => container.appendChild(createChoiceCardElement(card, idx, animateDeal)));
     }
 
     function renderNeighborCenterOverlay(animateDeal = false) {
       const active = isNeighborCenterChoiceActive();
       const hud = document.getElementById("bottom-hud");
       neighborOverlayEl.classList.toggle("visible", active);
-      neighborOverlayEl.innerHTML = "";
       hud.classList.toggle("hidden-hud", active || Boolean(state.backBtnTarget));
 
-      if (!active) return;
+      if (!active) {
+        if (neighborOverlayEl._deckSig !== "") {
+          neighborOverlayEl._deckSig = "";
+          neighborOverlayEl.innerHTML = "";
+        }
+        return;
+      }
       const cards = getCenterNeighborChoiceCards();
-      cards.forEach((card, idx) => {
-        neighborOverlayEl.appendChild(createChoiceCardElement(card, idx, animateDeal));
-      });
+      const sig = cards.map((c) => `${c.id}:${state.isWalking ? 1 : 0}`).join("|");
+      if (!animateDeal && neighborOverlayEl._deckSig === sig) return;
+      neighborOverlayEl._deckSig = sig;
+      neighborOverlayEl.innerHTML = "";
+      cards.forEach((card, idx) => neighborOverlayEl.appendChild(createChoiceCardElement(card, idx, animateDeal)));
     }
 
     function renderUI(animateDeal = false) {
-      if (animateDeal && !state.isWalking) playCardSound("deal");
-
+      if (animateDeal && !state.isWalking && !isMenuOpen) playCardSound("deal");
       renderNeighborCenterOverlay(animateDeal);
-
-      const priorityId = getPriorityCardId();
-      if (priorityId) {
-        state.actOffset = 0; // Приоритетная карточка всегда видна первой в левом списке!
-      }
+      if (getPriorityCardId()) state.actOffset = 0;
 
       const leftDeck = getLeftActionDeck();
       const maxLeftOffset = Math.max(0, leftDeck.length - 3);
@@ -3254,49 +2654,30 @@
     movPrevBtn.onclick = () => { if (state.movOffset > 0) { state.movOffset--; playCardSound("click"); renderUI(false); } };
     movNextBtn.onclick = () => { const d = getRightMoveDeck(); if (state.movOffset + 3 < d.length) { state.movOffset++; playCardSound("click"); renderUI(false); } };
 
-    /* ============================================================================
-       14. МАСШТАБИРОВАНИЕ 1280×720, ПОЛНОЭКРАННЫЙ РЕЖИМ И ТАСКАНИЕ СПИЧКИ/СВЕЧИ
-    ============================================================================ */
+    /* 14. МАСШТАБИРОВАНИЕ, ПОЛНОЭКРАННЫЙ РЕЖИМ И ТАСКАНИЕ СПИЧКИ/СВЕЧИ */
     const stageEl = document.getElementById("stage-16x9");
     const flameCanvas = document.getElementById("center-flame-canvas");
     const fCtx = flameCanvas.getContext("2d");
-
-    const STAGE_W = 1280;
-    const STAGE_H = 720;
-    const FLAME_BASE_CENTER_X = STAGE_W * 0.5;   // 640px (строго по центру сцены)
-    const FLAME_BASE_W = 96;
-    const FLAME_BASE_H = 134;
-    const FLAME_BASE_TOP = STAGE_H - 10 - FLAME_BASE_H; // 576px (bottom: 10px)
+    const STAGE_W = 1280, STAGE_H = 720;
+    const FLAME_BASE_CENTER_X = STAGE_W * 0.5, FLAME_BASE_H = 134, FLAME_BASE_TOP = STAGE_H - 10 - FLAME_BASE_H;
     let stageScale = 1;
 
     function updateStageScale() {
-      const bodyStyle = getComputedStyle(document.body);
-      const padL = parseFloat(bodyStyle.paddingLeft) || 0;
-      const padR = parseFloat(bodyStyle.paddingRight) || 0;
-      const padT = parseFloat(bodyStyle.paddingTop) || 0;
-      const padB = parseFloat(bodyStyle.paddingBottom) || 0;
+      const bs = getComputedStyle(document.body);
+      const padL = parseFloat(bs.paddingLeft) || 0, padR = parseFloat(bs.paddingRight) || 0;
+      const padT = parseFloat(bs.paddingTop) || 0, padB = parseFloat(bs.paddingBottom) || 0;
       const vpW = window.visualViewport ? window.visualViewport.width : window.innerWidth;
       const vpH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-      const availW = Math.max(1, vpW - padL - padR);
-      const availH = Math.max(1, vpH - padT - padB);
-      stageScale = Math.min(availW / STAGE_W, availH / STAGE_H);
+      stageScale = Math.min(Math.max(1, vpW - padL - padR) / STAGE_W, Math.max(1, vpH - padT - padB) / STAGE_H);
       stageEl.style.transform = `scale(${stageScale})`;
     }
 
     window.addEventListener("resize", updateStageScale, { passive: true });
     window.addEventListener("orientationchange", () => setTimeout(updateStageScale, 120), { passive: true });
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", updateStageScale, { passive: true });
-    }
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", updateStageScale, { passive: true });
 
-    /* ПОЛНОЭКРАННЫЙ РЕЖИМ (FULLSCREEN API + WEBKIT + TELEGRAM + МОБИЛЬНЫЙ ФОЛБЭК) */
     function isFullscreenActive() {
-      return Boolean(
-        document.fullscreenElement ||
-        document.webkitFullscreenElement ||
-        document.msFullscreenElement ||
-        document.body.classList.contains("pseudo-fullscreen")
-      );
+      return Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement || document.body.classList.contains("pseudo-fullscreen"));
     }
 
     function syncFullscreenButtonUI() {
@@ -3308,8 +2689,7 @@
       if (exitIcon) exitIcon.style.display = active ? "block" : "none";
       if (btn) {
         const label = active ? "Выйти из полноэкранного режима" : "На весь экран";
-        btn.title = label;
-        btn.setAttribute("aria-label", label);
+        btn.title = label; btn.setAttribute("aria-label", label);
       }
       updateStageScale();
     }
@@ -3323,36 +2703,20 @@
       if (fsElement) {
         try {
           const exitFn = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-          if (exitFn) {
-            const p = exitFn.call(document);
-            if (p && typeof p.catch === "function") p.catch(() => {});
-          }
+          if (exitFn) { const p = exitFn.call(document); if (p && typeof p.catch === "function") p.catch(() => {}); }
         } catch (e) {}
         document.body.classList.remove("pseudo-fullscreen");
-        if (tg && typeof tg.exitFullscreen === "function") {
-          try { tg.exitFullscreen(); } catch (e) {}
-        }
+        if (tg && typeof tg.exitFullscreen === "function") try { tg.exitFullscreen(); } catch (e) {}
         syncFullscreenButtonUI();
         return;
       }
-
       if (document.body.classList.contains("pseudo-fullscreen")) {
         document.body.classList.remove("pseudo-fullscreen");
-        if (tg && typeof tg.exitFullscreen === "function") {
-          try { tg.exitFullscreen(); } catch (e) {}
-        }
+        if (tg && typeof tg.exitFullscreen === "function") try { tg.exitFullscreen(); } catch (e) {}
         syncFullscreenButtonUI();
         return;
       }
-
-      // Telegram Mini App / WebView поддержка
-      if (tg) {
-        try {
-          if (typeof tg.expand === "function") tg.expand();
-          if (typeof tg.requestFullscreen === "function") tg.requestFullscreen();
-        } catch (e) {}
-      }
-
+      if (tg) try { if (typeof tg.expand === "function") tg.expand(); if (typeof tg.requestFullscreen === "function") tg.requestFullscreen(); } catch (e) {}
       const reqFn = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
       if (reqFn) {
         try {
@@ -3363,18 +2727,15 @@
               try { window.scrollTo(0, 1); } catch (err) {}
               syncFullscreenButtonUI();
             });
-          } else {
-            syncFullscreenButtonUI();
-          }
+          } else syncFullscreenButtonUI();
         } catch (e) {
           document.body.classList.add("pseudo-fullscreen");
           try { window.scrollTo(0, 1); } catch (err) {}
           syncFullscreenButtonUI();
         }
       } else {
-        // Безопасный фолбэк для мобильных браузеров без Fullscreen API (например, iOS Safari)
         document.body.classList.add("pseudo-fullscreen");
-        try { window.scrollTo(0, 1); } catch (e) {}
+        try { window.scrollTo(0, 1); } catch (err) {}
         syncFullscreenButtonUI();
       }
     }
@@ -3383,11 +2744,8 @@
     document.addEventListener("webkitfullscreenchange", syncFullscreenButtonUI);
     document.addEventListener("MSFullscreenChange", syncFullscreenButtonUI);
 
-    let isDraggingTorch = false;
-    let dragStartX = 0, dragStartY = 0;
-    let torchOffsetX = 0, torchOffsetY = 0;
-    let smoothTorchX = 0, smoothTorchY = 0;
-    let lastFlameCanvasY = 65;
+    let isDraggingTorch = false, dragStartX = 0, dragStartY = 0;
+    let torchOffsetX = 0, torchOffsetY = 0, smoothTorchX = 0, smoothTorchY = 0, lastFlameCanvasY = 65;
 
     flameCanvas.addEventListener("pointerdown", (e) => {
       if (state.lightMode !== "match" && state.lightMode !== "candle" && state.lightMode !== "kerosene") return;
@@ -3405,21 +2763,16 @@
       if (!isDraggingTorch) return;
       hideMatchTutorialHint();
       const scale = stageScale || 1;
-      const maxX = STAGE_W * 0.48;
-      const maxYUp = STAGE_H * 0.88;
-      const maxYDown = STAGE_H * 0.08;
-      const rawX = e.clientX / scale - dragStartX;
-      const rawY = e.clientY / scale - dragStartY;
-      torchOffsetX = Math.max(-maxX, Math.min(maxX, rawX));
-      torchOffsetY = Math.max(-maxYUp, Math.min(maxYDown, rawY));
+      const maxX = STAGE_W * 0.48, maxYUp = STAGE_H * 0.88, maxYDown = STAGE_H * 0.08;
+      torchOffsetX = Math.max(-maxX, Math.min(maxX, e.clientX / scale - dragStartX));
+      torchOffsetY = Math.max(-maxYUp, Math.min(maxYDown, e.clientY / scale - dragStartY));
     });
 
     function stopTorchDrag() {
       if (!isDraggingTorch) return;
       isDraggingTorch = false;
       flameCanvas.classList.remove("dragging");
-      torchOffsetX = 0;
-      torchOffsetY = 0;
+      torchOffsetX = 0; torchOffsetY = 0;
       ensureAnimateLoop();
     }
     window.addEventListener("pointerup", stopTorchDrag);
@@ -3428,7 +2781,6 @@
     function drawRealisticFlame(ctx, x, y, scale, t) {
       const sway = Math.sin(t * 13) * 2.2 + Math.cos(t * 21) * 1.1;
       const h = (24 + Math.sin(t * 18) * 2.8) * scale;
-
       const glow = ctx.createRadialGradient(x, y - 9 * scale, 2, x, y - 9 * scale, 40 * scale);
       glow.addColorStop(0, "rgba(255, 195, 85, 0.55)");
       glow.addColorStop(0.5, "rgba(255, 110, 20, 0.2)");
@@ -3455,17 +2807,15 @@
       const t = now * 0.001;
       fCtx.clearRect(0, 0, flameCanvas.width, flameCanvas.height);
       const cx = flameCanvas.width / 2;
-
       updateFlameVisibility();
 
       if (state.lightMode === "match") {
         const p = Math.min(1, (now - state.matchStart) / MATCH_DURATION);
         if (p >= 1) {
           state.lightMode = "none";
-          stopTorchDrag();
+          resetTorchPosition();
           hideMatchTutorialHint();
           updateFlameVisibility();
-          document.body.setAttribute("data-lit", "false");
           syncStaticLightingState();
           syncFlameIntervalState();
           addStoryCard(state.hasCandle ? "light_candle" : "light_match", true);
@@ -3482,19 +2832,15 @@
         fCtx.fillRect(cx - 3.5, burnY, 7, botY - burnY);
 
         const charTopY = topY + p * 34;
-        fCtx.strokeStyle = "#171412";
-        fCtx.lineWidth = 5; fCtx.lineCap = "round";
-        fCtx.beginPath();
-        fCtx.moveTo(cx, burnY);
+        fCtx.strokeStyle = "#171412"; fCtx.lineWidth = 5; fCtx.lineCap = "round";
+        fCtx.beginPath(); fCtx.moveTo(cx, burnY);
         fCtx.quadraticCurveTo(cx + 5 * p, (burnY + charTopY) * 0.5, cx + 8 * p, charTopY);
         fCtx.stroke();
 
         fCtx.fillStyle = "#29221e";
         fCtx.beginPath(); fCtx.arc(cx + 8 * p, charTopY, 3.8, 0, Math.PI * 2); fCtx.fill();
 
-        fCtx.fillStyle = "#f94125";
-        fCtx.fillRect(cx - 3.5, burnY - 3, 7, 4);
-
+        fCtx.fillStyle = "#f94125"; fCtx.fillRect(cx - 3.5, burnY - 3, 7, 4);
         drawRealisticFlame(fCtx, cx, burnY - 2, 0.95, t);
       } else if (state.lightMode === "candle" || state.lightMode === "kerosene") {
         const currentSessionMs = Math.max(0, now - state.candleStart);
@@ -3503,9 +2849,8 @@
         if (p >= 1) {
           state.candleBurnedMs = CANDLE_DURATION;
           state.lightMode = "none";
-          stopTorchDrag();
+          resetTorchPosition();
           updateFlameVisibility();
-          document.body.setAttribute("data-lit", "false");
           syncStaticLightingState();
           syncFlameIntervalState();
           addStoryCard("light_candle", true);
@@ -3540,10 +2885,8 @@
           const totalIgnite = state.candleIgniteEnd - state.candleIgniteStart || 2200;
           const prog = Math.min(1, (now - state.candleIgniteStart) / totalIgnite);
           const approach = prog < 0.35 ? (prog / 0.35) : (1 - (prog - 0.35) / 0.65);
-          const mx = cx + 34 - approach * 28;
-          const my = topY - 6;
-          fCtx.save();
-          fCtx.translate(mx, my); fCtx.rotate(-0.42);
+          const mx = cx + 34 - approach * 28, my = topY - 6;
+          fCtx.save(); fCtx.translate(mx, my); fCtx.rotate(-0.42);
           fCtx.fillStyle = "#d6a76c"; fCtx.fillRect(0, -2.2, 38, 4.5);
           fCtx.fillStyle = "#1c1917"; fCtx.fillRect(-6, -2.6, 7, 5.2);
           fCtx.restore();
@@ -3552,18 +2895,39 @@
       }
     }
 
-    /* ============================================================================
-       15. РАЗДЕЛЬНАЯ АНИМАЦИЯ: rAF ТОЛЬКО ПРИ ДВИЖЕНИИ СПИЧКИ + ТАЙМЕР 10 FPS ДЛЯ ХОЛСТА
-    ============================================================================ */
-    const darkMaskEl = document.getElementById("darkness-mask-overlay");
+    /* 15. ОПТИМИЗИРОВАННОЕ ОСВЕЩЕНИЕ НА 640×360 CANVAS + ЕДИНЫЙ rAF ТОЛЬКО ПРИ ДВИЖЕНИИ */
+    const darkCanvas = document.getElementById("darkness-canvas");
+    const darkCtx = darkCanvas.getContext("2d");
 
-    const LIGHT_MODE_SCALE = { match: 0.8, candle: 1.3, kerosene: 1.7 };
-    let currentMaskScale = 0.8;
+    const holeStamp = document.createElement("canvas");
+    holeStamp.width = 256; holeStamp.height = 256;
+    const hCtx = holeStamp.getContext("2d");
+    const hGrad = hCtx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    hGrad.addColorStop(0.00, "rgba(0,0,0,1)");
+    hGrad.addColorStop(0.49, "rgba(0,0,0,1)");
+    hGrad.addColorStop(0.66, "rgba(0,0,0,0.82)");
+    hGrad.addColorStop(0.79, "rgba(0,0,0,0.48)");
+    hGrad.addColorStop(1.00, "rgba(0,0,0,0)");
+    hCtx.fillStyle = hGrad;
+    hCtx.fillRect(0, 0, 256, 256);
+
+    const warmStamp = document.createElement("canvas");
+    warmStamp.width = 256; warmStamp.height = 256;
+    const wCtx = warmStamp.getContext("2d");
+    const wGrad = wCtx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    wGrad.addColorStop(0.00, "rgba(255,175,75,0)");
+    wGrad.addColorStop(0.48, "rgba(255,175,75,0)");
+    wGrad.addColorStop(0.66, "rgba(255,175,75,0.18)");
+    wGrad.addColorStop(0.79, "rgba(85,42,16,0.30)");
+    wGrad.addColorStop(1.00, "rgba(0,0,0,0)");
+    wCtx.fillStyle = wGrad;
+    wCtx.fillRect(0, 0, 256, 256);
+
+    const LIGHT_RADIUS_640 = { match: 134, candle: 218, kerosene: 285 };
+    let lastDarkSignature = "";
     let rafId = null;
     let flameIntervalId = null;
     let lastTorchTransform = "";
-    let lastMaskTransform = "";
-    let lastMaskOpacity = "";
 
     function isFlameVisibleNow() {
       return (
@@ -3579,35 +2943,44 @@
       return false;
     }
 
-    function updateDarknessMaskTransform() {
+    function redrawDarknessCanvas(force = false) {
+      if (isMenuOpen || FULL_BRIGHT_SCENES.has(state.currentScene)) {
+        if (darkCanvas.style.display !== "none") {
+          darkCanvas.style.display = "none";
+          lastDarkSignature = "";
+        }
+        return;
+      }
+
+      const lit = isFlameVisibleNow();
+      const mode = state.lightMode;
       const flameRatioY = Math.max(0.1, Math.min(0.9, lastFlameCanvasY / flameCanvas.height));
-      const flameStageX = FLAME_BASE_CENTER_X + smoothTorchX;
-      const flameStageY = FLAME_BASE_TOP + FLAME_BASE_H * flameRatioY + smoothTorchY;
-      const nextMaskTransform = `translate3d(${flameStageX.toFixed(1)}px, ${flameStageY.toFixed(1)}px, 0) scale(${currentMaskScale})`;
-      if (nextMaskTransform !== lastMaskTransform) {
-        lastMaskTransform = nextMaskTransform;
-        darkMaskEl.style.transform = nextMaskTransform;
+      const fx = ((FLAME_BASE_CENTER_X + smoothTorchX) * 0.5) | 0;
+      const fy = ((FLAME_BASE_TOP + FLAME_BASE_H * flameRatioY + smoothTorchY) * 0.5) | 0;
+
+      const sig = lit ? `L:${mode}:${fx}:${fy}` : `D:${mode}`;
+      if (!force && sig === lastDarkSignature) return;
+      lastDarkSignature = sig;
+
+      if (darkCanvas.style.display !== "block") darkCanvas.style.display = "block";
+
+      darkCtx.globalCompositeOperation = "source-over";
+      darkCtx.clearRect(0, 0, 640, 360);
+      darkCtx.fillStyle = mode === "intro" ? "rgba(5, 9, 16, 0.56)" : "rgba(2, 6, 15, 0.93)";
+      darkCtx.fillRect(0, 0, 640, 360);
+
+      if (lit) {
+        const r = LIGHT_RADIUS_640[mode] || 134;
+        darkCtx.globalCompositeOperation = "destination-out";
+        darkCtx.drawImage(holeStamp, fx - r, fy - r, r * 2, r * 2);
+
+        darkCtx.globalCompositeOperation = "source-over";
+        darkCtx.drawImage(warmStamp, fx - r, fy - r, r * 2, r * 2);
       }
     }
 
-    function syncStaticLightingState() {
-      const isLit = isFlameVisibleNow() && !FULL_BRIGHT_SCENES.has(state.currentScene);
-      if (isLit) {
-        currentMaskScale = LIGHT_MODE_SCALE[state.lightMode] || 0.8;
-        updateDarknessMaskTransform();
-        if (lastMaskOpacity !== "1") {
-          lastMaskOpacity = "1";
-          darkMaskEl.style.opacity = "1";
-        }
-      } else {
-        if (lastMaskOpacity !== "0") {
-          lastMaskOpacity = "0";
-          darkMaskEl.style.opacity = "0";
-        }
-      }
-    }
+    function syncStaticLightingState() { redrawDarknessCanvas(true); }
 
-    /* МЕХАНИЗМ 2: ОТРИСОВКА ПРОГОРАНИЯ СПИЧКИ/СВЕЧИ НА ХОЛСТЕ 10 КАДРОВ/СЕК (100 МС) */
     function stopFlameInterval() {
       if (flameIntervalId !== null) {
         clearInterval(flameIntervalId);
@@ -3626,7 +2999,7 @@
           const prevY = lastFlameCanvasY;
           renderCenterMatchAndCandle(performance.now());
           if (isFlameVisibleNow() && !FULL_BRIGHT_SCENES.has(state.currentScene) && Math.abs(lastFlameCanvasY - prevY) >= 0.5) {
-            updateDarknessMaskTransform();
+            redrawDarknessCanvas(false);
           }
         }, 100);
       } else if (!shouldRun) {
@@ -3636,16 +3009,30 @@
 
     document.addEventListener("visibilitychange", syncFlameIntervalState);
 
-    /* МЕХАНИЗМ 1: rAF ЗАПУСКАЕТСЯ ТОЛЬКО ПРИ ПЕРЕТАСКИВАНИИ / ПРОЛЁТЕ / ВОЗВРАТЕ СПИЧКИ */
     function ensureAnimateLoop() {
-      if (rafId !== null) return;
-      if (!needsMovementFrame()) return;
+      if (rafId !== null || !needsMovementFrame()) return;
       rafId = requestAnimationFrame(animateLoop);
     }
 
-    function animateLoop() {
+    function animateLoop(now) {
       rafId = null;
       if (!needsMovementFrame()) return;
+
+      if (state.matchTutorialSweepActive) {
+        if (isDraggingTorch || state.lightMode !== "match") {
+          state.matchTutorialSweepActive = false;
+        } else {
+          const p = Math.min(1, (now - state.matchTutorialSweepStart) / 2900);
+          const env = Math.sin(p * Math.PI);
+          torchOffsetX = Math.sin(p * Math.PI * 2) * (STAGE_W * 0.28) * env;
+          torchOffsetY = -Math.sin(p * Math.PI) * (STAGE_H * 0.22);
+          if (p >= 1) {
+            state.matchTutorialSweepActive = false;
+            torchOffsetX = 0;
+            torchOffsetY = 0;
+          }
+        }
+      }
 
       const movingTorch = isDraggingTorch || state.matchTutorialSweepActive;
       const lerpSpeed = movingTorch ? 0.25 : 0.14;
@@ -3668,7 +3055,7 @@
       }
 
       if (isFlameVisibleNow() && !FULL_BRIGHT_SCENES.has(state.currentScene)) {
-        updateDarknessMaskTransform();
+        redrawDarknessCanvas(false);
       }
 
       if (needsMovementFrame()) {
@@ -3680,9 +3067,10 @@
     applyBackgroundToSlot(slotA, "bedroom");
     updateFlameVisibility();
     updateBackpackBadge();
-    renderUI(true);
+    renderUI(false);
     syncStaticLightingState();
     syncFlameIntervalState();
   </script>
 </body>
 </html>
+```
