@@ -6,16 +6,34 @@
 <title>Костяное Очко</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-drag: none; }
-  body, html {
+  html {
     width: 100%; height: 100%; overflow: hidden;
-    background: radial-gradient(circle at 50% 45%, #1a1410 0%, #070504 100%);
-    background-size: cover; background-position: center;
+    background: transparent;
+  }
+  body {
+    width: 100%; height: 100%; overflow: hidden;
+    background-color: #070504;
+    background-image: radial-gradient(circle at 50% 45%, #1a1410 0%, #070504 100%);
+    background-size: cover; background-position: center; background-repeat: no-repeat;
     font-family: 'Palatino Linotype', 'Book Antiqua', 'Georgia', serif;
     color: #dfd1b8;
   }
-  #webgl-wrap { position: absolute; inset: 0; z-index: 1; cursor: pointer; }
+  body.mode-box-boot #hud-v2,
+  body.mode-box-boot #side-status-log {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  #webgl-wrap {
+    position: absolute; inset: 0; z-index: 1; cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.24s ease-out;
+  }
+  #webgl-wrap.ready {
+    opacity: 1;
+    pointer-events: auto;
+  }
   .interactive { pointer-events: auto; }
-  input[type="file"] { display: none; }
 
   #side-status-log {
     position: absolute; left: 20px; top: 48%; transform: translateY(-50%);
@@ -27,10 +45,6 @@
     text-shadow: 0 2px 5px #000, 0 0 10px #000;
   }
 
-  #right-dev-stack {
-    position: absolute; top: 96px; right: 20px; z-index: 30;
-    display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
-  }
   .subtle-link {
     background: rgba(14, 10, 7, 0.65);
     border: none; border-right: 1px solid rgba(190, 152, 92, 0.45);
@@ -38,15 +52,17 @@
     padding: 3px 9px; cursor: pointer;
     font: italic 11.5px 'Palatino Linotype', 'Georgia', serif;
     letter-spacing: 0.4px; text-shadow: 0 1px 4px #000;
-    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    transition: color 0.15s, border-color 0.15s, background 0.15s, opacity 0.15s;
   }
-  .subtle-link:hover {
+  .subtle-link:hover:not(:disabled) {
     color: #fff; border-right-color: #e5c07b; background: rgba(32, 22, 14, 0.85);
   }
+  .subtle-link:disabled {
+    opacity: 0.35; cursor: default; filter: grayscale(0.5);
+  }
 
-  /* ==================== ВАРИАНТ II ==================== */
+  /* ==================== ИГРОВОЙ ИНТЕРФЕЙС HUD-V2 ==================== */
   #hud-v2 { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
-  body.ui-mode-1 #hud-v2 { display: none; }
 
   .corner-profile {
     position: absolute; top: 16px; display: flex; align-items: center; gap: 14px;
@@ -55,7 +71,7 @@
   .corner-profile.right { right: 20px; flex-direction: row-reverse; text-align: right; }
 
   .avatar-lens {
-    width: 68px; height: 68px; border-radius: 50%; position: relative; cursor: pointer;
+    width: 68px; height: 68px; border-radius: 50%; position: relative;
     background: radial-gradient(circle at 50% 50%, #110d0a 0%, #030201 82%, #000 100%);
     background-size: cover; background-position: center;
     border: 2px solid #4a3623;
@@ -129,15 +145,6 @@
     display: flex; gap: 14px;
   }
 
-  /* ==================== ВАРИАНТ I ==================== */
-  #hud-v1 {
-    position: absolute; inset: 0; z-index: 10; pointer-events: none;
-    display: none; flex-direction: column; justify-content: space-between;
-    align-items: center; padding: 14px 18px 14px;
-  }
-  body.ui-mode-1 #hud-v1 { display: flex; }
-  .v1-top-bar { width: 100%; max-width: 1180px; display: flex; justify-content: flex-start; gap: 12px; }
-
   .paper-label {
     position: relative; background-color: #cbb793;
     background-image:
@@ -158,17 +165,6 @@
   .paper-label::before { left: 5px; }
   .paper-label::after  { right: 5px; }
 
-  .score-tag { display: flex; align-items: baseline; gap: 8px; padding: 6px 20px; }
-  .score-tag.active-turn {
-    background-color: #e4d5b7;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.9), 0 0 14px rgba(235,185,95,0.4);
-  }
-  .tag-caption { font: italic 12px 'Palatino Linotype', 'Georgia', serif; color: #2e2013; }
-  .tag-num { font: bold 24px 'Georgia', serif; color: #140d07; line-height: 1; }
-  .tag-num.bust { color: #8f1d14; text-decoration: line-through; }
-  .tag-wins { font: italic 11px 'Palatino Linotype', 'Georgia', serif; color: #4e3922; }
-
-  .throw-tags-bar { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; }
   .tag-throw-btn { cursor: pointer; padding: 7px 22px; text-align: center; background-color: #d1be99; border: none; }
   .tag-throw-btn:hover:not(:disabled) { background-color: #e2d2b3; transform: translateY(-2px); }
   .tag-throw-btn:disabled { opacity: 0.36; cursor: default; filter: grayscale(0.5); }
@@ -217,7 +213,6 @@
   #center-banner-cnv.play-fx-1 { animation: bannerFxSlam 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
   #center-banner-cnv.play-fx-2 { animation: bannerFxMist 0.72s ease-out forwards; }
   #center-banner-cnv.play-fx-3 { animation: bannerFxWipe 0.72s cubic-bezier(0.19, 1, 0.22, 1) forwards; }
-  /* Зависающий баннер выбора 2 костей соперника */
   #center-banner-cnv.hold-banner {
     animation: bannerHoldPulse 2.2s ease-in-out infinite;
     opacity: 1;
@@ -266,6 +261,16 @@
 </script>
 </head>
 <body>
+<script>
+(function() {
+  try {
+    var p = new URLSearchParams(window.location.search);
+    if (p.get('mode') === 'box' || p.get('boxOnly') === '1') {
+      document.body.classList.add('mode-box-boot');
+    }
+  } catch (e) {}
+})();
+</script>
 
 <div id="webgl-wrap"></div>
 
@@ -276,37 +281,10 @@
   <canvas id="center-banner-cnv" width="960" height="240"></canvas>
 </div>
 
-<!-- СТЕК ТЕХНИЧЕСКИХ КНОПОК (АВТОМАТИЧЕСКИ СКРЫВАЕТСЯ ВНУТРИ INDEX.HTML И В MODE=BOX) -->
-<div id="right-dev-stack" class="interactive">
-  <button class="subtle-link" id="btn-opp-cycle">Соперник: I (Игра 1)</button>
-  <button class="subtle-link" id="btn-inv-mode">Склад: Старт (6 карб.)</button>
-  <button class="subtle-link" id="btn-fx-cycle">Эффект баннера: I</button>
-  <button class="subtle-link" id="btn-ui-cycle">Интерфейс: Вариант II</button>
-
-  <label class="subtle-link" for="file-banners" id="lbl-banners-status">Баннеры.png</label>
-  <input type="file" id="file-banners" accept="image/*">
-
-  <label class="subtle-link" for="file-trim" id="lbl-trim-status">Трим-лист</label>
-  <input type="file" id="file-trim" accept="image/*">
-
-  <label class="subtle-link" for="file-glb" id="lbl-glb-status">Модель dice.glb</label>
-  <input type="file" id="file-glb" accept=".glb,.gltf">
-
-  <label class="subtle-link" for="file-box-img" id="lbl-box-status">Ящик (Кубики.jpg)</label>
-  <input type="file" id="file-box-img" accept="image/*">
-
-  <label class="subtle-link" for="file-wood" id="lbl-wood-status">Текстура доски</label>
-  <input type="file" id="file-wood" accept="image/*">
-
-  <label class="subtle-link" for="file-bg">Задний фон</label>
-  <input type="file" id="file-bg" accept="image/*">
-</div>
-
-<!-- ==================== ВАРИАНТ II ==================== -->
+<!-- ==================== ИГРОВОЙ ИНТЕРФЕЙС HUD-V2 ==================== -->
 <div id="hud-v2">
   <div class="corner-profile left active-turn interactive" id="v2-prof-player">
-    <label class="avatar-lens" id="lens-player" for="file-ava-player"></label>
-    <input type="file" id="file-ava-player" accept="image/*">
+    <div class="avatar-lens" id="lens-player"></div>
     <div class="lens-text-block">
       <span class="lens-name">Ты (Игрок)</span>
       <div class="lens-score-line">
@@ -316,11 +294,10 @@
     </div>
   </div>
 
-  <button id="v2-btn-box" class="subtle-link interactive">Открыть ящик костей</button>
+  <button id="v2-btn-box" class="subtle-link interactive" disabled>Открыть ящик костей</button>
 
   <div class="corner-profile right interactive" id="v2-prof-bot">
-    <label class="avatar-lens" id="lens-bot" for="file-ava-bot"></label>
-    <input type="file" id="file-ava-bot" accept="image/*">
+    <div class="avatar-lens" id="lens-bot"></div>
     <div class="lens-text-block">
       <span class="lens-name" id="v2-bot-name">Соперник I</span>
       <div class="lens-score-line">
@@ -330,7 +307,7 @@
     </div>
   </div>
 
-  <button class="v2-corner-dice-btn left interactive" id="v2-roll-1">
+  <button class="v2-corner-dice-btn left interactive" id="v2-roll-1" disabled>
     <canvas class="v2-corner-canvas" id="cnv-btn-1" width="160" height="104"></canvas>
     <span class="v2-corner-caption">Бросить одну кость</span>
   </button>
@@ -344,49 +321,10 @@
     </button>
   </div>
 
-  <button class="v2-corner-dice-btn right interactive" id="v2-roll-2">
+  <button class="v2-corner-dice-btn right interactive" id="v2-roll-2" disabled>
     <canvas class="v2-corner-canvas" id="cnv-btn-2" width="160" height="104"></canvas>
     <span class="v2-corner-caption">Бросить две кости</span>
   </button>
-</div>
-
-<!-- ==================== ВАРИАНТ I ==================== -->
-<div id="hud-v1">
-  <div class="v1-top-bar interactive">
-    <div class="paper-label score-tag active-turn" id="v1-tag-player">
-      <span class="tag-caption">Ты:</span>
-      <span class="tag-num" id="v1-score-player">0</span>
-      <span class="tag-wins">[побед: <span id="v1-wins-player">0</span>/3]</span>
-    </div>
-    <div class="paper-label score-tag" id="v1-tag-bot">
-      <span class="tag-caption" id="v1-bot-name">Соперник I:</span>
-      <span class="tag-num" id="v1-score-bot">0</span>
-      <span class="tag-wins">[побед: <span id="v1-wins-bot">0</span>/3]</span>
-    </div>
-  </div>
-
-  <div class="throw-tags-bar interactive">
-    <button class="paper-label tag-throw-btn" id="v1-roll-2">
-      <span class="throw-title">Бросить II кости</span>
-      <span class="throw-sub">(ЛКМ по доске)</span>
-    </button>
-    <button class="paper-label tag-throw-btn" id="v1-roll-1">
-      <span class="throw-title">Бросить I кость</span>
-      <span class="throw-sub">(ПКМ по доске)</span>
-    </button>
-    <button class="paper-label tag-throw-btn" id="v1-pass" disabled>
-      <span class="throw-title">Хватит (Пас)</span>
-      <span class="throw-sub">(остановиться)</span>
-    </button>
-    <button class="paper-label tag-throw-btn" id="v1-new-round" style="display:none;">
-      <span class="throw-title">Новый кон</span>
-      <span class="throw-sub">(жеребьёвка)</span>
-    </button>
-    <button class="paper-label tag-throw-btn" id="v1-btn-box">
-      <span class="throw-title">Открыть ящик костей</span>
-      <span class="throw-sub">(8 видов в кассете)</span>
-    </button>
-  </div>
 </div>
 
 <!-- ==================== ОВЕРЛЕЙ 3D-ЯЩИКА КОСТЕЙ ==================== -->
@@ -404,7 +342,24 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 /* ============================================================================
-   1. КАТАЛОГ 8 ВИДОВ КОСТЕЙ И ПРЕСЕТЫ 4 СОПЕРНИКОВ
+   0. СТАРТОВЫЙ РЕЖИМ, ОПРЕДЕЛЕНИЕ УСТРОЙСТВА И КОНСТАНТЫ
+============================================================================ */
+const INITIAL_URL_PARAMS = new URLSearchParams(window.location.search);
+const INITIAL_IS_BOX_MODE = (
+  INITIAL_URL_PARAMS.get('mode') === 'box' ||
+  INITIAL_URL_PARAMS.get('boxOnly') === '1'
+);
+
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+  (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches);
+const CAN_AUTOLOAD_RELATIVE = !['blob:', 'data:', 'about:'].includes(window.location.protocol);
+const DICE_TEX_SIZE = IS_MOBILE ? 256 : 512;
+const DICE_CELL_SIZE = DICE_TEX_SIZE / 4;
+const TRIM_SIZE = 512;
+const ASSET_LOAD_TIMEOUT_MS = 8000;
+
+/* ============================================================================
+   1. КАТАЛОГ 8 ВИДОВ КОСТЕЙ И ПРЕСЕТЫ 5 СОПЕРНИКОВ
 ============================================================================ */
 const DICE_TYPES = [
   { id: 0, col: 0, baseRow: 0, pipRow: 1, title: "Карболитовые", sub: "(флотский щиток)", roughness: 0.22, metalness: 0.05, fallbackBase: "#241410", fallbackPip: "#dcd5c9" },
@@ -421,41 +376,47 @@ const OPPONENTS_CONFIG = [
   {
     id: 1, name: "Сосед из кв. 20",
     games: [
-      [2, 2, 2, 2, 2, 2], // Игра 1: 6 Саамских
-      [3, 2, 2, 2, 2, 3]  // Игра 2: 4 Саамских + 2 Поморских по краям
+      [2, 2, 2, 2, 2, 2],
+      [3, 2, 2, 2, 2, 3]
     ]
   },
   {
     id: 2, name: "Жилец из кв. 18",
     games: [
-      [1, 1, 1, 1, 1, 1], // Игра 1: 6 из капа берёзы
-      [4, 1, 1, 1, 1, 4]  // Игра 2: 4 берёзовых + 2 Арктических по краям
+      [1, 1, 1, 1, 1, 1],
+      [4, 1, 1, 1, 1, 4]
     ]
   },
   {
     id: 3, name: "Моряк из кв. 23",
     games: [
-      [5, 1, 1, 1, 1, 5]  // 1 игра: 2 Эвдиалитовых по краям + 4 по центру
+      [5, 1, 1, 1, 1, 5]
     ]
   },
   {
     id: 4, name: "Финальный игрок",
     games: [
-      [7, 7, 7, 7, 7, 7], // Игра 1
-      [6, 6, 6, 6, 6, 7]  // Игра 2
+      [7, 7, 7, 7, 7, 7],
+      [6, 6, 6, 6, 6, 7]
+    ]
+  },
+  {
+    id: 5, name: "Соперник V",
+    games: [
+      [6, 5, 4, 4, 3, 6],
+      [7, 6, 5, 5, 6, 7]
     ]
   }
 ];
 
 let currentOppIdx = 0;
 let currentOppGameIdx = 0;
-let isStandaloneBoxMode = false;
+let isStandaloneBoxMode = INITIAL_IS_BOX_MODE;
 let isEmbeddedMatchMode = (window.parent && window.parent !== window);
-let debugFullInventory = false;
+let hasStartedMatch = false;
+let savedRemainingCountBeforeBox = 6;
 
-// Личная коллекция костей игрока: на старте только 6 Карболитовых (id: 0)
 let playerOwnedCounts = [6, 0, 0, 0, 0, 0, 0, 0];
-// Активный боевой набор игрока из 6 костей
 let playerSelectedSkins = [0, 0, 0, 0, 0, 0];
 
 const TARGET_EULER_TABLE = {
@@ -489,8 +450,28 @@ const PIP_LAYOUTS = {
 };
 
 /* ============================================================================
-   2. ФИКСИРОВАННЫЕ РАЗМЕРЫ: СРЕДНИЙ НА ДОСКЕ, МЕЛКИЙ В ЯЩИКЕ
+   2. ЕДИНОЕ УПРАВЛЕНИЕ ТАЙМЕРАМИ И ФИКСИРОВАННЫЕ РАЗМЕРЫ
 ============================================================================ */
+const activeGameTimers = new Set();
+let autoTiebreakTimerId = null;
+
+function scheduleGameTimeout(fn, delay) {
+  const id = setTimeout(() => {
+    activeGameTimers.delete(id);
+    if (id === autoTiebreakTimerId) autoTiebreakTimerId = null;
+    if (isWebGLDisposed) return;
+    fn();
+  }, delay);
+  activeGameTimers.add(id);
+  return id;
+}
+
+function clearAllGameTimers() {
+  activeGameTimers.forEach(id => clearTimeout(id));
+  activeGameTimers.clear();
+  autoTiebreakTimerId = null;
+}
+
 const BASE_DICE_SIZE = 0.88;
 const BOARD_SCALE = 0.82;
 const BOX_SCALE   = 0.66;
@@ -509,23 +490,38 @@ function countInPool(typeId) {
 }
 
 function getCountInBoxCell(typeId) {
-  const totalOwned = debugFullInventory ? 6 : (playerOwnedCounts[typeId] || 0);
-  const inPool = debugFullInventory ? 0 : countInPool(typeId);
+  const totalOwned = playerOwnedCounts[typeId] || 0;
+  const inPool = countInPool(typeId);
   return Math.max(0, Math.min(6, totalOwned - inPool));
 }
 
 function ensurePoolHasSixDice() {
-  while (playerSelectedSkins.length < 6) {
+  if (playerOwnedCounts[0] < 6) playerOwnedCounts[0] = 6;
+  const used = [0, 0, 0, 0, 0, 0, 0, 0];
+  const valid = [];
+  for (let i = 0; i < playerSelectedSkins.length && valid.length < 6; i++) {
+    const t = Math.trunc(Number(playerSelectedSkins[i]));
+    if (Number.isInteger(t) && t >= 0 && t < 8 && used[t] < (playerOwnedCounts[t] || 0)) {
+      valid.push(t);
+      used[t]++;
+    }
+  }
+  while (valid.length < 6) {
     let added = false;
     for (let t = 0; t < 8; t++) {
-      if ((playerOwnedCounts[t] || 0) - countInPool(t) > 0) {
-        playerSelectedSkins.push(t);
+      if (used[t] < (playerOwnedCounts[t] || 0)) {
+        valid.push(t);
+        used[t]++;
         added = true;
         break;
       }
     }
-    if (!added) playerSelectedSkins.push(0);
+    if (!added) {
+      valid.push(0);
+      used[0]++;
+    }
   }
+  playerSelectedSkins = valid;
 }
 
 function savePlayerStateToStorage() {
@@ -537,7 +533,7 @@ function savePlayerStateToStorage() {
 }
 
 /* ============================================================================
-   3. ПРОЕКЦИЯ Т-КРЕСТА И ГЕОМЕТРИЯ КУБИКА
+   3. ПРОЕКЦИЯ Т-КРЕСТА И ГЕОМЕТРИЯ КУБИКА (6 СЕГМЕНТОВ)
 ============================================================================ */
 function projectTCrossUVs(geometry) {
   const geo = geometry.index ? geometry.toNonIndexed() : geometry.clone();
@@ -599,7 +595,7 @@ function projectTCrossUVs(geometry) {
   return geo;
 }
 
-function createSmoothRoundedCube(size = BASE_DICE_SIZE, radius = 0.16, segs = 20) {
+function createSmoothRoundedCube(size = BASE_DICE_SIZE, radius = 0.16, segs = 6) {
   const box = new THREE.BoxGeometry(size, size, size, segs, segs, segs);
   const pos = box.attributes.position, norm = box.attributes.normal;
   const half = size * 0.5, core = half - radius;
@@ -618,18 +614,20 @@ function createSmoothRoundedCube(size = BASE_DICE_SIZE, radius = 0.16, segs = 20
     pos.setXYZ(i, p.x, p.y, p.z);
     norm.setXYZ(i, n.x, n.y, n.z);
   }
-  return projectTCrossUVs(box);
+  const projected = projectTCrossUVs(box);
+  box.dispose();
+  return projected;
 }
 
 /* ============================================================================
-   4. ГЕНЕРАЦИЯ PBR-МАТЕРИАЛА КОСТЕЙ
+   4. ЛЕНИВАЯ ГЕНЕРАЦИЯ PBR-МАТЕРИАЛА КОСТЕЙ С ОЧИСТКОЙ ПАМЯТИ (DISPOSE)
 ============================================================================ */
 const trimSheetCanvas = document.createElement('canvas');
-trimSheetCanvas.width = 1024; trimSheetCanvas.height = 1024;
+trimSheetCanvas.width = TRIM_SIZE; trimSheetCanvas.height = TRIM_SIZE;
 const trimCtx = trimSheetCanvas.getContext('2d');
 
 function drawDefaultTrim() {
-  const s = 256;
+  const s = TRIM_SIZE / 4;
   DICE_TYPES.forEach(t => {
     paintCell(trimCtx, t.col * s, t.baseRow * s, s, t.fallbackBase, t.id);
     paintCell(trimCtx, t.col * s, t.pipRow * s,  s, t.fallbackPip,  t.id + 20);
@@ -637,14 +635,14 @@ function drawDefaultTrim() {
 }
 function paintCell(ctx, x, y, size, hex, seed) {
   ctx.fillStyle = hex; ctx.fillRect(x, y, size, size);
-  for (let i = 0; i < 85; i++) {
+  for (let i = 0; i < 40; i++) {
     ctx.strokeStyle = i % 2 === 0 ? 'rgba(255,245,225,0.08)' : 'rgba(0,0,0,0.22)';
-    ctx.lineWidth = 1 + (i % 3);
+    ctx.lineWidth = 1 + (i % 2);
     ctx.beginPath();
     const sx = x + ((i * 43 + seed * 29) % size);
     const sy = y + ((i * 61 + seed * 19) % size);
     ctx.moveTo(sx, sy);
-    ctx.bezierCurveTo(sx + 35, sy - 20, sx - 25, sy + 40, x + ((sx + 90) % size), y + ((sy + 80) % size));
+    ctx.bezierCurveTo(sx + 18, sy - 10, sx - 12, sy + 20, x + ((sx + 45) % size), y + ((sy + 40) % size));
     ctx.stroke();
   }
 }
@@ -652,81 +650,110 @@ drawDefaultTrim();
 
 const materialCache = new Map();
 
+function disposeMaterialCache() {
+  materialCache.forEach(mat => {
+    if (mat.map) mat.map.dispose();
+    if (mat.bumpMap) mat.bumpMap.dispose();
+    mat.dispose();
+  });
+  materialCache.clear();
+}
+
 function getDiceMaterial(typeId) {
-  if (materialCache.has(typeId)) return materialCache.get(typeId);
-  const spec = DICE_TYPES[typeId];
-  const cellW = trimSheetCanvas.width / 4, cellH = trimSheetCanvas.height / 4;
-  const baseX = spec.col * cellW, baseY = spec.baseRow * cellH;
-  const pipX  = spec.col * cellW, pipY  = spec.pipRow * cellH;
+  const safeId = DICE_TYPES[typeId] ? typeId : 0;
+  if (materialCache.has(safeId)) return materialCache.get(safeId);
+  const spec = DICE_TYPES[safeId];
 
-  const diffCanvas = document.createElement('canvas');
-  diffCanvas.width = 1024; diffCanvas.height = 1024;
-  const dCtx = diffCanvas.getContext('2d');
+  try {
+    const cellW = trimSheetCanvas.width / 4, cellH = trimSheetCanvas.height / 4;
+    const baseX = spec.col * cellW, baseY = spec.baseRow * cellH;
+    const pipX  = spec.col * cellW, pipY  = spec.pipRow * cellH;
 
-  const bumpCanvas = document.createElement('canvas');
-  bumpCanvas.width = 1024; bumpCanvas.height = 1024;
-  const bCtx = bumpCanvas.getContext('2d');
+    const diffCanvas = document.createElement('canvas');
+    diffCanvas.width = DICE_TEX_SIZE; diffCanvas.height = DICE_TEX_SIZE;
+    const dCtx = diffCanvas.getContext('2d');
 
-  for (let gx = 0; gx < 4; gx++) {
-    for (let gy = 0; gy < 4; gy++) {
-      dCtx.drawImage(trimSheetCanvas, baseX, baseY, cellW, cellH, gx * 256, gy * 256, 256, 256);
+    const bumpCanvas = document.createElement('canvas');
+    bumpCanvas.width = DICE_TEX_SIZE; bumpCanvas.height = DICE_TEX_SIZE;
+    const bCtx = bumpCanvas.getContext('2d');
+
+    for (let gx = 0; gx < 4; gx++) {
+      for (let gy = 0; gy < 4; gy++) {
+        dCtx.drawImage(
+          trimSheetCanvas,
+          baseX, baseY, cellW, cellH,
+          gx * DICE_CELL_SIZE, gy * DICE_CELL_SIZE, DICE_CELL_SIZE, DICE_CELL_SIZE
+        );
+      }
     }
-  }
-  bCtx.fillStyle = '#c8c8c8';
-  bCtx.fillRect(0, 0, 1024, 1024);
+    bCtx.fillStyle = '#c8c8c8';
+    bCtx.fillRect(0, 0, DICE_TEX_SIZE, DICE_TEX_SIZE);
 
-  Object.entries(T_SLOTS).forEach(([faceNum, slot]) => {
-    const sx = slot.gx * 256, sy = slot.gy * 256;
-    PIP_LAYOUTS[faceNum].forEach(([px, py, scale], idx) => {
-      const cx = sx + px * 256, cy = sy + py * 256, r = 21.0 * scale;
+    const rBase = 21.0 * (DICE_CELL_SIZE / 256);
 
-      const bGrad = bCtx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r * 1.18);
-      bGrad.addColorStop(0.0, '#080808');
-      bGrad.addColorStop(0.76, '#282828');
-      bGrad.addColorStop(0.94, '#ffffff');
-      bGrad.addColorStop(1.0, '#c8c8c8');
-      bCtx.fillStyle = bGrad;
-      bCtx.beginPath(); bCtx.arc(cx, cy, r * 1.18, 0, Math.PI * 2); bCtx.fill();
+    Object.entries(T_SLOTS).forEach(([faceNum, slot]) => {
+      const sx = slot.gx * DICE_CELL_SIZE, sy = slot.gy * DICE_CELL_SIZE;
+      PIP_LAYOUTS[faceNum].forEach(([px, py, scale], idx) => {
+        const cx = sx + px * DICE_CELL_SIZE, cy = sy + py * DICE_CELL_SIZE, r = rBase * scale;
 
-      dCtx.save();
-      dCtx.beginPath(); dCtx.arc(cx, cy, r * 1.07, 0, Math.PI * 2);
-      dCtx.fillStyle = 'rgba(10, 6, 3, 0.78)'; dCtx.fill();
+        const bGrad = bCtx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r * 1.18);
+        bGrad.addColorStop(0.0, '#080808');
+        bGrad.addColorStop(0.76, '#282828');
+        bGrad.addColorStop(0.94, '#ffffff');
+        bGrad.addColorStop(1.0, '#c8c8c8');
+        bCtx.fillStyle = bGrad;
+        bCtx.beginPath(); bCtx.arc(cx, cy, r * 1.18, 0, Math.PI * 2); bCtx.fill();
 
-      dCtx.beginPath(); dCtx.arc(cx, cy, r, 0, Math.PI * 2); dCtx.clip();
-      dCtx.translate(cx, cy);
-      const ang = idx * 1.3 + Number(faceNum) * 0.8;
-      dCtx.rotate(ang);
-      dCtx.drawImage(
-        trimSheetCanvas,
-        pipX + cellW * 0.18, pipY + cellH * 0.18, cellW * 0.64, cellH * 0.64,
-        -r * 1.2, -r * 1.2, r * 2.4, r * 2.4
-      );
-      dCtx.rotate(-ang);
-      dCtx.translate(-cx, -cy);
+        dCtx.save();
+        dCtx.beginPath(); dCtx.arc(cx, cy, r * 1.07, 0, Math.PI * 2);
+        dCtx.fillStyle = 'rgba(10, 6, 3, 0.78)'; dCtx.fill();
 
-      const innerShadow = dCtx.createRadialGradient(cx + r * 0.2, cy + r * 0.2, r * 0.1, cx, cy, r);
-      innerShadow.addColorStop(0.0, 'rgba(255,250,235,0.22)');
-      innerShadow.addColorStop(0.65, 'rgba(0,0,0,0)');
-      innerShadow.addColorStop(1.0, 'rgba(0,0,0,0.72)');
-      dCtx.fillStyle = innerShadow;
-      dCtx.fillRect(cx - r, cy - r, r * 2, r * 2);
-      dCtx.restore();
+        dCtx.beginPath(); dCtx.arc(cx, cy, r, 0, Math.PI * 2); dCtx.clip();
+        dCtx.translate(cx, cy);
+        const ang = idx * 1.3 + Number(faceNum) * 0.8;
+        dCtx.rotate(ang);
+        dCtx.drawImage(
+          trimSheetCanvas,
+          pipX + cellW * 0.18, pipY + cellH * 0.18, cellW * 0.64, cellH * 0.64,
+          -r * 1.2, -r * 1.2, r * 2.4, r * 2.4
+        );
+        dCtx.rotate(-ang);
+        dCtx.translate(-cx, -cy);
+
+        const innerShadow = dCtx.createRadialGradient(cx + r * 0.2, cy + r * 0.2, r * 0.1, cx, cy, r);
+        innerShadow.addColorStop(0.0, 'rgba(255,250,235,0.22)');
+        innerShadow.addColorStop(0.65, 'rgba(0,0,0,0)');
+        innerShadow.addColorStop(1.0, 'rgba(0,0,0,0.72)');
+        dCtx.fillStyle = innerShadow;
+        dCtx.fillRect(cx - r, cy - r, r * 2, r * 2);
+        dCtx.restore();
+      });
     });
-  });
 
-  const diffTex = new THREE.CanvasTexture(diffCanvas);
-  diffTex.colorSpace = THREE.SRGBColorSpace;
-  diffTex.anisotropy = 8;
+    const diffTex = new THREE.CanvasTexture(diffCanvas);
+    diffTex.colorSpace = THREE.SRGBColorSpace;
+    diffTex.anisotropy = IS_MOBILE ? 2 : 4;
 
-  const mat = new THREE.MeshStandardMaterial({
-    map: diffTex,
-    bumpMap: new THREE.CanvasTexture(bumpCanvas),
-    bumpScale: 0.042,
-    roughness: spec.roughness,
-    metalness: spec.metalness
-  });
-  materialCache.set(typeId, mat);
-  return mat;
+    const bumpTex = new THREE.CanvasTexture(bumpCanvas);
+
+    const mat = new THREE.MeshStandardMaterial({
+      map: diffTex,
+      bumpMap: bumpTex,
+      bumpScale: 0.042,
+      roughness: spec.roughness,
+      metalness: spec.metalness
+    });
+    materialCache.set(safeId, mat);
+    return mat;
+  } catch (e) {
+    const fallbackMat = new THREE.MeshStandardMaterial({
+      color: spec.fallbackBase,
+      roughness: spec.roughness,
+      metalness: spec.metalness
+    });
+    materialCache.set(safeId, fallbackMat);
+    return fallbackMat;
+  }
 }
 
 /* ============================================================================
@@ -739,8 +766,7 @@ const BANNER_TITLES = {
   pass: "СОПЕРНИК ПАС"
 };
 const BANNER_INDEX = { win: 0, lose: 1, draw: 2, pass: 3 };
-const BANNER_FX_NAMES = ["I (Золотой)", "II (Удар)", "III (Туман)", "IV (Росчерк)"];
-let currentBannerFx = 0;
+const currentBannerFx = 0;
 let loadedBannerSheet = null;
 let bannerRegions = null;
 let bannerTimer = null;
@@ -857,10 +883,9 @@ function showCenterBanner(typeKey) {
   cnv.classList.add(`play-fx-${currentBannerFx}`);
 
   if (bannerTimer) clearTimeout(bannerTimer);
-  bannerTimer = setTimeout(() => { cnv.className = ''; }, 740);
+  bannerTimer = setTimeout(() => { bannerTimer = null; cnv.className = ''; }, 740);
 }
 
-// Зависающий по центру баннер (для выбора 2 костяшек соперника прямо на 3D-поле)
 function showSuspendedPromptBanner(mainLine, subLine = "", isLose = false) {
   if (bannerTimer) { clearTimeout(bannerTimer); bannerTimer = null; }
   const cnv = document.getElementById('center-banner-cnv');
@@ -871,42 +896,19 @@ function showSuspendedPromptBanner(mainLine, subLine = "", isLose = false) {
 }
 
 function hideSuspendedPromptBanner() {
+  if (bannerTimer) { clearTimeout(bannerTimer); bannerTimer = null; }
   const cnv = document.getElementById('center-banner-cnv');
   cnv.className = '';
 }
 
 function applyBannerImage(img) {
+  if (isWebGLDisposed || !img || loadedBannerSheet) return;
   loadedBannerSheet = img;
   bannerRegions = detectBannerRows(img);
-  document.getElementById('lbl-banners-status').textContent = 'Баннеры.png ✓';
 }
 
-['./Баннеры.png', './баннеры.png', './Баннеры.webp', './баннеры.webp'].forEach(path => {
-  const bImg = new Image();
-  bImg.crossOrigin = 'anonymous';
-  bImg.onload = () => { if (!loadedBannerSheet) applyBannerImage(bImg); };
-  bImg.src = path;
-});
-
-document.getElementById('file-banners').addEventListener('change', (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = (ev) => {
-    const img = new Image();
-    img.onload = () => { applyBannerImage(img); showCenterBanner('win'); };
-    img.src = ev.target.result;
-  };
-  r.readAsDataURL(f);
-});
-
-document.getElementById('btn-fx-cycle').addEventListener('click', () => {
-  currentBannerFx = (currentBannerFx + 1) % BANNER_FX_NAMES.length;
-  document.getElementById('btn-fx-cycle').textContent = `Эффект баннера: ${BANNER_FX_NAMES[currentBannerFx]}`;
-  showCenterBanner('win');
-});
-
 /* ============================================================================
-   6. ОСНОВНАЯ СЦЕНА И ДОСКА
+   6. ОСНОВНАЯ СЦЕНА И ДОСКА (ОПТИМИЗИРОВАННЫЙ WEBGL)
 ============================================================================ */
 const wrapEl = document.getElementById('webgl-wrap');
 const scene = new THREE.Scene();
@@ -915,34 +917,40 @@ const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerH
 camera.position.set(0, 14.2, 8.5);
 camera.lookAt(0, -0.3, 0.4);
 
-const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({
+  alpha: true,
+  antialias: !IS_MOBILE,
+  powerPreference: IS_MOBILE ? 'default' : 'high-performance'
+});
 renderer.setClearColor(0x000000, 0);
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(IS_MOBILE ? 1 : Math.min(window.devicePixelRatio || 1, 1.5));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = IS_MOBILE ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.22;
 wrapEl.appendChild(renderer.domElement);
 
-try {
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const envScene = new THREE.Scene();
-  envScene.background = new THREE.Color(0x1a120b);
-  const l1 = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.MeshBasicMaterial({ color: 0xffd59c }));
-  l1.position.set(-6, 8, 5); l1.lookAt(0, 0, 0); envScene.add(l1);
-  const l2 = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.MeshBasicMaterial({ color: 0x99b8ff }));
-  l2.position.set(7, 6, -6); l2.lookAt(0, 0, 0); envScene.add(l2);
-  scene.environment = pmrem.fromScene(envScene, 0.04).texture;
-  pmrem.dispose();
-} catch (e) {}
+if (!IS_MOBILE) {
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envScene = new THREE.Scene();
+    envScene.background = new THREE.Color(0x1a120b);
+    const l1 = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.MeshBasicMaterial({ color: 0xffd59c }));
+    l1.position.set(-6, 8, 5); l1.lookAt(0, 0, 0); envScene.add(l1);
+    const l2 = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.MeshBasicMaterial({ color: 0x99b8ff }));
+    l2.position.set(7, 6, -6); l2.lookAt(0, 0, 0); envScene.add(l2);
+    scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+    pmrem.dispose();
+  } catch (e) {}
+}
 
-scene.add(new THREE.AmbientLight(0xffeacc, 0.74));
+scene.add(new THREE.AmbientLight(0xffeacc, IS_MOBILE ? 0.92 : 0.74));
 const mainSpot = new THREE.SpotLight(0xffdca8, 125);
 mainSpot.position.set(-4.8, 15.0, 4.8);
 mainSpot.angle = Math.PI / 2.6; mainSpot.penumbra = 0.72; mainSpot.decay = 1.5;
 mainSpot.castShadow = true;
-mainSpot.shadow.mapSize.set(2048, 2048);
+mainSpot.shadow.mapSize.set(IS_MOBILE ? 512 : 1024, IS_MOBILE ? 512 : 1024);
 mainSpot.shadow.bias = -0.0004;
 scene.add(mainSpot);
 
@@ -956,17 +964,39 @@ collectorBoxGroup.visible = false;
 scene.add(gameWorldGroup);
 scene.add(collectorBoxGroup);
 
+if (INITIAL_IS_BOX_MODE) {
+  gameWorldGroup.visible = false;
+  document.getElementById('hud-v2').style.visibility = 'hidden';
+  document.getElementById('side-status-log').style.visibility = 'hidden';
+}
+
+let rafId = null;
+let isRenderPaused = false;
+let isWebGLDisposed = false;
+
+function requestRender() {
+  if (isRenderPaused || isWebGLDisposed || rafId !== null) return;
+  rafId = requestAnimationFrame(animate);
+}
+
+function revealWebglWrap() {
+  if (wrapEl.classList.contains('ready')) return;
+  requestAnimationFrame(() => {
+    wrapEl.classList.add('ready');
+  });
+}
+
 const TRAY_W = 11.4, TRAY_D = 7.8, WALL_H = 0.92, WALL_T = 0.66;
 let trayBedMaterial = null, trayWallMaterial = null;
 
 function buildWoodenBoard3D() {
   const boardGroup = new THREE.Group();
   const shCanvas = document.createElement('canvas');
-  shCanvas.width = 256; shCanvas.height = 256;
+  shCanvas.width = 128; shCanvas.height = 128;
   const sCtx = shCanvas.getContext('2d');
-  const sGrad = sCtx.createRadialGradient(128, 128, 35, 128, 128, 124);
+  const sGrad = sCtx.createRadialGradient(64, 64, 18, 64, 64, 62);
   sGrad.addColorStop(0, 'rgba(0,0,0,0.88)'); sGrad.addColorStop(0.75, 'rgba(0,0,0,0.48)'); sGrad.addColorStop(1, 'rgba(0,0,0,0)');
-  sCtx.fillStyle = sGrad; sCtx.fillRect(0, 0, 256, 256);
+  sCtx.fillStyle = sGrad; sCtx.fillRect(0, 0, 128, 128);
 
   const shadowPlane = new THREE.Mesh(
     new THREE.PlaneGeometry(TRAY_W * 1.38, TRAY_D * 1.44),
@@ -975,29 +1005,31 @@ function buildWoodenBoard3D() {
   shadowPlane.rotation.x = -Math.PI / 2; shadowPlane.position.y = -0.22;
   boardGroup.add(shadowPlane);
 
+  const bedSize = IS_MOBILE ? 512 : 1024;
   const bedCanvas = document.createElement('canvas');
-  bedCanvas.width = 1024; bedCanvas.height = 1024;
+  bedCanvas.width = bedSize; bedCanvas.height = bedSize;
   const bCtx = bedCanvas.getContext('2d');
-  bCtx.fillStyle = '#1a130d'; bCtx.fillRect(0, 0, 1024, 1024);
-  for (let i = 0; i < 650; i++) {
+  bCtx.fillStyle = '#1a130d'; bCtx.fillRect(0, 0, bedSize, bedSize);
+  for (let i = 0; i < (IS_MOBILE ? 300 : 650); i++) {
     bCtx.fillStyle = i % 2 === 0 ? 'rgba(255,205,150,0.02)' : 'rgba(0,0,0,0.18)';
-    bCtx.fillRect(0, Math.random() * 1024, 1024, 1 + Math.random() * 3);
+    bCtx.fillRect(0, Math.random() * bedSize, bedSize, 1 + Math.random() * 3);
   }
   const bedTex = new THREE.CanvasTexture(bedCanvas);
   bedTex.colorSpace = THREE.SRGBColorSpace;
   trayBedMaterial = new THREE.MeshStandardMaterial({ map: bedTex, bumpMap: bedTex, bumpScale: 0.015, roughness: 0.82, metalness: 0.05 });
 
   const bedMesh = new THREE.Mesh(new THREE.BoxGeometry(TRAY_W, 0.34, TRAY_D), trayBedMaterial);
-  bedMesh.position.y = -0.17; bedMesh.receiveShadow = true; bedMesh.castShadow = true;
+  bedMesh.position.y = -0.17; bedMesh.receiveShadow = true; bedMesh.castShadow = !IS_MOBILE;
   boardGroup.add(bedMesh);
 
+  const plankSize = IS_MOBILE ? 256 : 512;
   const plankCanvas = document.createElement('canvas');
-  plankCanvas.width = 512; plankCanvas.height = 512;
+  plankCanvas.width = plankSize; plankCanvas.height = plankSize;
   const pCtx = plankCanvas.getContext('2d');
-  pCtx.fillStyle = '#362315'; pCtx.fillRect(0, 0, 512, 512);
-  for (let i = 0; i < 400; i++) {
+  pCtx.fillStyle = '#362315'; pCtx.fillRect(0, 0, plankSize, plankSize);
+  for (let i = 0; i < (IS_MOBILE ? 180 : 400); i++) {
     pCtx.fillStyle = i % 2 === 0 ? 'rgba(255,195,130,0.04)' : 'rgba(10,5,2,0.28)';
-    pCtx.fillRect(0, Math.random() * 512, 512, 1 + Math.random() * 4);
+    pCtx.fillRect(0, Math.random() * plankSize, plankSize, 1 + Math.random() * 4);
   }
   const plankTex = new THREE.CanvasTexture(plankCanvas);
   plankTex.colorSpace = THREE.SRGBColorSpace;
@@ -1011,7 +1043,7 @@ function buildWoodenBoard3D() {
   ];
   walls.forEach(w => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w.w, w.h, w.d), trayWallMaterial);
-    m.position.set(w.x, w.h / 2 - 0.1, w.z); m.castShadow = true; m.receiveShadow = true;
+    m.position.set(w.x, w.h / 2 - 0.1, w.z); m.castShadow = !IS_MOBILE; m.receiveShadow = true;
     boardGroup.add(m);
   });
 
@@ -1019,9 +1051,9 @@ function buildWoodenBoard3D() {
   [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
     const cx = sx * (TRAY_W / 2 + WALL_T / 2), cz = sz * (TRAY_D / 2 + WALL_T / 2);
     const cornerBox = new THREE.Mesh(new THREE.BoxGeometry(WALL_T * 1.28, WALL_H + 0.04, WALL_T * 1.28), ironMat);
-    cornerBox.position.set(cx, WALL_H / 2 - 0.09, cz); cornerBox.castShadow = true;
+    cornerBox.position.set(cx, WALL_H / 2 - 0.09, cz); cornerBox.castShadow = !IS_MOBILE;
     boardGroup.add(cornerBox);
-    const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), ironMat);
+    const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), ironMat);
     rivet.position.set(cx, WALL_H - 0.05, cz);
     boardGroup.add(rivet);
   });
@@ -1029,35 +1061,38 @@ function buildWoodenBoard3D() {
 }
 buildWoodenBoard3D();
 
-function applyBoardWoodTexture(img, save = true) {
-  const tex = new THREE.Texture(img);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.needsUpdate = true;
-  trayBedMaterial.map = tex; trayBedMaterial.bumpMap = tex; trayBedMaterial.needsUpdate = true;
-  trayWallMaterial.map = tex; trayWallMaterial.bumpMap = tex; trayWallMaterial.needsUpdate = true;
-  document.getElementById('lbl-wood-status').textContent = 'Текстура доски ✓';
-  if (save) {
-    try {
-      const c = document.createElement('canvas'); c.width = 512; c.height = 512;
-      c.getContext('2d').drawImage(img, 0, 0, 512, 512);
-      localStorage.setItem('saved_wood_board_v1', c.toDataURL('image/jpeg', 0.88));
-    } catch (e) {}
-  }
+function applyBoardWoodTexture(img) {
+  if (isWebGLDisposed || !img || !trayBedMaterial || !trayWallMaterial) return;
+  try {
+    const prevBedMap = trayBedMaterial.map;
+    const prevWallMap = trayWallMaterial.map;
+    const tex = new THREE.Texture(img);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.needsUpdate = true;
+    trayBedMaterial.map = tex; trayBedMaterial.bumpMap = tex; trayBedMaterial.needsUpdate = true;
+    trayWallMaterial.map = tex; trayWallMaterial.bumpMap = tex; trayWallMaterial.needsUpdate = true;
+    if (prevBedMap && prevBedMap !== tex) prevBedMap.dispose();
+    if (prevWallMap && prevWallMap !== prevBedMap && prevWallMap !== tex) prevWallMap.dispose();
+    requestRender();
+  } catch (e) {}
 }
 
 /* ============================================================================
-   7. 3D-ЯЩИК С РЕАЛЬНЫМ ЧИСЛОМ КОСТЕЙ В ЯЧЕЙКАХ (playerOwnedCounts)
+   7. ЛЕНИВЫЙ 3D-ЯЩИК С ПРОСТОЙ МАСКОЙ РАМКОЙ И РЕАЛЬНЫМ ЧИСЛОМ КОСТЕЙ
 ============================================================================ */
-let masterDiceGeo = createSmoothRoundedCube(BASE_DICE_SIZE, 0.15, 18);
+let masterDiceGeo = createSmoothRoundedCube(BASE_DICE_SIZE, 0.15, 6);
 
 const BOX_3D_W = 12.6;
 const BOX_3D_D = 8.75;
 const BOX_CEILING_Y = 0.46;
+let collectorBoxBuilt = false;
+let pendingBoxImage = null;
 let boxPlaneMesh = null;
 const boxInstancedMeshes = [];
 const boxDiceStates = [];
 const topHandMeshes = [];
+const emptyBoxMat = new THREE.MeshBasicMaterial({ visible: false });
 
 function getCellBounds(typeId) {
   const col = typeId % 4;
@@ -1071,75 +1106,89 @@ function getCellBounds(typeId) {
   };
 }
 
-function createBoxCanvasWithAlphaCutout(sourceImg = null) {
+function createBoxCanvasWithFrameMask(sourceImg = null) {
+  const w = IS_MOBILE ? 720 : 1024;
+  const h = IS_MOBILE ? 500 : 710;
   const c = document.createElement('canvas');
-  c.width = 1440; c.height = 1000;
+  c.width = w; c.height = h;
   const ctx = c.getContext('2d');
 
   if (!sourceImg) {
-    const bx = 80, by = 95, bw = 1280, bh = 815;
+    const sx = w / 1440, sy = h / 1000;
+    const bx = 80 * sx, by = 95 * sy, bw = 1280 * sx, bh = 815 * sy;
     ctx.fillStyle = '#2d1e12';
     ctx.fillRect(bx, by, bw, bh);
-    ctx.strokeStyle = '#4e3622'; ctx.lineWidth = 18;
+    ctx.strokeStyle = '#4e3622'; ctx.lineWidth = Math.max(6, 18 * sx);
     ctx.strokeRect(bx, by, bw, bh);
 
-    const cellW = (bw - 40) / 4, cellH = (bh - 30) / 2;
+    const cellW = (bw - 40 * sx) / 4, cellH = (bh - 30 * sy) / 2;
     DICE_TYPES.forEach((t, idx) => {
       const col = idx % 4, row = Math.floor(idx / 4);
-      const cx = bx + 20 + col * cellW, cy = by + 15 + row * cellH;
+      const cx = bx + 20 * sx + col * cellW, cy = by + 15 * sy + row * cellH;
       ctx.fillStyle = '#140f0b';
-      ctx.fillRect(cx + 6, cy + 6, cellW - 12, cellH - 12);
+      ctx.fillRect(cx + 6 * sx, cy + 6 * sy, cellW - 12 * sx, cellH - 12 * sy);
 
       ctx.fillStyle = '#c8b490';
-      ctx.fillRect(cx + 14, cy + cellH - 96, cellW - 28, 80);
+      ctx.fillRect(cx + 14 * sx, cy + cellH - 96 * sy, cellW - 28 * sx, 80 * sy);
       ctx.fillStyle = '#1b130c';
-      ctx.font = 'italic bold 21px Georgia, serif';
+      ctx.font = `italic bold ${Math.round(21 * sx)}px Georgia, serif`;
       ctx.textAlign = 'center';
-      ctx.fillText(t.title.toUpperCase(), cx + cellW * 0.5, cy + cellH - 58);
+      ctx.fillText(t.title.toUpperCase(), cx + cellW * 0.5, cy + cellH - 58 * sy);
       if (t.sub) {
-        ctx.font = 'italic 19px Georgia, serif';
-        ctx.fillText(t.sub, cx + cellW * 0.5, cy + cellH - 30);
+        ctx.font = `italic ${Math.round(19 * sx)}px Georgia, serif`;
+        ctx.fillText(t.sub, cx + cellW * 0.5, cy + cellH - 30 * sy);
       }
     });
     return c;
   }
 
-  ctx.drawImage(sourceImg, 0, 0, c.width, c.height);
-  try {
-    const imgData = ctx.getImageData(0, 0, c.width, c.height);
-    const d = imgData.data;
-    const w = c.width, h = c.height;
+  const mx = w * 0.048, my = h * 0.088;
+  const mw = w * 0.904, mh = h * 0.827;
+  const rad = Math.round(w * 0.014);
 
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const idx = (y * w + x) * 4;
-        const r = d[idx], g = d[idx + 1], b = d[idx + 2];
-        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-        const isOutsideFrame = (x < w * 0.048 || x > w * 0.952 || y < h * 0.088 || y > h * 0.915);
-        const isNearBorder = (x < w * 0.08 || x > w * 0.92 || y < h * 0.13 || y > h * 0.89);
-
-        if (isOutsideFrame) {
-          d[idx + 3] = 0;
-        } else if (isNearBorder && luma < 28) {
-          d[idx + 3] = Math.max(0, Math.min(255, (luma - 12) * 15));
-        }
-      }
-    }
-    ctx.putImageData(imgData, 0, 0);
-  } catch (e) {}
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(mx + rad, my);
+  ctx.lineTo(mx + mw - rad, my);
+  ctx.quadraticCurveTo(mx + mw, my, mx + mw, my + rad);
+  ctx.lineTo(mx + mw, my + mh - rad);
+  ctx.quadraticCurveTo(mx + mw, my + mh, mx + mw - rad, my + mh);
+  ctx.lineTo(mx + rad, my + mh);
+  ctx.quadraticCurveTo(mx, my + mh, mx, my + mh - rad);
+  ctx.lineTo(mx, my + rad);
+  ctx.quadraticCurveTo(mx, my, mx + rad, my);
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(sourceImg, 0, 0, w, h);
+  ctx.restore();
   return c;
 }
 
-function build3DCollectorBoxScene() {
-  const tex = new THREE.CanvasTexture(createBoxCanvasWithAlphaCutout(null));
-  tex.colorSpace = THREE.SRGBColorSpace;
+function ensureCollectorBoxBuilt() {
+  if (collectorBoxBuilt || isWebGLDisposed) return;
+  collectorBoxBuilt = true;
+
+  let boxPlaneMat = null;
+  try {
+    const tex = new THREE.CanvasTexture(createBoxCanvasWithFrameMask(pendingBoxImage));
+    tex.colorSpace = THREE.SRGBColorSpace;
+    boxPlaneMat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.78, metalness: 0.06 });
+  } catch (e) {
+    try {
+      const fallbackTex = new THREE.CanvasTexture(createBoxCanvasWithFrameMask(null));
+      fallbackTex.colorSpace = THREE.SRGBColorSpace;
+      boxPlaneMat = new THREE.MeshStandardMaterial({ map: fallbackTex, transparent: true, roughness: 0.78, metalness: 0.06 });
+    } catch (e2) {
+      boxPlaneMat = new THREE.MeshStandardMaterial({ color: 0x2d1e12, roughness: 0.78, metalness: 0.06 });
+    }
+  }
 
   boxPlaneMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(BOX_3D_W, BOX_3D_D),
-    new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.78, metalness: 0.06 })
+    boxPlaneMat
   );
   boxPlaneMesh.rotation.x = -Math.PI / 2;
-  boxPlaneMesh.receiveShadow = true;
+  boxPlaneMesh.receiveShadow = !IS_MOBILE;
   collectorBoxGroup.add(boxPlaneMesh);
 
   const facesCycle = [5, 6, 3, 4, 2, 1];
@@ -1149,9 +1198,11 @@ function build3DCollectorBoxScene() {
   ];
 
   for (let typeId = 0; typeId < 8; typeId++) {
-    const instMesh = new THREE.InstancedMesh(masterDiceGeo, getDiceMaterial(typeId), 6);
-    instMesh.castShadow = true;
-    instMesh.receiveShadow = true;
+    const visibleCount = getCountInBoxCell(typeId);
+    const mat = visibleCount > 0 ? getDiceMaterial(typeId) : emptyBoxMat;
+    const instMesh = new THREE.InstancedMesh(masterDiceGeo, mat, 6);
+    instMesh.castShadow = !IS_MOBILE;
+    instMesh.receiveShadow = !IS_MOBILE;
     collectorBoxGroup.add(instMesh);
     boxInstancedMeshes.push(instMesh);
 
@@ -1181,9 +1232,9 @@ function build3DCollectorBoxScene() {
 
   updateBox3DDiceTransforms();
 }
-build3DCollectorBoxScene();
 
-function updateBox3DDiceTransforms() {
+function updateBox3DDiceTransforms(skipRender = false) {
+  if (!collectorBoxBuilt || isWebGLDisposed) return;
   const effHalf = getBoxDiceHalf();
   const dummy = new THREE.Object3D();
   const qWobble = new THREE.Quaternion();
@@ -1192,6 +1243,10 @@ function updateBox3DDiceTransforms() {
     const instMesh = boxInstancedMeshes[typeId];
     const states = boxDiceStates[typeId];
     const visibleCount = getCountInBoxCell(typeId);
+
+    if (visibleCount > 0 && instMesh.material === emptyBoxMat) {
+      instMesh.material = getDiceMaterial(typeId);
+    }
 
     for (let k = 0; k < 6; k++) {
       const st = states[k];
@@ -1210,9 +1265,11 @@ function updateBox3DDiceTransforms() {
     }
     instMesh.instanceMatrix.needsUpdate = true;
   }
+  if (!skipRender) requestRender();
 }
 
 function rebuildTopHand3DDice() {
+  if (!collectorBoxBuilt || isWebGLDisposed) return;
   topHandMeshes.forEach(m => collectorBoxGroup.remove(m.mesh));
   topHandMeshes.length = 0;
 
@@ -1221,7 +1278,7 @@ function rebuildTopHand3DDice() {
   playerSelectedSkins.forEach((skinId, idx) => {
     const mesh = new THREE.Mesh(masterDiceGeo, getDiceMaterial(skinId));
     mesh.scale.setScalar(BOX_SCALE);
-    mesh.castShadow = true; mesh.receiveShadow = true;
+    mesh.castShadow = !IS_MOBILE; mesh.receiveShadow = !IS_MOBILE;
     const x = -2.75 + idx * 1.1;
     const z = -4.25;
     mesh.position.set(x, effHalf + 0.08, z);
@@ -1229,51 +1286,102 @@ function rebuildTopHand3DDice() {
     collectorBoxGroup.add(mesh);
     topHandMeshes.push({ mesh, slotIdx: idx, baseY: effHalf + 0.08, hopY: 0, velY: 0 });
   });
+  requestRender();
 }
 
 /* ============================================================================
-   8. 3D-РЕНДЕРЕР БЕЗРАМОЧНЫХ УГЛОВЫХ КНОПОК
+   8. 2D-РЕНДЕРЕР БЕЗРАМОЧНЫХ УГЛОВЫХ КНОПОК (БЕЗ ВТОРОГО WEBGL-КОНТЕКСТА)
 ============================================================================ */
-const thumbRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-thumbRenderer.setSize(200, 130);
-thumbRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-thumbRenderer.toneMappingExposure = 1.25;
+function drawStylized2DDie(ctx, cx, cy, size, skinId, faceNum, angle) {
+  const spec = DICE_TYPES[skinId] || DICE_TYPES[0];
+  const cellW = trimSheetCanvas.width / 4;
+  const cellH = trimSheetCanvas.height / 4;
+  const baseX = spec.col * cellW, baseY = spec.baseRow * cellH;
+  const pipX  = spec.col * cellW, pipY  = spec.pipRow * cellH;
+  const half = size * 0.5;
+  const rad = size * 0.2;
 
-const thumbScene = new THREE.Scene();
-const thumbCam = new THREE.PerspectiveCamera(32, 200 / 130, 0.1, 50);
-thumbCam.position.set(0, 3.1, 1.7); thumbCam.lookAt(0, 0, 0);
-thumbScene.add(new THREE.AmbientLight(0xffe8c8, 0.92));
-const thumbSpot = new THREE.DirectionalLight(0xffdfa8, 2.5);
-thumbSpot.position.set(-3, 6, 4); thumbScene.add(thumbSpot);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
 
-const thumbDie1 = new THREE.Mesh(masterDiceGeo, getDiceMaterial(0));
-const thumbDie2 = new THREE.Mesh(masterDiceGeo, getDiceMaterial(0));
-thumbScene.add(thumbDie1); thumbScene.add(thumbDie2);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.52)';
+  ctx.beginPath();
+  ctx.ellipse(2, half * 0.85, half * 0.92, half * 0.36, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(-half + rad, -half);
+  ctx.lineTo(half - rad, -half);
+  ctx.quadraticCurveTo(half, -half, half, -half + rad);
+  ctx.lineTo(half, half - rad);
+  ctx.quadraticCurveTo(half, half, half - rad, half);
+  ctx.lineTo(-half + rad, half);
+  ctx.quadraticCurveTo(-half, half, -half, half - rad);
+  ctx.lineTo(-half, -half + rad);
+  ctx.quadraticCurveTo(-half, -half, -half + rad, -half);
+  ctx.closePath();
+
+  ctx.save();
+  ctx.clip();
+  ctx.drawImage(trimSheetCanvas, baseX, baseY, cellW, cellH, -half, -half, size, size);
+
+  const bevel = ctx.createLinearGradient(-half, -half, half, half);
+  bevel.addColorStop(0.0, 'rgba(255, 240, 210, 0.28)');
+  bevel.addColorStop(0.45, 'rgba(255, 255, 255, 0)');
+  bevel.addColorStop(1.0, 'rgba(0, 0, 0, 0.52)');
+  ctx.fillStyle = bevel;
+  ctx.fillRect(-half, -half, size, size);
+
+  const pips = PIP_LAYOUTS[faceNum] || PIP_LAYOUTS[5];
+  pips.forEach(([px, py, sc]) => {
+    const dx = -half + px * size;
+    const dy = -half + py * size;
+    const pr = size * 0.092 * sc;
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    ctx.beginPath();
+    ctx.arc(dx, dy, pr * 1.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(dx, dy, pr, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(
+      trimSheetCanvas,
+      pipX + cellW * 0.2, pipY + cellH * 0.2, cellW * 0.6, cellH * 0.6,
+      dx - pr, dy - pr, pr * 2, pr * 2
+    );
+    ctx.restore();
+  });
+  ctx.restore();
+
+  ctx.strokeStyle = 'rgba(235, 200, 140, 0.34)';
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+
+  ctx.restore();
+}
 
 function renderCornerDiceIcon(skin1, skin2, count, targetCanvas) {
-  const s = BOARD_SCALE;
-  thumbDie1.geometry = masterDiceGeo; thumbDie2.geometry = masterDiceGeo;
-  thumbDie1.material = getDiceMaterial(skin1);
+  const ctx = targetCanvas.getContext('2d');
+  const w = targetCanvas.width, h = targetCanvas.height;
+  ctx.clearRect(0, 0, w, h);
 
   if (count === 1) {
-    thumbDie1.visible = true; thumbDie2.visible = false;
-    thumbDie1.scale.setScalar(s * 1.15);
-    thumbDie1.position.set(0, 0, 0);
-    thumbDie1.rotation.set(0.32, 0.55, -0.18);
+    drawStylized2DDie(ctx, w * 0.5, h * 0.52, 54, skin1, 5, -0.18);
   } else {
-    thumbDie1.visible = true; thumbDie2.visible = true;
-    thumbDie2.material = getDiceMaterial(skin2 ?? skin1);
-    thumbDie1.scale.setScalar(s * 1.05); thumbDie2.scale.setScalar(s * 1.05);
-    thumbDie1.position.set(-0.56 * s, 0, 0.10 * s);
-    thumbDie2.position.set( 0.56 * s, 0, -0.08 * s);
-    thumbDie1.rotation.set(0.24, 0.52, -0.16);
-    thumbDie2.rotation.set(-0.30, -0.48, Math.PI / 2 + 0.20);
+    drawStylized2DDie(ctx, w * 0.33, h * 0.56, 48, skin1, 5, -0.22);
+    drawStylized2DDie(ctx, w * 0.68, h * 0.48, 48, skin2 ?? skin1, 6, 0.19);
   }
+}
 
-  thumbRenderer.render(thumbScene, thumbCam);
-  const ctx = targetCanvas.getContext('2d');
-  ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
-  ctx.drawImage(thumbRenderer.domElement, 0, 0, targetCanvas.width, targetCanvas.height);
+function redrawCornerDiceButtons() {
+  const s1 = playerRemainingSkins[0] ?? playerSelectedSkins[0] ?? 0;
+  const s2 = playerRemainingSkins[1] ?? playerSelectedSkins[1] ?? s1;
+  renderCornerDiceIcon(s1, s1, 1, document.getElementById('cnv-btn-1'));
+  renderCornerDiceIcon(s1, s2, 2, document.getElementById('cnv-btn-2'));
 }
 
 /* ============================================================================
@@ -1286,7 +1394,7 @@ let botRemainingSkins = [...botMatchSkins];
 const boardDice = [];
 const playerLedgeMeshes = [];
 const botLedgeMeshes = [];
-const flyingTrophyAnims = []; // Анимации перелёта выбранных костяшек с бортика на бортик
+const flyingTrophyAnims = [];
 
 function createSingleDieMesh(skinId) {
   const m = new THREE.Mesh(masterDiceGeo, getDiceMaterial(skinId));
@@ -1308,11 +1416,10 @@ function resetBotSkinsForRound() {
   botRemainingSkins = [...botMatchSkins];
   const label = `${spec.opp.name}${spec.opp.games.length > 1 ? ` (Игра ${spec.gameIdx + 1})` : ''}`;
   document.getElementById('v2-bot-name').textContent = label;
-  document.getElementById('v1-bot-name').textContent = `${label}:`;
-  document.getElementById('btn-opp-cycle').textContent = label;
 }
 
 function rebuildLedgeDice() {
+  if (isWebGLDisposed) return;
   playerLedgeMeshes.forEach(m => gameWorldGroup.remove(m));
   botLedgeMeshes.forEach(m => gameWorldGroup.remove(m));
   playerLedgeMeshes.length = 0; botLedgeMeshes.length = 0;
@@ -1339,23 +1446,29 @@ function rebuildLedgeDice() {
     botLedgeMeshes.push(m);
   });
 
-  const s1 = playerRemainingSkins[0] ?? playerSelectedSkins[0] ?? 0;
-  const s2 = playerRemainingSkins[1] ?? playerSelectedSkins[1] ?? s1;
-  renderCornerDiceIcon(s1, s1, 1, document.getElementById('cnv-btn-1'));
-  renderCornerDiceIcon(s1, s2, 2, document.getElementById('cnv-btn-2'));
+  redrawCornerDiceButtons();
+  requestRender();
 }
 
 function clearTrayDice() {
   boardDice.forEach(d => gameWorldGroup.remove(d.mesh));
   boardDice.length = 0;
+  requestRender();
 }
 
 function syncSelectedSkinsToGame() {
-  const countLeft = Math.max(1, playerRemainingSkins.length);
-  playerRemainingSkins = playerSelectedSkins.slice(0, countLeft);
-  rebuildLedgeDice();
-  rebuildTopHand3DDice();
-  updateBox3DDiceTransforms();
+  if (!isBoxOpen && !isStandaloneBoxMode) {
+    ensurePoolHasSixDice();
+    const targetCount = (game.phase === 'playing' && boardDice.length > 0)
+      ? Math.max(1, Math.min(6, playerRemainingSkins.length || 6))
+      : 6;
+    playerRemainingSkins = playerSelectedSkins.slice(0, targetCount);
+    rebuildLedgeDice();
+  }
+  if (collectorBoxBuilt) {
+    rebuildTopHand3DDice();
+    updateBox3DDiceTransforms();
+  }
   savePlayerStateToStorage();
 }
 
@@ -1366,81 +1479,132 @@ const ledgePlane  = new THREE.Plane(new THREE.Vector3(0, 1, 0), -(WALL_H + 0.2))
 const intersectPt = new THREE.Vector3();
 let isBoxOpen = false;
 let lastHoverSoundTime = 0;
+let lastHoveredBotMesh = null;
+let boxOpenRequestSeq = 0;
 
-function updateDevStackVisibility() {
-  const devEl = document.getElementById('right-dev-stack');
-  if (isStandaloneBoxMode || isEmbeddedMatchMode) {
-    devEl.style.display = 'none';
-  } else {
-    devEl.style.display = isBoxOpen ? 'none' : 'flex';
-  }
+function updateMouseNDC(clientX, clientY) {
+  const rect = wrapEl.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  mouseNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  mouseNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+}
+
+function canOpenCollectorBox() {
+  return !game.rolling && (
+    (game.phase === 'playing' && game.turn === 'player') ||
+    game.phase === 'over'
+  );
+}
+
+function openCollectorBoxNow() {
+  if (isWebGLDisposed) return;
+  isBoxOpen = true;
+  document.body.classList.remove('mode-box-boot');
+  gameWorldGroup.visible = false;
+  collectorBoxGroup.visible = true;
+  document.getElementById('box-screen-ui').classList.add('open');
+  document.getElementById('hud-v2').style.visibility = 'hidden';
+  document.getElementById('side-status-log').style.visibility = 'hidden';
+
+  ensureCollectorBoxBuilt();
+  camera.position.set(0, 14.8, 0.01);
+  camera.lookAt(0, 0, -0.35);
+  rebuildTopHand3DDice();
+  updateBox3DDiceTransforms();
+  requestRender();
 }
 
 function setCollectorBoxOpen(open) {
-  if (!open) {
-    ensurePoolHasSixDice();
-    syncSelectedSkinsToGame();
-
-    // В режиме mode=box кнопка "Закрыть ящик" НЕ переключает камеру на доску, а закрывает окно и возвращает в инвентарь index.html
-    if (isStandaloneBoxMode) {
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage({
-          type: 'OCHKO_BOX_CLOSED',
-          playerSkins: [...playerSelectedSkins],
-          playerOwnedCounts: [...playerOwnedCounts],
-          playerInventory: [...playerOwnedCounts]
-        }, '*');
-      }
-      return;
-    }
-  }
-
-  isBoxOpen = open;
-  gameWorldGroup.visible = !open;
-  collectorBoxGroup.visible = open;
-  document.getElementById('box-screen-ui').classList.toggle('open', open);
-  document.getElementById('hud-v2').style.visibility = open ? 'hidden' : 'visible';
-  document.getElementById('hud-v1').style.visibility = open ? 'hidden' : 'visible';
-  document.getElementById('side-status-log').style.visibility = open ? 'hidden' : 'visible';
-  updateDevStackVisibility();
+  const reqSeq = ++boxOpenRequestSeq;
 
   if (open) {
-    camera.position.set(0, 14.8, 0.01);
-    camera.lookAt(0, 0, -0.35);
-    rebuildTopHand3DDice();
-    updateBox3DDiceTransforms();
-  } else {
-    camera.position.set(0, 14.2, 8.5);
-    camera.lookAt(0, -0.3, 0.4);
+    if (game.phase !== 'playing' || boardDice.length === 0) {
+      savedRemainingCountBeforeBox = 6;
+    } else {
+      savedRemainingCountBeforeBox = Math.max(1, Math.min(6, playerRemainingSkins.length));
+    }
+
+    if (boxPromise && !boxAssetSettled) {
+      waitForRequiredAssets(true).then((ok) => {
+        if (!ok || reqSeq !== boxOpenRequestSeq || isWebGLDisposed) return;
+        openCollectorBoxNow();
+      });
+      return;
+    }
+
+    openCollectorBoxNow();
+    return;
   }
+
+  ensurePoolHasSixDice();
+  const restoreCount = (game.phase === 'playing' && boardDice.length > 0)
+    ? Math.max(1, Math.min(6, savedRemainingCountBeforeBox))
+    : 6;
+  playerRemainingSkins = playerSelectedSkins.slice(0, restoreCount);
+  savePlayerStateToStorage();
+
+  if (isStandaloneBoxMode) {
+    if (collectorBoxBuilt) {
+      rebuildTopHand3DDice();
+      updateBox3DDiceTransforms();
+    }
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'OCHKO_BOX_CLOSED',
+        playerSkins: [...playerSelectedSkins],
+        ownedCounts: [...playerOwnedCounts],
+        playerOwnedCounts: [...playerOwnedCounts],
+        playerInventory: [...playerOwnedCounts]
+      }, '*');
+    }
+    return;
+  }
+
+  isBoxOpen = false;
+  document.body.classList.remove('mode-box-boot');
+  gameWorldGroup.visible = true;
+  collectorBoxGroup.visible = false;
+  document.getElementById('box-screen-ui').classList.remove('open');
+  document.getElementById('hud-v2').style.visibility = 'visible';
+  document.getElementById('side-status-log').style.visibility = 'visible';
+
+  camera.position.set(0, 14.2, 8.5);
+  camera.lookAt(0, -0.3, 0.4);
+  rebuildLedgeDice();
+  updateHUD();
+  requestRender();
 }
 
-['v2-btn-box', 'v1-btn-box'].forEach(id => {
-  document.getElementById(id).addEventListener('click', () => setCollectorBoxOpen(true));
+document.getElementById('v2-btn-box').addEventListener('click', () => {
+  if (!canOpenCollectorBox()) return;
+  setCollectorBoxOpen(true);
 });
 document.getElementById('btn-close-box-3d').addEventListener('click', () => setCollectorBoxOpen(false));
 
 window.addEventListener('mousemove', (e) => {
-  mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
-  mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  updateMouseNDC(e.clientX, e.clientY);
 
-  // Подсветка/приподнимание костяшек соперника на верхнем бортике при наведении в фазе выбора приза
   if (!isBoxOpen && game.phase === 'trophy_pick') {
     raycaster.setFromCamera(mouseNDC, camera);
     const hovered = findClickedBotLedgeMesh();
-    botLedgeMeshes.forEach(m => {
-      if (m.userData.picked) return;
-      const isHov = (m === hovered);
-      m.position.y = m.userData.baseY + (isHov ? 0.16 : 0);
-      m.scale.setScalar(BOARD_SCALE * (isHov ? 0.96 : 0.85));
-    });
+    if (hovered !== lastHoveredBotMesh) {
+      lastHoveredBotMesh = hovered;
+      botLedgeMeshes.forEach(m => {
+        if (m.userData.picked) return;
+        const isHov = (m === hovered);
+        m.position.y = m.userData.baseY + (isHov ? 0.16 : 0);
+        m.scale.setScalar(BOARD_SCALE * (isHov ? 0.96 : 0.85));
+      });
+      requestRender();
+    }
     return;
   }
 
-  if (!isBoxOpen) return;
+  if (!isBoxOpen || !collectorBoxBuilt) return;
   raycaster.setFromCamera(mouseNDC, camera);
 
   if (raycaster.ray.intersectPlane(groundPlane, intersectPt)) {
+    let pokedAny = false;
     for (let t = 0; t < 8; t++) {
       const visibleCount = getCountInBoxCell(t);
       if (visibleCount <= 0) continue;
@@ -1451,6 +1615,7 @@ window.addEventListener('mousemove', (e) => {
         const dz = st.z - intersectPt.z;
         const dist = Math.hypot(dx, dz);
         if (dist < 0.78 && Math.abs(st.velY) < 0.03) {
+          pokedAny = true;
           const push = (0.78 - dist) * 0.09;
           const inv = dist > 0.001 ? 1 / dist : 1;
           st.vx += (dx * inv + (Math.random() - 0.5) * 0.5) * push;
@@ -1467,6 +1632,7 @@ window.addEventListener('mousemove', (e) => {
         }
       }
     }
+    if (pokedAny) requestRender();
   }
 });
 
@@ -1481,7 +1647,7 @@ function takeOneDieFromBoxCellToPool(typeId) {
   playerSelectedSkins.push(typeId);
   syncSelectedSkinsToGame();
 
-  if (displacedType >= 0) {
+  if (displacedType >= 0 && collectorBoxBuilt) {
     const newCount = getCountInBoxCell(displacedType);
     const st = boxDiceStates[displacedType][Math.max(0, newCount - 1)];
     if (st) {
@@ -1492,40 +1658,12 @@ function takeOneDieFromBoxCellToPool(typeId) {
   }
 
   topHandMeshes.forEach(h => { h.velY = 0.075; });
+  requestRender();
   return true;
 }
 
 /* ============================================================================
-   10. ПЕРЕКЛЮЧАТЕЛИ СОПЕРНИКА, СКЛАДА И ИНТЕРФЕЙСА
-============================================================================ */
-document.getElementById('btn-opp-cycle').addEventListener('click', () => {
-  const opp = OPPONENTS_CONFIG[currentOppIdx];
-  if (currentOppGameIdx + 1 < opp.games.length) {
-    currentOppGameIdx++;
-  } else {
-    currentOppIdx = (currentOppIdx + 1) % OPPONENTS_CONFIG.length;
-    currentOppGameIdx = 0;
-  }
-  game.playerWins = 0;
-  game.botWins = 0;
-  startNewRoundWithTiebreak();
-});
-
-document.getElementById('btn-inv-mode').addEventListener('click', () => {
-  debugFullInventory = !debugFullInventory;
-  document.getElementById('btn-inv-mode').textContent = debugFullInventory
-    ? 'Склад: Тест (все открыты)'
-    : 'Склад: Старт (6 карб.)';
-  updateBox3DDiceTransforms();
-});
-
-document.getElementById('btn-ui-cycle').addEventListener('click', () => {
-  const isV1 = document.body.classList.toggle('ui-mode-1');
-  document.getElementById('btn-ui-cycle').textContent = isV1 ? 'Интерфейс: Вариант I' : 'Интерфейс: Вариант II';
-});
-
-/* ============================================================================
-   11. ЗВУК И ФИЗИКА БРОСКА НА ДОСКЕ
+   10. ЗВУК И ФИЗИКА БРОСКА НА ДОСКЕ
 ============================================================================ */
 class BoneSound {
   constructor() { this.ctx = null; }
@@ -1693,13 +1831,14 @@ function throwDiceBatchPhysics(descriptors, onComplete) {
     start: performance.now(), duration: duration * 1000, steps,
     newBodies, restingBodies, played: new Set(), onComplete
   };
+  requestRender();
 }
 
 /* ============================================================================
-   12. ЛОГИКА ПАРТИИ ДО 3 ПОБЕД И ВЫБОР 2 КОСТЕЙ ПРЯМО НА ВЕРХНЕМ БОРТИКЕ ДОСКИ
+   11. ЛОГИКА ПАРТИИ ДО 3 ПОБЕД И ВЫБОР 2 КОСТЕЙ ПРЯМО НА ВЕРХНЕМ БОРТИКЕ ДОСКИ
 ============================================================================ */
 const game = {
-  phase: 'tiebreak', // 'tiebreak' | 'playing' | 'over' | 'trophy_pick' | 'match_lost'
+  phase: 'tiebreak',
   turn: 'player',
   rolling: false,
   playerScore: 0,
@@ -1729,42 +1868,46 @@ function updateHUD() {
   document.getElementById('v2-score-player').classList.toggle('bust', game.playerScore > 21);
   document.getElementById('v2-score-bot').classList.toggle('bust', game.botScore > 21);
 
-  document.getElementById('v1-score-player').textContent = game.playerScore;
-  document.getElementById('v1-score-bot').textContent    = game.botScore;
-  document.getElementById('v1-wins-player').textContent  = game.playerWins;
-  document.getElementById('v1-wins-bot').textContent     = game.botWins;
-  document.getElementById('v1-tag-player').classList.toggle('active-turn', game.turn === 'player' && game.phase === 'playing');
-  document.getElementById('v1-tag-bot').classList.toggle('active-turn', game.turn === 'bot' && game.phase === 'playing');
-  document.getElementById('v1-score-player').classList.toggle('bust', game.playerScore > 21);
-  document.getElementById('v1-score-bot').classList.toggle('bust', game.botScore > 21);
-
   const pLeft = playerRemainingSkins.length;
   const canPlayerRoll = (!game.rolling && game.phase === 'playing' && game.turn === 'player' && !game.playerPassed);
   const isTiebreakReady = (!game.rolling && game.phase === 'tiebreak');
 
-  ['v2-roll-1', 'v1-roll-1'].forEach(id => {
-    document.getElementById(id).disabled = !(isTiebreakReady || (canPlayerRoll && pLeft >= 1));
-  });
-  ['v2-roll-2', 'v1-roll-2'].forEach(id => {
-    document.getElementById(id).disabled = !(isTiebreakReady || (canPlayerRoll && pLeft >= 2));
-  });
-  ['v2-pass', 'v1-pass'].forEach(id => {
-    document.getElementById(id).disabled = !(canPlayerRoll && game.playerScore > 0);
-  });
+  document.getElementById('v2-roll-1').disabled = !(isTiebreakReady || (canPlayerRoll && pLeft >= 1));
+  document.getElementById('v2-roll-2').disabled = !(isTiebreakReady || (canPlayerRoll && pLeft >= 2));
+  document.getElementById('v2-pass').disabled = !(canPlayerRoll && game.playerScore > 0);
+  document.getElementById('v2-btn-box').disabled = !canOpenCollectorBox();
 
   const isOver = (game.phase === 'over');
-  ['v2-pass', 'v1-pass'].forEach(id => document.getElementById(id).style.display = isOver ? 'none' : 'inline-block');
-  ['v2-new-round', 'v1-new-round'].forEach(id => document.getElementById(id).style.display = isOver ? 'inline-block' : 'none');
+  document.getElementById('v2-pass').style.display = isOver ? 'none' : 'inline-block';
+  document.getElementById('v2-new-round').style.display = isOver ? 'inline-block' : 'none';
 }
 
-function runInitialTiebreakRoll(diceCountEach = 2) {
-  if (isStandaloneBoxMode || game.rolling || game.phase !== 'tiebreak') return;
+function runInitialTiebreakRoll(diceCountEach = 2, fromScheduledReroll = false) {
+  if (isStandaloneBoxMode || isWebGLDisposed || game.rolling) return;
+  if (diceCountEach === 1) {
+    if (!fromScheduledReroll || game.phase !== 'tiebreak_resolving') return;
+  } else {
+    if (game.phase !== 'tiebreak') return;
+  }
+
+  if (autoTiebreakTimerId !== null) {
+    clearTimeout(autoTiebreakTimerId);
+    activeGameTimers.delete(autoTiebreakTimerId);
+    autoTiebreakTimerId = null;
+  }
+
+  hasStartedMatch = true;
   game.rolling = true;
 
   if (diceCountEach === 2) {
     clearTrayDice();
     game.tiebreakPlayerSum = 0;
     game.tiebreakBotSum = 0;
+  } else if (playerRemainingSkins.length < diceCountEach || botRemainingSkins.length < diceCountEach) {
+    clearTrayDice();
+    ensurePoolHasSixDice();
+    playerRemainingSkins = [...playerSelectedSkins];
+    resetBotSkinsForRound();
   }
 
   const pVals = [], bVals = [], batch = [];
@@ -1786,13 +1929,16 @@ function runInitialTiebreakRoll(diceCountEach = 2) {
 
   throwDiceBatchPhysics(batch, () => {
     game.rolling = false;
+    game.phase = 'tiebreak_resolving';
+    updateHUD();
+
     game.tiebreakPlayerSum += pVals.reduce((a, b) => a + b, 0);
     game.tiebreakBotSum    += bVals.reduce((a, b) => a + b, 0);
 
     if (game.tiebreakPlayerSum === game.tiebreakBotSum) {
       showCenterBanner('draw');
       setStatusLog(`Ровно по ${game.tiebreakPlayerSum}! Бросаем ещё по 1 кости...`);
-      setTimeout(() => runInitialTiebreakRoll(1), 950);
+      scheduleGameTimeout(() => runInitialTiebreakRoll(1, true), 950);
     } else {
       const playerFirst = game.tiebreakPlayerSum > game.tiebreakBotSum;
       setStatusLog(
@@ -1800,7 +1946,7 @@ function runInitialTiebreakRoll(diceCountEach = 2) {
         (playerFirst ? 'Ты ходишь первым!' : 'Соперник ходит первым!')
       );
 
-      setTimeout(() => {
+      scheduleGameTimeout(() => {
         clearTrayDice();
         ensurePoolHasSixDice();
         playerRemainingSkins = [...playerSelectedSkins];
@@ -1816,7 +1962,7 @@ function runInitialTiebreakRoll(diceCountEach = 2) {
           setStatusLog('Кон начался — у тебя 6 костей. Твой первый ход!');
         } else {
           setStatusLog('Кон начался — соперник ходит первым...');
-          setTimeout(botSingleTurn, 750);
+          scheduleGameTimeout(botSingleTurn, 750);
         }
       }, 1250);
     }
@@ -1839,34 +1985,66 @@ function advanceTurnAfterAction(lastActor) {
   const botDoneOrOut    = (game.botPassed || bLeft === 0);
 
   if (playerDoneOrOut && botDoneOrOut) {
-    if (playerOut && game.playerScore < 21 && game.playerScore <= game.botScore) {
-      clearTrayDice();
-      playerRemainingSkins = [...playerSelectedSkins];
-      if (botOut) resetBotSkinsForRound();
-      rebuildLedgeDice();
-      game.turn = 'player';
-      updateHUD();
-      setStatusLog(`Кости сняты со стола (счёт ${game.playerScore}:${game.botScore}) — докидывай до 21!`);
+    if (playerOut && botOut) {
+      if (game.playerScore < 21 && game.botScore < 21) {
+        clearTrayDice();
+        ensurePoolHasSixDice();
+        playerRemainingSkins = [...playerSelectedSkins];
+        resetBotSkinsForRound();
+        rebuildLedgeDice();
+        if (lastActor === 'player') {
+          game.turn = 'bot';
+          updateHUD();
+          setStatusLog(`Кости сняты со стола (счёт ${game.playerScore}:${game.botScore}) — ход соперника...`);
+          scheduleGameTimeout(botSingleTurn, 850);
+        } else {
+          game.turn = 'player';
+          updateHUD();
+          setStatusLog(`Кости сняты со стола (счёт ${game.playerScore}:${game.botScore}) — докидывай до 21!`);
+        }
+        return;
+      }
+      compareScores();
       return;
     }
-    if (botOut && game.botScore < 21 && game.botScore < game.playerScore) {
-      clearTrayDice();
-      resetBotSkinsForRound();
-      if (playerOut) playerRemainingSkins = [...playerSelectedSkins];
-      rebuildLedgeDice();
-      game.turn = 'bot';
-      updateHUD();
-      setStatusLog(`Кости сняты со стола (счёт ${game.playerScore}:${game.botScore}) — соперник добирает...`);
-      setTimeout(botSingleTurn, 850);
+
+    if (game.botPassed && playerOut) {
+      if (game.playerScore < 21 && game.playerScore <= game.botScore) {
+        clearTrayDice();
+        ensurePoolHasSixDice();
+        playerRemainingSkins = [...playerSelectedSkins];
+        rebuildLedgeDice();
+        game.turn = 'player';
+        updateHUD();
+        setStatusLog(`Кости сняты со стола (счёт ${game.playerScore}:${game.botScore}) — докидывай до 21!`);
+        return;
+      }
+      compareScores();
       return;
     }
+
+    if (game.playerPassed && botOut) {
+      if (game.botScore < 21 && game.botScore < game.playerScore) {
+        clearTrayDice();
+        resetBotSkinsForRound();
+        rebuildLedgeDice();
+        game.turn = 'bot';
+        updateHUD();
+        setStatusLog(`Кости сняты со стола (счёт ${game.playerScore}:${game.botScore}) — соперник добирает...`);
+        scheduleGameTimeout(botSingleTurn, 850);
+        return;
+      }
+      compareScores();
+      return;
+    }
+
     compareScores();
     return;
   }
 
   if (lastActor === 'player') {
     if (!botDoneOrOut) {
-      game.turn = 'bot'; updateHUD(); setTimeout(botSingleTurn, 750);
+      game.turn = 'bot'; updateHUD(); scheduleGameTimeout(botSingleTurn, 750);
     } else {
       game.turn = 'player'; updateHUD();
     }
@@ -1874,13 +2052,13 @@ function advanceTurnAfterAction(lastActor) {
     if (!playerDoneOrOut) {
       game.turn = 'player'; updateHUD();
     } else {
-      game.turn = 'bot'; updateHUD(); setTimeout(botSingleTurn, 750);
+      game.turn = 'bot'; updateHUD(); scheduleGameTimeout(botSingleTurn, 750);
     }
   }
 }
 
 function playerThrow(count) {
-  if (game.rolling || isBoxOpen) return;
+  if (game.rolling || isBoxOpen || game.phase === 'tiebreak_resolving' || game.phase === 'match_ending') return;
   if (game.phase === 'tiebreak') {
     runInitialTiebreakRoll(2);
     return;
@@ -1926,8 +2104,12 @@ function playerThrow(count) {
 
 function botSingleTurn() {
   if (game.phase !== 'playing' || game.turn !== 'bot' || game.rolling) return;
+  if (botRemainingSkins.length === 0) {
+    advanceTurnAfterAction('bot');
+    return;
+  }
 
-  const playerStopped = (game.playerPassed || playerRemainingSkins.length === 0);
+  const playerStopped = game.playerPassed;
   if (
     game.botScore === 21 ||
     (playerStopped && game.botScore > game.playerScore) ||
@@ -1941,7 +2123,12 @@ function botSingleTurn() {
   }
 
   const gap = 21 - game.botScore;
-  const n = (gap <= 6 || botRemainingSkins.length === 1) ? 1 : 2;
+  const desired = (gap <= 6 || botRemainingSkins.length === 1) ? 1 : 2;
+  const n = Math.min(desired, botRemainingSkins.length);
+  if (n <= 0) {
+    advanceTurnAfterAction('bot');
+    return;
+  }
   game.rolling = true;
 
   const vals = [], batch = [];
@@ -1986,9 +2173,9 @@ function compareScores() {
   }
 }
 
-// Фаза живого 3D-выбора 2 костей соперника прямо с верхнего бортика
 function startTrophyPickPhase() {
   game.phase = 'trophy_pick';
+  lastHoveredBotMesh = null;
   pickedTrophySkins = [];
   clearTrayDice();
   playerRemainingSkins = [...playerSelectedSkins];
@@ -2000,7 +2187,6 @@ function startTrophyPickPhase() {
   setStatusLog("Нажми на любые 2 костяшки соперника на верхнем бортике доски, чтобы забрать их себе!");
 }
 
-// Поиск костяшки соперника на верхнем бортике под курсором мыши
 function findClickedBotLedgeMesh() {
   const hits = raycaster.intersectObjects(botLedgeMeshes);
   if (hits.length > 0 && !hits[0].object.userData.picked) {
@@ -2018,7 +2204,6 @@ function findClickedBotLedgeMesh() {
   return null;
 }
 
-// Запуск красивого перелёта выбранной 3D-костяшки с верхнего бортика соперника на сторону игрока
 function pickOpponentLedgeDie(mesh) {
   if (!mesh || mesh.userData.picked || pickedTrophySkins.length >= 2) return;
   mesh.userData.picked = true;
@@ -2028,7 +2213,7 @@ function pickOpponentLedgeDie(mesh) {
   sfx.init();
   sfx.playHit(0.85, true);
 
-  const pickOrder = pickedTrophySkins.length; // 1 или 2
+  const pickOrder = pickedTrophySkins.length;
   const startPos = mesh.position.clone();
   const targetSlot = pickOrder === 1 ? 4 : 5;
   const endPos = new THREE.Vector3(
@@ -2051,6 +2236,7 @@ function pickOpponentLedgeDie(mesh) {
       }
     }
   });
+  requestRender();
 }
 
 function completeMatchVictoryWithTrophies() {
@@ -2061,11 +2247,6 @@ function completeMatchVictoryWithTrophies() {
     if (playerSelectedSkins.length >= 6) playerSelectedSkins.shift();
     playerSelectedSkins.push(wonSkin);
   });
-
-  const opp = OPPONENTS_CONFIG[currentOppIdx];
-  if (currentOppGameIdx + 1 < opp.games.length) {
-    currentOppGameIdx++;
-  }
 
   syncSelectedSkinsToGame();
 
@@ -2080,6 +2261,7 @@ function completeMatchVictoryWithTrophies() {
         opponentId: OPPONENTS_CONFIG[currentOppIdx].id,
         gameIndex: currentOppGameIdx,
         playerSkins: [...playerSelectedSkins],
+        ownedCounts: [...playerOwnedCounts],
         playerOwnedCounts: [...playerOwnedCounts],
         playerInventory: [...playerOwnedCounts]
       }, '*');
@@ -2088,12 +2270,11 @@ function completeMatchVictoryWithTrophies() {
 
   game.playerWins = 0;
   game.botWins = 0;
-  setTimeout(() => {
+  scheduleGameTimeout(() => {
     if (!isEmbeddedMatchMode) startNewRoundWithTiebreak();
   }, 550);
 }
 
-// Завершение матча при 3 поражениях (без HTML-окон: баннер + перелёт проигранных редких костей или списание тушёнки)
 function handleMatchDefeat3D() {
   game.phase = 'match_lost';
   clearTrayDice();
@@ -2118,7 +2299,6 @@ function handleMatchDefeat3D() {
     showSuspendedPromptBanner("ТЫ ПРОИГРАЛ ПАРТИЮ", "СОПЕРНИК ЗАБИРАЕТ ТВОИ ВЫИГРАННЫЕ КОСТИ", true);
     setStatusLog("Партия проиграна. Соперник забирает твои выигранные кости.");
 
-    // Редкие кости игрока с нижнего бортика улетают наверх к сопернику
     lostRareIndices.forEach((poolIdx, k) => {
       const m = playerLedgeMeshes[poolIdx];
       if (m) {
@@ -2131,6 +2311,7 @@ function handleMatchDefeat3D() {
         });
       }
     });
+    requestRender();
 
     const sortedDesc = [...lostRareIndices].sort((a, b) => b - a);
     sortedDesc.forEach(poolIdx => {
@@ -2144,7 +2325,7 @@ function handleMatchDefeat3D() {
 
   savePlayerStateToStorage();
 
-  setTimeout(() => {
+  scheduleGameTimeout(() => {
     hideSuspendedPromptBanner();
     syncSelectedSkinsToGame();
 
@@ -2159,6 +2340,7 @@ function handleMatchDefeat3D() {
           opponentId: OPPONENTS_CONFIG[currentOppIdx].id,
           gameIndex: currentOppGameIdx,
           playerSkins: [...playerSelectedSkins],
+          ownedCounts: [...playerOwnedCounts],
           playerOwnedCounts: [...playerOwnedCounts],
           playerInventory: [...playerOwnedCounts]
         }, '*');
@@ -2172,7 +2354,6 @@ function handleMatchDefeat3D() {
 }
 
 function finishRound(winner, msg) {
-  game.phase = 'over';
   if (winner === 'player') {
     game.playerWins++;
     showCenterBanner('win');
@@ -2183,17 +2364,24 @@ function finishRound(winner, msg) {
     showCenterBanner('draw');
   }
 
+  const isMatchEnding = (game.playerWins >= 3 || game.botWins >= 3);
+  game.phase = isMatchEnding ? 'match_ending' : 'over';
+
   setStatusLog(`${msg} [Счёт побед: ${game.playerWins}:${game.botWins} до 3]`);
   updateHUD();
 
   if (game.playerWins >= 3) {
-    setTimeout(() => startTrophyPickPhase(), 760);
+    scheduleGameTimeout(() => startTrophyPickPhase(), 760);
   } else if (game.botWins >= 3) {
-    setTimeout(() => handleMatchDefeat3D(), 760);
+    scheduleGameTimeout(() => handleMatchDefeat3D(), 760);
   }
 }
 
 function startNewRoundWithTiebreak() {
+  clearAllGameTimers();
+  activeThrowAnim = null;
+  flyingTrophyAnims.length = 0;
+  game.rolling = false;
   hideSuspendedPromptBanner();
   clearTrayDice();
   ensurePoolHasSixDice();
@@ -2210,23 +2398,23 @@ function startNewRoundWithTiebreak() {
   if (!isStandaloneBoxMode) runInitialTiebreakRoll(2);
 }
 
-['v2-roll-2', 'v1-roll-2'].forEach(id => document.getElementById(id).addEventListener('click', () => playerThrow(2)));
-['v2-roll-1', 'v1-roll-1'].forEach(id => document.getElementById(id).addEventListener('click', () => playerThrow(1)));
-['v2-pass', 'v1-pass'].forEach(id => document.getElementById(id).addEventListener('click', () => {
+document.getElementById('v2-roll-2').addEventListener('click', () => playerThrow(2));
+document.getElementById('v2-roll-1').addEventListener('click', () => playerThrow(1));
+document.getElementById('v2-pass').addEventListener('click', () => {
   if (game.phase === 'playing' && game.turn === 'player' && !game.rolling && game.playerScore > 0 && !game.playerPassed) {
     game.playerPassed = true;
     setStatusLog(`Ты спасовал на ${game.playerScore}. Ход соперника`);
     advanceTurnAfterAction('player');
   }
-}));
-['v2-new-round', 'v1-new-round'].forEach(id => document.getElementById(id).addEventListener('click', startNewRoundWithTiebreak));
+});
+document.getElementById('v2-new-round').addEventListener('click', () => {
+  if (game.phase === 'over' && !game.rolling) startNewRoundWithTiebreak();
+});
 
 wrapEl.addEventListener('click', (e) => {
-  mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
-  mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  updateMouseNDC(e.clientX, e.clientY);
   raycaster.setFromCamera(mouseNDC, camera);
 
-  // Режим выбора 2 трофейных костяшек соперника прямо на верхнем бортике доски
   if (!isBoxOpen && game.phase === 'trophy_pick') {
     const clickedDie = findClickedBotLedgeMesh();
     if (clickedDie) {
@@ -2236,7 +2424,6 @@ wrapEl.addEventListener('click', (e) => {
   }
 
   if (isBoxOpen) {
-    // 1. Клик по кости сверху в пуле: кость исчезает из пула и возвращается в свою ячейку ящика
     const handHits = raycaster.intersectObjects(topHandMeshes.map(h => h.mesh));
     if (handHits.length > 0) {
       const hitMesh = handHits[0].object;
@@ -2254,11 +2441,11 @@ wrapEl.addEventListener('click', (e) => {
           st.velWZ = (Math.random() - 0.5) * 0.45;
         }
         sfx.init(); sfx.playHit(0.55, true);
+        requestRender();
       }
       return;
     }
 
-    // 2. Клик по ячейке ящика: 1 кость из ячейки переходит в пул
     if (raycaster.ray.intersectPlane(groundPlane, intersectPt)) {
       let bestType = -1;
       for (let t = 0; t < 8; t++) {
@@ -2282,12 +2469,13 @@ wrapEl.addEventListener('click', (e) => {
           st.velWZ = (Math.random() - 0.5) * 0.45;
         }
         sfx.init(); sfx.playHit(0.75, true);
+        requestRender();
       }
     }
     return;
   }
 
-  if (game.rolling) return;
+  if (game.rolling || game.phase === 'tiebreak_resolving' || game.phase === 'match_ending') return;
   if (game.phase === 'tiebreak') runInitialTiebreakRoll(2);
   else if (game.phase === 'playing' && game.turn === 'player' && !game.playerPassed) {
     playerThrow(playerRemainingSkins.length >= 2 ? 2 : 1);
@@ -2304,14 +2492,89 @@ wrapEl.addEventListener('contextmenu', (e) => {
 });
 
 /* ============================================================================
-   13. ИНТЕГРАЦИЯ С INDEX.HTML (ПОДГРУЗКА ФОНА, СОПЕРНИКА, СКЛАДА И MODE=BOX)
+   12. ЖИВОЙ ФОН, ИНТЕГРАЦИЯ С INDEX.HTML, АВТОЗАГРУЗКА АССЕТОВ И ОЧИСТКА ПАМЯТИ
 ============================================================================ */
-function applyExternalConfig(cfg = {}) {
-  if (cfg.bg) {
-    const bgVal = cfg.bg.startsWith('url(') ? cfg.bg : `url('${cfg.bg}')`;
-    document.body.style.backgroundImage = bgVal;
+let trimPromise = null;
+let boxPromise = null;
+let trimAssetSettled = false;
+let boxAssetSettled = false;
+let appliedTrimOnBoot = false;
+let messageSeq = 0;
+
+function extractValidCssUrl(val) {
+  if (!val || typeof val !== 'string') return '';
+  const trimmed = val.trim();
+  if (!trimmed || trimmed === 'none' || !/url\s*\(/i.test(trimmed)) return '';
+  return trimmed;
+}
+
+function resolveParentSceneBackground() {
+  if (!window.parent || window.parent === window) return '';
+  try {
+    const pWin = window.parent;
+    const pDoc = pWin.document;
+    if (!pDoc) return '';
+
+    const selectors = [
+      '.scene-slot.current .layer-bg',
+      '.scene-slot.current .layer-dark'
+    ];
+    for (const sel of selectors) {
+      const el = pDoc.querySelector(sel);
+      if (!el) continue;
+      const inlineBg = extractValidCssUrl(el.style && el.style.backgroundImage);
+      if (inlineBg) return inlineBg;
+      const compBg = extractValidCssUrl(pWin.getComputedStyle(el).backgroundImage);
+      if (compBg) return compBg;
+    }
+
+    if (typeof pWin.currentLocationBg === 'string' && pWin.currentLocationBg.trim()) {
+      const cur = pWin.currentLocationBg.trim();
+      if (cur !== 'none' && !cur.includes('radial-gradient')) return cur;
+    }
+
+    const bodyInline = extractValidCssUrl(pDoc.body && pDoc.body.style && pDoc.body.style.backgroundImage);
+    if (bodyInline) return bodyInline;
+  } catch (e) {}
+  return '';
+}
+
+function applyBackgroundValue(rawBg) {
+  if (!rawBg || typeof rawBg !== 'string') return false;
+  const trimmed = rawBg.trim();
+  if (!trimmed || trimmed === 'none') return false;
+
+  let cssBg = '';
+  if (/^url\s*\(/i.test(trimmed)) {
+    cssBg = trimmed;
+  } else {
+    let decoded = trimmed;
+    try {
+      decoded = decodeURI(trimmed);
+    } catch (e) {}
+    const encoded = encodeURI(decoded);
+    cssBg = `url("${encoded}")`;
   }
-  const incomingCounts = cfg.playerOwnedCounts || cfg.playerInventory;
+
+  document.body.style.backgroundImage = cssBg;
+  document.body.style.backgroundSize = 'cover';
+  document.body.style.backgroundPosition = 'center';
+  document.body.style.backgroundRepeat = 'no-repeat';
+  return true;
+}
+
+function applyExternalConfig(cfg = {}, options = {}) {
+  const deferBoxOpen = Boolean(options.deferBoxOpen);
+  const deferVisuals = Boolean(options.deferVisuals);
+
+  const chosenBg = (cfg.bg && String(cfg.bg).trim())
+    ? cfg.bg
+    : resolveParentSceneBackground();
+  if (chosenBg) {
+    applyBackgroundValue(chosenBg);
+  }
+
+  const incomingCounts = cfg.ownedCounts || cfg.playerOwnedCounts || cfg.playerInventory;
   if (Array.isArray(incomingCounts) && incomingCounts.length === 8) {
     playerOwnedCounts = incomingCounts.map(n => Math.max(0, Number(n) || 0));
     if (playerOwnedCounts[0] < 6) playerOwnedCounts[0] = 6;
@@ -2321,49 +2584,221 @@ function applyExternalConfig(cfg = {}) {
   }
   if (cfg.opponent !== undefined) {
     isEmbeddedMatchMode = true;
-    const oIdx = Math.max(0, Math.min(3, Number(cfg.opponent) - 1));
+    const oIdx = Math.max(0, Math.min(OPPONENTS_CONFIG.length - 1, Number(cfg.opponent) - 1));
     currentOppIdx = oIdx;
     currentOppGameIdx = Math.max(0, Math.min(OPPONENTS_CONFIG[oIdx].games.length - 1, (Number(cfg.game) || 1) - 1));
     game.playerWins = 0;
     game.botWins = 0;
   }
+  ensurePoolHasSixDice();
+
   if (cfg.mode === 'box' || cfg.boxOnly === true || cfg.boxOnly === '1') {
     isStandaloneBoxMode = true;
     document.getElementById('close-box-sub').textContent = '(вернуться в инвентарь)';
-    setCollectorBoxOpen(true);
+    if (!deferBoxOpen) {
+      setCollectorBoxOpen(true);
+    }
   } else if (cfg.mode === 'match' || cfg.mode === 'game') {
     isStandaloneBoxMode = false;
     isEmbeddedMatchMode = true;
     document.getElementById('close-box-sub').textContent = '(вернуться к доске)';
-    setCollectorBoxOpen(false);
+    if (!deferVisuals) {
+      setCollectorBoxOpen(false);
+    }
   }
 
-  updateDevStackVisibility();
-  syncSelectedSkinsToGame();
-  resetBotSkinsForRound();
-  updateHUD();
+  if (!deferVisuals) {
+    syncSelectedSkinsToGame();
+    resetBotSkinsForRound();
+    updateHUD();
+    requestRender();
+  } else {
+    playerRemainingSkins = [...playerSelectedSkins];
+    resetBotSkinsForRound();
+    savePlayerStateToStorage();
+  }
 }
 
 window.initOchkoFromIndex = applyExternalConfig;
 
-window.addEventListener('message', (e) => {
+function disposeAllWebGLResources() {
+  clearAllGameTimers();
+  if (bannerTimer) { clearTimeout(bannerTimer); bannerTimer = null; }
+  activeThrowAnim = null;
+  flyingTrophyAnims.length = 0;
+  game.rolling = false;
+  isRenderPaused = true;
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+  if (isWebGLDisposed) return;
+  isWebGLDisposed = true;
+
+  disposeMaterialCache();
+  if (masterDiceGeo) {
+    masterDiceGeo.dispose();
+    masterDiceGeo = null;
+  }
+  if (boxPlaneMesh) {
+    if (boxPlaneMesh.material) {
+      if (boxPlaneMesh.material.map) boxPlaneMesh.material.map.dispose();
+      boxPlaneMesh.material.dispose();
+    }
+    if (boxPlaneMesh.geometry) boxPlaneMesh.geometry.dispose();
+  }
+  const bedMap = trayBedMaterial ? trayBedMaterial.map : null;
+  if (trayBedMaterial) {
+    if (trayBedMaterial.map) trayBedMaterial.map.dispose();
+    if (trayBedMaterial.bumpMap && trayBedMaterial.bumpMap !== trayBedMaterial.map) {
+      trayBedMaterial.bumpMap.dispose();
+    }
+    trayBedMaterial.dispose();
+  }
+  if (trayWallMaterial) {
+    if (trayWallMaterial.map && trayWallMaterial.map !== bedMap) {
+      trayWallMaterial.map.dispose();
+    }
+    if (trayWallMaterial.bumpMap && trayWallMaterial.bumpMap !== trayWallMaterial.map && trayWallMaterial.bumpMap !== bedMap) {
+      trayWallMaterial.bumpMap.dispose();
+    }
+    trayWallMaterial.dispose();
+  }
+  if (scene.environment) {
+    scene.environment.dispose();
+    scene.environment = null;
+  }
+  renderer.dispose();
+}
+
+async function waitForRequiredAssets(needBoxImage = false) {
+  if (trimPromise && !trimAssetSettled) {
+    await trimPromise;
+    if (isWebGLDisposed) return false;
+  }
+  if (needBoxImage && boxPromise && !boxAssetSettled) {
+    await boxPromise;
+    if (isWebGLDisposed) return false;
+  }
+  return !isWebGLDisposed;
+}
+
+window.addEventListener('message', async (e) => {
   if (!e.data) return;
+  if (e.data.type === 'DISPOSE_OCHKO') {
+    disposeAllWebGLResources();
+    return;
+  }
+  if (isWebGLDisposed) return;
+
+  if (e.data.type === 'PAUSE_OCHKO') {
+    clearAllGameTimers();
+    isRenderPaused = true;
+    if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+    return;
+  }
+  if (e.data.type === 'RESUME_OCHKO') {
+    isRenderPaused = false;
+    requestRender();
+    return;
+  }
+  if (e.data.type === 'OCHKO_OPEN') {
+    const mySeq = ++messageSeq;
+    clearAllGameTimers();
+    activeThrowAnim = null;
+    flyingTrophyAnims.length = 0;
+    game.rolling = false;
+    hideSuspendedPromptBanner();
+    isRenderPaused = false;
+
+    applyBackgroundValue(e.data.bg || resolveParentSceneBackground());
+
+    const isBoxReq = (e.data.mode === 'box');
+    if (!trimAssetSettled || (isBoxReq && !boxAssetSettled)) {
+      const ok = await waitForRequiredAssets(isBoxReq);
+      if (!ok || mySeq !== messageSeq || isWebGLDisposed) return;
+    }
+
+    if (isBoxReq) {
+      applyExternalConfig({
+        bg: e.data.bg,
+        ownedCounts: e.data.ownedCounts,
+        playerOwnedCounts: e.data.playerOwnedCounts,
+        playerInventory: e.data.playerInventory,
+        playerSkins: e.data.playerSkins,
+        mode: 'box'
+      });
+      renderer.render(scene, camera);
+      revealWebglWrap();
+    } else if (e.data.mode === 'match') {
+      game.playerWins = 0;
+      game.botWins = 0;
+      applyExternalConfig({
+        bg: e.data.bg,
+        opponent: e.data.opponent,
+        game: e.data.game,
+        ownedCounts: e.data.ownedCounts,
+        playerOwnedCounts: e.data.playerOwnedCounts,
+        playerInventory: e.data.playerInventory,
+        playerSkins: e.data.playerSkins,
+        mode: 'match'
+      });
+      startNewRoundWithTiebreak();
+      renderer.render(scene, camera);
+      revealWebglWrap();
+    }
+    return;
+  }
   if (e.data.type === 'OPEN_BOX_ONLY') {
+    const mySeq = ++messageSeq;
+    clearAllGameTimers();
+    activeThrowAnim = null;
+    flyingTrophyAnims.length = 0;
+    game.rolling = false;
+    hideSuspendedPromptBanner();
+    isRenderPaused = false;
+
+    applyBackgroundValue(e.data.bg || resolveParentSceneBackground());
+
+    if (!trimAssetSettled || !boxAssetSettled) {
+      const ok = await waitForRequiredAssets(true);
+      if (!ok || mySeq !== messageSeq || isWebGLDisposed) return;
+    }
     applyExternalConfig({ ...e.data, mode: 'box' });
+    renderer.render(scene, camera);
+    revealWebglWrap();
   } else if (e.data.type === 'INIT_OCHKO' || e.data.bg || e.data.opponent || e.data.mode) {
+    const mySeq = ++messageSeq;
+    isRenderPaused = false;
+    applyBackgroundValue(e.data.bg || resolveParentSceneBackground());
+
+    const isBoxReq = (e.data.mode === 'box' || e.data.boxOnly === true || e.data.boxOnly === '1');
+    if (!trimAssetSettled || (isBoxReq && !boxAssetSettled)) {
+      const ok = await waitForRequiredAssets(isBoxReq);
+      if (!ok || mySeq !== messageSeq || isWebGLDisposed) return;
+    }
     applyExternalConfig(e.data);
-    if (e.data.restart && !isStandaloneBoxMode) startNewRoundWithTiebreak();
+    const shouldRestart = Boolean(
+      e.data.restart ||
+      e.data.type === 'INIT_OCHKO' ||
+      game.phase === 'trophy_pick' ||
+      game.phase === 'match_lost' ||
+      game.phase === 'over'
+    );
+    if (shouldRestart && !isStandaloneBoxMode) startNewRoundWithTiebreak();
+    renderer.render(scene, camera);
+    revealWebglWrap();
   }
 });
 
-function autoDetectIndexEnvironment() {
+function autoDetectIndexEnvironment(options = {}) {
   try {
-    const params = new URLSearchParams(window.location.search);
+    const params = INITIAL_URL_PARAMS;
     const urlCfg = {};
     if (params.get('bg')) urlCfg.bg = params.get('bg');
     if (params.get('opponent')) urlCfg.opponent = params.get('opponent');
     if (params.get('game')) urlCfg.game = params.get('game');
-    if (params.get('mode') === 'box' || params.get('boxOnly') === '1') urlCfg.mode = 'box';
+    if (INITIAL_IS_BOX_MODE) urlCfg.mode = 'box';
     else if (params.get('mode') === 'match') urlCfg.mode = 'match';
 
     const savedOwned = localStorage.getItem('ochko_owned_counts') || localStorage.getItem('ochko_player_inventory');
@@ -2378,94 +2813,128 @@ function autoDetectIndexEnvironment() {
       if (Array.isArray(parsed) && parsed.length === 6) urlCfg.playerSkins = parsed;
     }
 
-    const lsBg = localStorage.getItem('current_location_bg') || localStorage.getItem('location_bg');
-    if (!urlCfg.bg && lsBg) urlCfg.bg = lsBg;
-
-    if (!urlCfg.bg && window.parent && window.parent !== window) {
-      try {
-        const pDoc = window.parent.document;
-        const pBg = window.parent.currentLocationBg
-          || pDoc.body.style.backgroundImage
-          || window.parent.getComputedStyle(pDoc.body).backgroundImage;
-        if (pBg && pBg !== 'none' && !pBg.includes('radial-gradient')) {
-          urlCfg.bg = pBg;
-        }
-      } catch (e) {}
+    if (!urlCfg.bg) {
+      const parentBg = resolveParentSceneBackground();
+      if (parentBg) {
+        urlCfg.bg = parentBg;
+      } else {
+        const lsBg = localStorage.getItem('current_location_bg') || localStorage.getItem('location_bg');
+        if (lsBg) urlCfg.bg = lsBg;
+      }
     }
 
-    if (Object.keys(urlCfg).length > 0) applyExternalConfig(urlCfg);
-    updateDevStackVisibility();
+    if (Object.keys(urlCfg).length > 0) {
+      applyExternalConfig(urlCfg, options);
+    }
   } catch (e) {}
 }
 
-function applyLoadedTrimImage(img, save = true) {
-  trimCtx.clearRect(0, 0, 1024, 1024);
-  trimCtx.drawImage(img, 0, 0, 1024, 1024);
-  materialCache.clear();
-  document.getElementById('lbl-trim-status').textContent = 'Трим-лист ✓';
+function isCrossOriginUrl(path) {
+  if (!/^https?:\/\//i.test(path)) return false;
+  try {
+    return new URL(path).origin !== window.location.origin;
+  } catch (e) {
+    return false;
+  }
+}
 
+function loadImageWithFallbacks(paths, timeoutMs = ASSET_LOAD_TIMEOUT_MS, batchSize = 4) {
+  if (!CAN_AUTOLOAD_RELATIVE || !paths || !paths.length) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (img) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(img);
+    };
+    const timer = setTimeout(() => finish(null), timeoutMs);
+
+    let nextIdx = 0;
+    const runBatch = () => {
+      if (settled) return;
+      if (nextIdx >= paths.length) {
+        finish(null);
+        return;
+      }
+      const batch = paths.slice(nextIdx, nextIdx + batchSize);
+      nextIdx += batch.length;
+      let remainingInBatch = batch.length;
+
+      batch.forEach((rawPath) => {
+        if (settled) return;
+        const img = new Image();
+        if (isCrossOriginUrl(rawPath)) {
+          img.crossOrigin = 'anonymous';
+        }
+        img.onload = () => {
+          if (settled) return;
+          if (img.naturalWidth > 0) {
+            finish(img);
+          } else {
+            remainingInBatch--;
+            if (remainingInBatch === 0 && !settled) runBatch();
+          }
+        };
+        img.onerror = () => {
+          if (settled) return;
+          remainingInBatch--;
+          if (remainingInBatch === 0 && !settled) runBatch();
+        };
+        img.src = encodeURI(rawPath);
+      });
+    };
+
+    runBatch();
+  });
+}
+
+function applyLoadedTrimImage(img, refreshScene = true) {
+  if (isWebGLDisposed || !img) return;
+  try {
+    trimCtx.clearRect(0, 0, TRIM_SIZE, TRIM_SIZE);
+    trimCtx.drawImage(img, 0, 0, TRIM_SIZE, TRIM_SIZE);
+  } catch (e) {
+    return;
+  }
+  disposeMaterialCache();
+
+  if (!refreshScene) return;
   boardDice.forEach(d => { d.mesh.material = getDiceMaterial(d.skinId); });
-  boxInstancedMeshes.forEach((im, idx) => { im.material = getDiceMaterial(idx); });
-  rebuildLedgeDice();
-  rebuildTopHand3DDice();
-  if (save) {
-    try { localStorage.setItem('saved_trim_sheet_v1', trimSheetCanvas.toDataURL('image/jpeg', 0.9)); } catch (e) {}
+  if (collectorBoxBuilt) {
+    boxInstancedMeshes.forEach((im, idx) => {
+      im.material = getCountInBoxCell(idx) > 0 ? getDiceMaterial(idx) : emptyBoxMat;
+    });
+    if (isBoxOpen) rebuildTopHand3DDice();
   }
+  if (!isStandaloneBoxMode) {
+    rebuildLedgeDice();
+  } else {
+    redrawCornerDiceButtons();
+  }
+  requestRender();
 }
 
-function applyLoadedBoxImage(img, save = false) {
-  const cutCanvas = createBoxCanvasWithAlphaCutout(img);
-  const tex = new THREE.CanvasTexture(cutCanvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  boxPlaneMesh.material.map = tex;
-  boxPlaneMesh.material.needsUpdate = true;
-  document.getElementById('lbl-box-status').textContent = 'Ящик (Кубики.jpg) ✓';
-  if (save) {
-    try { localStorage.setItem('saved_box_photo_v2', cutCanvas.toDataURL('image/png')); } catch (e) {}
-  }
+function applyLoadedBoxImage(img) {
+  if (isWebGLDisposed || !img) return;
+  pendingBoxImage = img;
+  if (!collectorBoxBuilt || !boxPlaneMesh) return;
+
+  try {
+    const cutCanvas = createBoxCanvasWithFrameMask(img);
+    const prevMap = boxPlaneMesh.material.map;
+    const tex = new THREE.CanvasTexture(cutCanvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    boxPlaneMesh.material.map = tex;
+    boxPlaneMesh.material.needsUpdate = true;
+    if (prevMap) prevMap.dispose();
+    requestRender();
+  } catch (e) {}
 }
-
-const folderBoxImg = new Image();
-folderBoxImg.crossOrigin = 'anonymous';
-folderBoxImg.onload = () => applyLoadedBoxImage(folderBoxImg, false);
-folderBoxImg.src = './КУБИКИ.jpg';
-
-const folderTrimImg = new Image();
-folderTrimImg.crossOrigin = 'anonymous';
-folderTrimImg.onload = () => applyLoadedTrimImage(folderTrimImg, true);
-folderTrimImg.src = './ТРИМ ЛИСТ.jpg';
-
-try {
-  const cachedTrim = localStorage.getItem('saved_trim_sheet_v1');
-  if (cachedTrim) {
-    const img = new Image(); img.onload = () => applyLoadedTrimImage(img, false); img.src = cachedTrim;
-  }
-  const cachedBox = localStorage.getItem('saved_box_photo_v2');
-  if (cachedBox) {
-    const bImg = new Image(); bImg.onload = () => applyLoadedBoxImage(bImg, false); bImg.src = cachedBox;
-  }
-  const cachedWood = localStorage.getItem('saved_wood_board_v1');
-  if (cachedWood) {
-    const wImg = new Image(); wImg.onload = () => applyBoardWoodTexture(wImg, false); wImg.src = cachedWood;
-  }
-} catch (e) {}
-
-document.getElementById('file-trim').addEventListener('change', (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = (ev) => { const img = new Image(); img.onload = () => applyLoadedTrimImage(img, true); img.src = ev.target.result; };
-  r.readAsDataURL(f);
-});
-
-document.getElementById('file-box-img').addEventListener('change', (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = (ev) => { const img = new Image(); img.onload = () => applyLoadedBoxImage(img, true); img.src = ev.target.result; };
-  r.readAsDataURL(f);
-});
 
 const gltfLoader = new GLTFLoader();
 function applyCustomGlb(root) {
+  if (isWebGLDisposed || !root) return;
   let foundMesh = null;
   root.traverse(n => { if (n.isMesh && !foundMesh) foundMesh = n; });
   if (!foundMesh) return;
@@ -2478,86 +2947,209 @@ function applyCustomGlb(root) {
   const scale = BASE_DICE_SIZE / (Math.max(size.x, size.y, size.z) || 1);
   rawGeo.scale(scale, scale, scale);
 
+  const prevGeo = masterDiceGeo;
   masterDiceGeo = projectTCrossUVs(rawGeo);
-  document.getElementById('lbl-glb-status').textContent = 'Модель dice.glb ✓';
+  rawGeo.dispose();
+  if (prevGeo) prevGeo.dispose();
 
   boardDice.forEach(d => { d.mesh.geometry = masterDiceGeo; });
-  boxInstancedMeshes.forEach(im => { im.geometry = masterDiceGeo; });
-  rebuildLedgeDice();
-  rebuildTopHand3DDice();
+  if (collectorBoxBuilt) {
+    boxInstancedMeshes.forEach(im => { im.geometry = masterDiceGeo; });
+    if (isBoxOpen) rebuildTopHand3DDice();
+  }
+  if (!isStandaloneBoxMode) {
+    rebuildLedgeDice();
+  }
+  requestRender();
 }
 
-gltfLoader.load('./dice.glb', (gltf) => applyCustomGlb(gltf.scene), undefined, () => {});
-document.getElementById('file-glb').addEventListener('change', (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  gltfLoader.load(URL.createObjectURL(f), (gltf) => applyCustomGlb(gltf.scene));
-});
+function loadGlbWithTimeout(paths, timeoutMs = ASSET_LOAD_TIMEOUT_MS) {
+  const pathList = Array.isArray(paths) ? paths : [paths];
+  if (!CAN_AUTOLOAD_RELATIVE || !pathList.length) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (gltf) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(gltf);
+    };
+    const timer = setTimeout(() => finish(null), timeoutMs);
 
-document.getElementById('file-wood').addEventListener('change', (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = (ev) => { const img = new Image(); img.onload = () => applyBoardWoodTexture(img, true); img.src = ev.target.result; };
-  r.readAsDataURL(f);
-});
-
-document.getElementById('file-bg').addEventListener('change', (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  document.body.style.backgroundImage = `url('${URL.createObjectURL(f)}')`;
-});
-
-document.getElementById('file-ava-player').addEventListener('change', (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  document.getElementById('lens-player').style.backgroundImage = `url('${URL.createObjectURL(f)}')`;
-});
-document.getElementById('file-ava-bot').addEventListener('change', (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  document.getElementById('lens-bot').style.backgroundImage = `url('${URL.createObjectURL(f)}')`;
-});
+    let idx = 0;
+    const tryNext = () => {
+      if (settled) return;
+      if (idx >= pathList.length) {
+        finish(null);
+        return;
+      }
+      try {
+        gltfLoader.load(
+          encodeURI(pathList[idx]),
+          (gltf) => finish(gltf),
+          undefined,
+          () => { idx++; tryNext(); }
+        );
+      } catch (e) {
+        idx++;
+        tryNext();
+      }
+    };
+    tryNext();
+  });
+}
 
 /* ============================================================================
-   14. СТАРТ И АНИМАЦИОННЫЙ ЦИКЛ
+   13. СТАРТ БЕЗ МЕЛЬКАНИЯ И ЭКОНОМНЫЙ РЕНДЕР ПО ТРЕБОВАНИЮ
 ============================================================================ */
-resetBotSkinsForRound();
-autoDetectIndexEnvironment();
-rebuildLedgeDice();
-rebuildTopHand3DDice();
-updateBox3DDiceTransforms();
-updateHUD();
-if (!isStandaloneBoxMode) {
-  setTimeout(() => runInitialTiebreakRoll(2), 400);
+async function bootstrapScene() {
+  if (!INITIAL_URL_PARAMS.get('bg') && window.parent && window.parent !== window) {
+    const immediateParentBg = resolveParentSceneBackground();
+    if (immediateParentBg) applyBackgroundValue(immediateParentBg);
+  }
+
+  resetBotSkinsForRound();
+  autoDetectIndexEnvironment({ deferBoxOpen: INITIAL_IS_BOX_MODE, deferVisuals: true });
+
+  trimPromise = loadImageWithFallbacks(
+    [
+      './ТРИМ ЛИСТ.jpg', './ТРИМ ЛИСТ.JPG', './Трим лист.jpg', './Трим Лист.jpg', './трим лист.jpg',
+      './ТРИМ ЛИСТ.png', './Трим лист.png', './трим лист.png',
+      './ТРИМ ЛИСТ.jpeg', './ТРИМ ЛИСТ.webp',
+      './события/ТРИМ ЛИСТ.jpg', './события/трим лист.jpg'
+    ],
+    ASSET_LOAD_TIMEOUT_MS
+  ).then(img => {
+    trimAssetSettled = true;
+    if (img && !isWebGLDisposed) {
+      const alreadyRendered = wrapEl.classList.contains('ready') || boardDice.length > 0 || playerLedgeMeshes.length > 0 || collectorBoxBuilt;
+      appliedTrimOnBoot = true;
+      applyLoadedTrimImage(img, alreadyRendered);
+    }
+    return img;
+  });
+
+  boxPromise = loadImageWithFallbacks(
+    [
+      './КУБИКИ.jpg', './КУБИКИ.JPG', './Кубики.jpg', './кубики.jpg',
+      './КУБИКИ.png', './Кубики.png', './кубики.png',
+      './КУБИКИ.jpeg', './КУБИКИ.webp',
+      './события/КУБИКИ.jpg', './события/кубики.jpg'
+    ],
+    ASSET_LOAD_TIMEOUT_MS
+  ).then(img => {
+    boxAssetSettled = true;
+    if (img && !isWebGLDisposed) {
+      pendingBoxImage = img;
+      if (collectorBoxBuilt) applyLoadedBoxImage(img);
+    }
+    return img;
+  });
+
+  loadImageWithFallbacks(
+    [
+      './Баннеры.png', './баннеры.png', './БАННЕРЫ.png', './Баннеры.PNG',
+      './Баннеры.webp', './баннеры.webp', './события/Баннеры.png'
+    ],
+    ASSET_LOAD_TIMEOUT_MS
+  ).then(img => { if (img && !isWebGLDisposed) applyBannerImage(img); });
+
+  loadImageWithFallbacks(
+    [
+      './доска.jpg', './Доска.jpg', './ДОСКА.jpg',
+      './дерево.jpg', './Дерево.jpg', './ДЕРЕВО.jpg',
+      './события/доска.jpg'
+    ],
+    ASSET_LOAD_TIMEOUT_MS
+  ).then(img => { if (img && !isWebGLDisposed) applyBoardWoodTexture(img); });
+
+  loadGlbWithTimeout(
+    ['./dice.glb', './Dice.glb', './DICE.glb', './события/dice.glb'],
+    ASSET_LOAD_TIMEOUT_MS
+  ).then(gltf => { if (gltf && gltf.scene && !isWebGLDisposed) applyCustomGlb(gltf.scene); });
+
+  if (INITIAL_IS_BOX_MODE) {
+    const ok = await waitForRequiredAssets(true);
+    if (!ok) return;
+
+    if (messageSeq === 0 && isStandaloneBoxMode) {
+      document.getElementById('close-box-sub').textContent = '(вернуться в инвентарь)';
+      setCollectorBoxOpen(true);
+      renderer.render(scene, camera);
+      revealWebglWrap();
+    }
+  } else {
+    const ok = await waitForRequiredAssets(false);
+    if (!ok) return;
+
+    if (messageSeq === 0 && !isStandaloneBoxMode && !isBoxOpen) {
+      document.body.classList.remove('mode-box-boot');
+      resetBotSkinsForRound();
+      rebuildLedgeDice();
+      updateHUD();
+      renderer.render(scene, camera);
+      revealWebglWrap();
+
+      if (!hasStartedMatch) {
+        autoTiebreakTimerId = scheduleGameTimeout(() => {
+          if (!isStandaloneBoxMode && !isBoxOpen && !isWebGLDisposed && game.phase === 'tiebreak' && !game.rolling) {
+            runInitialTiebreakRoll(2);
+          }
+        }, 400);
+      }
+    }
+  }
 }
 
+bootstrapScene();
+
 window.addEventListener('resize', () => {
+  if (isWebGLDisposed) return;
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  requestRender();
 });
 
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+  } else if (!isRenderPaused && !isWebGLDisposed) {
+    requestRender();
+  }
+});
+
+window.addEventListener('beforeunload', disposeAllWebGLResources);
+
 function animate(now) {
-  requestAnimationFrame(animate);
-  candlePoint.intensity = 25 + Math.sin(now * 0.007) * 1.8 + Math.cos(now * 0.019) * 1.1;
+  rafId = null;
+  if (isRenderPaused || isWebGLDisposed) return;
 
-  // Анимация перелёта выбранных трофейных костяшек с верхнего бортика на сторону игрока
-  for (let i = flyingTrophyAnims.length - 1; i >= 0; i--) {
-    const fa = flyingTrophyAnims[i];
-    if (now < fa.startTime) continue;
-    const t = Math.min(1, (now - fa.startTime) / fa.duration);
-    const ease = 1 - Math.pow(1 - t, 3);
-    fa.mesh.position.lerpVectors(fa.startPos, fa.endPos, ease);
-    fa.mesh.position.y += Math.sin(t * Math.PI) * 2.1; // Высокая красивая дуга над доской
-    fa.mesh.rotation.x = t * Math.PI * 2;
-    fa.mesh.rotation.z = t * Math.PI;
-    fa.mesh.scale.setScalar(BOARD_SCALE * (0.85 + Math.sin(t * Math.PI) * 0.25));
+  let keepAnimating = false;
 
-    if (t >= 1) {
-      sfx.init(); sfx.playHit(0.65, false);
-      const cb = fa.onDone;
-      flyingTrophyAnims.splice(i, 1);
-      if (cb) cb();
+  if (flyingTrophyAnims.length > 0) {
+    keepAnimating = true;
+    for (let i = flyingTrophyAnims.length - 1; i >= 0; i--) {
+      const fa = flyingTrophyAnims[i];
+      if (now < fa.startTime) continue;
+      const t = Math.min(1, (now - fa.startTime) / fa.duration);
+      const ease = 1 - Math.pow(1 - t, 3);
+      fa.mesh.position.lerpVectors(fa.startPos, fa.endPos, ease);
+      fa.mesh.position.y += Math.sin(t * Math.PI) * 2.1;
+      fa.mesh.rotation.x = t * Math.PI * 2;
+      fa.mesh.rotation.z = t * Math.PI;
+      fa.mesh.scale.setScalar(BOARD_SCALE * (0.85 + Math.sin(t * Math.PI) * 0.25));
+
+      if (t >= 1) {
+        sfx.init(); sfx.playHit(0.65, false);
+        const cb = fa.onDone;
+        flyingTrophyAnims.splice(i, 1);
+        if (cb) cb();
+      }
     }
   }
 
-  if (isBoxOpen) {
+  if (isBoxOpen && collectorBoxBuilt) {
     let needsInstUpdate = false;
     const minSepBox = getBoxDiceSize() * 1.12;
 
@@ -2570,15 +3162,18 @@ function animate(now) {
       for (let k = 0; k < visibleCount; k++) {
         const st = states[k];
         if (
-          Math.abs(st.vx) > 1e-4 || Math.abs(st.vz) > 1e-4 ||
-          Math.abs(st.offsetY) > 1e-4 || Math.abs(st.velY) > 1e-4 ||
-          Math.abs(st.wobbleX) > 1e-4 || Math.abs(st.velWX) > 1e-4
+          Math.abs(st.vx) > 5e-4 || Math.abs(st.vz) > 5e-4 ||
+          Math.abs(st.offsetY) > 5e-4 || Math.abs(st.velY) > 5e-4 ||
+          Math.abs(st.wobbleX) > 1e-3 || Math.abs(st.velWX) > 1e-3 ||
+          Math.abs(st.wobbleZ) > 1e-3 || Math.abs(st.velWZ) > 1e-3
         ) {
           needsInstUpdate = true;
           st.x += st.vx;
           st.z += st.vz;
           st.vx *= 0.86;
           st.vz *= 0.86;
+          if (Math.abs(st.vx) < 5e-4) st.vx = 0;
+          if (Math.abs(st.vz) < 5e-4) st.vz = 0;
 
           if (st.x < b.minX) { st.x = b.minX; st.vx = Math.abs(st.vx) * 0.6; }
           if (st.x > b.maxX) { st.x = b.maxX; st.vx = -Math.abs(st.vx) * 0.6; }
@@ -2602,6 +3197,8 @@ function animate(now) {
           st.wobbleZ += st.velWZ;
           st.velWX = (st.velWX - st.wobbleX * 0.18) * 0.82;
           st.velWZ = (st.velWZ - st.wobbleZ * 0.18) * 0.82;
+          if (Math.abs(st.wobbleX) < 1e-3 && Math.abs(st.velWX) < 1e-3) { st.wobbleX = 0; st.velWX = 0; }
+          if (Math.abs(st.wobbleZ) < 1e-3 && Math.abs(st.velWZ) < 1e-3) { st.wobbleZ = 0; st.velWZ = 0; }
         }
       }
 
@@ -2610,7 +3207,7 @@ function animate(now) {
           const A = states[i], B = states[j];
           let dx = B.x - A.x, dz = B.z - A.z;
           let dist = Math.hypot(dx, dz);
-          if (dist < minSepBox) {
+          if (minSepBox - dist > 0.001) {
             needsInstUpdate = true;
             if (dist < 0.0001) { dx = 0.01; dz = 0.01; dist = Math.hypot(dx, dz); }
             const nx = dx / dist, nz = dz / dist;
@@ -2624,10 +3221,14 @@ function animate(now) {
       }
     }
 
-    if (needsInstUpdate) updateBox3DDiceTransforms();
+    if (needsInstUpdate) {
+      keepAnimating = true;
+      updateBox3DDiceTransforms(true);
+    }
 
     topHandMeshes.forEach(h => {
-      if (h.hopY > 0 || Math.abs(h.velY) > 1e-4) {
+      if (h.hopY > 0 || Math.abs(h.velY) > 5e-4) {
+        keepAnimating = true;
         h.hopY += h.velY;
         if (h.hopY > 0.36) { h.hopY = 0.36; h.velY = -Math.abs(h.velY) * 0.4; }
         if (h.hopY > 0) h.velY -= 0.009;
@@ -2638,6 +3239,7 @@ function animate(now) {
   }
 
   if (activeThrowAnim) {
+    keepAnimating = true;
     const elapsed = now - activeThrowAnim.start;
     const progress = Math.min(1, elapsed / activeThrowAnim.duration);
     const stepIdx = Math.min(activeThrowAnim.steps, Math.floor(progress * activeThrowAnim.steps));
@@ -2665,9 +3267,19 @@ function animate(now) {
       if (cb) cb();
     }
   }
+
+  if (keepAnimating) {
+    candlePoint.intensity = 25 + Math.sin(now * 0.007) * 1.8 + Math.cos(now * 0.019) * 1.1;
+  } else {
+    candlePoint.intensity = 25;
+  }
+
   renderer.render(scene, camera);
+
+  if (keepAnimating || activeThrowAnim !== null || flyingTrophyAnims.length > 0) {
+    requestRender();
+  }
 }
-requestAnimationFrame(animate);
 </script>
 </body>
 </html>
