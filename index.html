@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -111,6 +110,18 @@
       background-position: center; background-size: 100% 100%; background-repeat: no-repeat;
     }
 
+    @keyframes walkBob {
+      0%   { transform: translate3d(0px, 0px, 0); }
+      25%  { transform: translate3d(-7px, -9px, 0); }
+      50%  { transform: translate3d(0px, 1.5px, 0); }
+      75%  { transform: translate3d(7px, -9px, 0); }
+      100% { transform: translate3d(0px, 0px, 0); }
+    }
+    body.is-walking .scene-slot.current .layer-bg {
+      animation: walkBob 0.72s ease-in-out infinite;
+      will-change: transform;
+    }
+
     #darkness-canvas {
       position: absolute; inset: 0; width: 100%; height: 100%;
       z-index: 4; pointer-events: none; display: none;
@@ -134,9 +145,55 @@
     #cabinet-items-layer.visible { display: block; }
     .shelf-item {
       position: absolute; transform: translate(-50%, -50%); pointer-events: auto;
-      background-repeat: no-repeat; cursor: pointer; transition: transform 0.16s ease;
+      background-repeat: no-repeat; cursor: pointer;
+      filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.75));
+      transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), filter 0.18s ease;
     }
-    .shelf-item:hover { transform: translate(-50%, -53%) scale(1.05); }
+    .shelf-item:hover {
+      transform: translate(-50%, -56%) scale(1.06);
+      filter: drop-shadow(0 0 12px rgba(215, 165, 95, 0.7)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.78));
+    }
+    .shelf-item.shelf-taking {
+      pointer-events: none;
+      animation: shelfItemTake 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .shelf-item.potato-stage-shrink {
+      animation: potatoStageShrink 0.34s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    @keyframes shelfItemTake {
+      0% {
+        transform: translate(-50%, -54%) scale(1.08);
+        filter: drop-shadow(0 0 16px rgba(255, 206, 110, 0.95)) brightness(1.35);
+        opacity: 1;
+      }
+      45% {
+        transform: translate(-15%, -92%) scale(0.92);
+        filter: drop-shadow(0 0 20px rgba(255, 214, 128, 1)) brightness(1.45);
+        opacity: 0.94;
+      }
+      100% {
+        transform: translate(38%, -148%) scale(0.42);
+        filter: drop-shadow(0 0 10px rgba(255, 195, 95, 0.35)) brightness(1.1);
+        opacity: 0;
+      }
+    }
+    @keyframes potatoStageShrink {
+      0% {
+        transform: translate(-50%, -50%) scale(1.16);
+        filter: drop-shadow(0 0 16px rgba(235, 185, 105, 0.92)) brightness(1.3);
+        opacity: 0.78;
+      }
+      55% {
+        transform: translate(-50%, -52%) scale(0.96);
+        filter: drop-shadow(0 0 10px rgba(215, 165, 95, 0.55)) brightness(1.1);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(1);
+        filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.75)) brightness(1);
+        opacity: 1;
+      }
+    }
 
     /* ВЕРХНИЙ ТЕКСТ И ПОДСКАЗКА */
     #top-event-box {
@@ -297,23 +354,31 @@
     .choice-card {
       position: relative; width: 97px; flex-shrink: 0; background: transparent; border: none; padding: 0;
       cursor: pointer; touch-action: manipulation; font-family: inherit;
-      transition: transform 0.18s cubic-bezier(0.22, 1.3, 0.36, 1);
+      transition: transform 0.2s cubic-bezier(0.22, 1.3, 0.36, 1), z-index 0.1s;
     }
     .choice-card.deal-anim {
       perspective: 800px; transform-style: preserve-3d;
       animation: cardDeal 0.52s cubic-bezier(0.2, 1.22, 0.32, 1) backwards;
       animation-delay: var(--deal-delay, 0ms);
     }
-    .choice-card:hover:not(:disabled):not(.activating) { transform: translateY(-9px) scale(1.04); }
+    .choice-card:hover:not(:disabled):not(.activating),
+    .choice-card.card-focused:not(:disabled):not(.activating) {
+      transform: translateY(-22px) scale(1.18);
+      z-index: 30;
+    }
     .choice-card.activating {
-      perspective: 800px; transform-style: preserve-3d;
-      animation: cardActivateFlip 0.42s cubic-bezier(0.22, 1.25, 0.36, 1) forwards !important;
+      perspective: 800px; transform-style: preserve-3d; z-index: 35;
+      animation: cardActivateFlip 0.44s cubic-bezier(0.22, 1.22, 0.36, 1) forwards !important;
       pointer-events: none;
     }
     .choice-card:disabled:not(.activating) { opacity: 0.48; cursor: default; }
 
     .choice-card.priority-card:not(.activating) { transform: translateY(-7px); z-index: 4; }
-    .choice-card.priority-card:hover:not(:disabled):not(.activating) { transform: translateY(-11px) scale(1.04); }
+    .choice-card.priority-card:hover:not(:disabled):not(.activating),
+    .choice-card.priority-card.card-focused:not(:disabled):not(.activating) {
+      transform: translateY(-22px) scale(1.18);
+      z-index: 30;
+    }
     .choice-card.priority-card .card-inner {
       border: 1.5px solid #2dd4bf;
       box-shadow: 0 5px 12px rgba(0,0,0,0.85), 0 0 12px rgba(45, 212, 191, 0.38);
@@ -326,10 +391,20 @@
       border: 1px solid rgba(195,160,115,0.48); border-radius: 6px;
       padding: 5px 5px 6px 5px; display: flex; flex-direction: column; align-items: center; gap: 4px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.82);
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
     }
     .choice-card.deal-anim .card-inner,
     .choice-card.activating .card-inner { transform-style: preserve-3d; backface-visibility: hidden; }
-    .choice-card:hover:not(:disabled) .card-inner { border-color: #d6a45c; }
+    .choice-card:hover:not(:disabled) .card-inner,
+    .choice-card.card-focused:not(:disabled) .card-inner {
+      border-color: #e6b86a;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.92), 0 0 16px rgba(215, 165, 95, 0.55);
+    }
+    .choice-card.priority-card:hover:not(:disabled) .card-inner,
+    .choice-card.priority-card.card-focused:not(:disabled) .card-inner {
+      border-color: #5eead4;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.92), 0 0 18px rgba(45, 212, 191, 0.65);
+    }
     .card-back {
       display: none; position: absolute; inset: 0; border-radius: 6px; backface-visibility: hidden;
       transform: rotateY(180deg);
@@ -347,9 +422,10 @@
       100% { opacity: 1; transform: translate3d(0, 0, 0) rotateY(0deg) rotateZ(0deg) scale(1); }
     }
     @keyframes cardActivateFlip {
-      0% { transform: translateY(-6px) scale(1.04) rotateY(0deg); }
-      45% { transform: translateY(-28px) scale(1.14) rotateY(180deg); }
-      80% { transform: translateY(-16px) scale(1.08) rotateY(360deg); }
+      0% { transform: translateY(-22px) scale(1.18) rotateY(0deg); }
+      22% { transform: translateY(-30px) scale(1.22) rotateY(0deg); }
+      58% { transform: translateY(-30px) scale(1.22) rotateY(180deg); }
+      86% { transform: translateY(-14px) scale(1.08) rotateY(360deg); }
       100% { transform: translateY(0) scale(1) rotateY(360deg); }
     }
 
@@ -483,10 +559,26 @@
 
   <script>
     /* 0. СБРОС ПРОГРЕССА КОСТЕЙ */
+    const DEFAULT_OWNED_COUNTS = [6, 0, 0, 0, 0, 0, 0, 0];
+    const DEFAULT_PLAYER_SKINS = [0, 0, 0, 0, 0, 0];
     try {
-      localStorage.setItem("ochko_owned_counts", JSON.stringify([6, 0, 0, 0, 0, 0, 0, 0]));
-      localStorage.setItem("ochko_player_skins", JSON.stringify([0, 0, 0, 0, 0, 0]));
+      localStorage.setItem("ochko_owned_counts", JSON.stringify(DEFAULT_OWNED_COUNTS));
+      localStorage.setItem("ochko_player_skins", JSON.stringify(DEFAULT_PLAYER_SKINS));
     } catch (e) {}
+
+    function getStoredOchkoData() {
+      let ownedCounts = DEFAULT_OWNED_COUNTS.slice();
+      let playerSkins = DEFAULT_PLAYER_SKINS.slice();
+      try {
+        const rawOwned = JSON.parse(localStorage.getItem("ochko_owned_counts"));
+        if (Array.isArray(rawOwned) && rawOwned.length > 0) ownedCounts = rawOwned;
+      } catch (e) {}
+      try {
+        const rawSkins = JSON.parse(localStorage.getItem("ochko_player_skins"));
+        if (Array.isArray(rawSkins) && rawSkins.length > 0) playerSkins = rawSkins;
+      } catch (e) {}
+      return { ownedCounts, playerSkins };
+    }
 
     /* 0.1. ГЛАВНОЕ МЕНЮ */
     const menuEl = document.getElementById("main-menu");
@@ -499,6 +591,7 @@
     let menuToastTimer = null;
     let isMenuOpen = true;
     let gameStarting = false;
+    let isOchkoModalOpen = false;
 
     const VIDEO_CANDIDATES = ["Фон.mp4", "фон.mp4", "события/Фон.mp4", "события/фон.mp4"];
     let videoCandidateIdx = 0;
@@ -821,26 +914,84 @@
 
     /* 2. ЗВУКОВОЙ ДВИЖОК */
     let stepBareToggle = 0, stepShoesToggle = 0, doorCreakToggle = 0, knockTimerId = null, knockToggle = 0, audioCtx = null;
+    let lastCardHoverSoundTime = 0;
     const resolvedAudioCache = new Map();
 
+    // Точки для будущей подмены синтезированных звуков карточек на .mp3 ассеты
+    // Например: hover: "АУДИО/карта_шелест.mp3", shuffle: "АУДИО/карта_перетасовка.mp3"
+    const CARD_SOUND_MP3_ASSETS = {
+      hover: null,
+      shuffle: null,
+      flip: null,
+      deal: null,
+      click: null
+    };
+
+    function playCardNoiseBurst(startTime, dur, freqStart, freqEnd, qVal, gainVal, decayPow) {
+      const sampleCount = Math.max(1, Math.floor(audioCtx.sampleRate * dur));
+      const buf = audioCtx.createBuffer(1, sampleCount, audioCtx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        const t = i / data.length;
+        data[i] = (Math.random() * 2 - 1) * Math.sin(t * Math.PI) * Math.pow(1 - t, decayPow);
+      }
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      const flt = audioCtx.createBiquadFilter();
+      flt.type = "bandpass";
+      flt.frequency.setValueAtTime(freqStart, startTime);
+      flt.frequency.exponentialRampToValueAtTime(freqEnd, startTime + dur);
+      flt.Q.value = qVal;
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(gainVal, startTime);
+      src.connect(flt);
+      flt.connect(gain);
+      gain.connect(audioCtx.destination);
+      src.start(startTime);
+    }
+
     function playCardSound(type) {
+      if (type === "hover") {
+        const nowMs = performance.now();
+        if (nowMs - lastCardHoverSoundTime < 55) return;
+        lastCardHoverSoundTime = nowMs;
+      }
+
+      // Если задан внешний mp3-ассет для этого типа звука — воспроизводим его
+      const customAsset = CARD_SOUND_MP3_ASSETS[type];
+      if (customAsset) {
+        try {
+          const a = new Audio(encodeURI(customAsset));
+          a.volume = type === "hover" ? 0.45 : (type === "shuffle" ? 0.65 : 0.75);
+          a.play().catch(() => {});
+          return;
+        } catch (e) {}
+      }
+
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === "suspended") audioCtx.resume();
-        const dur = type === "flip" ? 0.11 : (type === "deal" ? 0.065 : 0.03);
-        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < data.length; i++) {
-          const t = i / data.length;
-          data[i] = (Math.random() * 2 - 1) * Math.sin(t * Math.PI) * Math.pow(1 - t, type === "flip" ? 1.15 : 2.2);
+        const t0 = audioCtx.currentTime;
+
+        if (type === "hover") {
+          playCardNoiseBurst(t0, 0.042, 1350, 2350, 2.0, 0.22, 1.9);
+          return;
         }
-        const src = audioCtx.createBufferSource(); src.buffer = buf;
-        const flt = audioCtx.createBiquadFilter(); flt.type = "bandpass";
-        flt.frequency.setValueAtTime(type === "flip" ? 650 : 950, audioCtx.currentTime);
-        flt.frequency.exponentialRampToValueAtTime(type === "flip" ? 1950 : 1400, audioCtx.currentTime + dur);
-        flt.Q.value = 1.4;
-        const gain = audioCtx.createGain(); gain.gain.value = type === "flip" ? 0.55 : 0.35;
-        src.connect(flt); flt.connect(gain); gain.connect(audioCtx.destination); src.start();
+        if (type === "shuffle") {
+          for (let i = 0; i < 4; i++) {
+            const offset = i * 0.045;
+            const pitchJitter = 1 + (i - 1.5) * 0.08;
+            playCardNoiseBurst(t0 + offset, 0.052, 820 * pitchJitter, 1850 * pitchJitter, 1.55, 0.32, 1.7);
+          }
+          return;
+        }
+
+        const dur = type === "flip" ? 0.11 : (type === "deal" ? 0.065 : 0.03);
+        const fStart = type === "flip" ? 650 : 950;
+        const fEnd = type === "flip" ? 1950 : 1400;
+        const gVal = type === "flip" ? 0.55 : 0.35;
+        const dPow = type === "flip" ? 1.15 : 2.2;
+        playCardNoiseBurst(t0, dur, fStart, fEnd, 1.4, gVal, dPow);
       } catch (e) {}
     }
 
@@ -976,6 +1127,8 @@
       potato5:{x:31.5,y:54.0,w:17.5}, potato4:{x:31.5,y:53.5,w:13.5},
       potato3:{x:31.5,y:53.0,w:10.5}, potato2:{x:31.5,y:56.5,w:15.0}, potato1:{x:31.5,y:57.0,w:13.0}
     };
+    let cabinetTakeLock = false;
+
     function applySpriteCropToDiv(div, url, c) {
       div.style.backgroundImage = `url("${url}")`;
       div.style.backgroundSize = `${(100/c.rw).toFixed(2)}% ${(100/c.rh).toFixed(2)}%`;
@@ -983,7 +1136,13 @@
       div.style.aspectRatio = `${c.aspect}`;
     }
 
-    function renderCabinetItems() {
+    function syncCabinetBackButtonLabel() {
+      if (state.currentScene !== "cabinet") return;
+      const readyToReturn = state.returnToNeighborAfterStew && (state.invStew > 0 || state.invPotato > 0);
+      setBackButtonTarget("kitchen", readyToReturn ? "Вернуться к соседу" : "Закрыть шкафчик");
+    }
+
+    function renderCabinetItems(animatePotatoShrink = false) {
       const container = document.getElementById("cabinet-items-layer");
       const show = state.currentScene === "cabinet" && !state.isWalking;
       container.classList.toggle("visible", show);
@@ -998,16 +1157,24 @@
         d.style.left = `${pos.x}%`; d.style.top = `${pos.y}%`; d.style.width = `${pos.w}%`;
         applySpriteCropToDiv(d, encodeURI("тушенка.png"), STEW_CROP);
         d.onclick = () => {
-          if (state.stewCount <= 0) return;
-          state.stewCount--;
-          state.invStew++;
-          state.needsFoodForDice = false;
-          removeStoryCard("go_take_stew");
+          if (state.stewCount <= 0 || cabinetTakeLock) return;
+          cabinetTakeLock = true;
           playCardSound("deal");
-          updateBackpackBadge();
-          renderCabinetItems();
-          setEventText(`Вы взяли банку тушёнки в вещмешок (в вещмешке: ${state.invStew} шт.).`);
-          renderUI(false);
+          d.classList.add("shelf-taking");
+          setTimeout(() => {
+            cabinetTakeLock = false;
+            if (state.stewCount <= 0) return;
+            state.stewCount--;
+            state.invStew++;
+            state.needsFoodForDice = false;
+            state.needsStewOnlyForDice = false;
+            removeStoryCard("go_take_stew");
+            updateBackpackBadge();
+            renderCabinetItems(false);
+            syncCabinetBackButtonLabel();
+            setEventText(`Вы взяли банку тушёнки в вещмешок (в вещмешке: ${state.invStew} шт.).`);
+            renderUI(false);
+          }, 240);
         };
         container.appendChild(d);
       }
@@ -1015,19 +1182,33 @@
       const pCrop = POTATO_CROPS[state.potatoStage], pPos = shelfLayout[`potato${state.potatoStage}`];
       if (state.potatoStage > 0 && pCrop && pPos) {
         const d = document.createElement("div");
-        d.className = "shelf-item";
+        d.className = animatePotatoShrink ? "shelf-item potato-stage-shrink" : "shelf-item";
         d.title = "Нажмите, чтобы отсыпать порцию картошки в вещмешок";
         d.style.left = `${pPos.x}%`; d.style.top = `${pPos.y}%`; d.style.width = `${pPos.w}%`;
         applySpriteCropToDiv(d, encodeURI("картошка.png"), pCrop);
+        if (animatePotatoShrink) {
+          d.addEventListener("animationend", () => d.classList.remove("potato-stage-shrink"), { once: true });
+        }
         d.onclick = () => {
-          if (state.potatoStage <= 0) return;
-          state.potatoStage--;
-          state.invPotato++;
+          if (state.potatoStage <= 0 || cabinetTakeLock) return;
+          cabinetTakeLock = true;
           playCardSound("deal");
-          updateBackpackBadge();
-          renderCabinetItems();
-          setEventText(`Вы взяли порцию картошки в вещмешок (в вещмешке: ${state.invPotato} порц.).`);
-          renderUI(false);
+          d.classList.add("shelf-taking");
+          setTimeout(() => {
+            cabinetTakeLock = false;
+            if (state.potatoStage <= 0) return;
+            state.potatoStage--;
+            state.invPotato++;
+            if (!state.needsStewOnlyForDice) {
+              state.needsFoodForDice = false;
+              removeStoryCard("go_take_stew");
+            }
+            updateBackpackBadge();
+            renderCabinetItems(state.potatoStage > 0);
+            syncCabinetBackButtonLabel();
+            setEventText(`Вы взяли порцию картошки в вещмешок (в вещмешке: ${state.invPotato} порц.).`);
+            renderUI(false);
+          }, 240);
         };
         container.appendChild(d);
       }
@@ -1079,9 +1260,18 @@
     const CANDLE_DURATION = 360000;
     const NEIGHBOR_ARRIVAL_DELAY = 180000;
 
+    const OPPONENTS_META = {
+      1: { name: "Сосед из кв. 20", maxGames: 2, acceptsPotato: true },
+      2: { name: "Жилец из кв. 18", maxGames: 2, acceptsPotato: true },
+      3: { name: "Моряк из кв. 23", maxGames: 1, acceptsPotato: true },
+      4: { name: "Финальный игрок", maxGames: 2, acceptsPotato: false },
+      5: { name: "Соперник V", maxGames: 2, acceptsPotato: false }
+    };
+
     const state = {
       logicalRoom: "bedroom", currentScene: "bedroom",
       lightMode: "intro",
+      lightPaused: false, lightPauseStart: 0,
       matchStart: 0, candleStart: 0, candleBurnedMs: 0,
       candleIgniteStart: 0, candleWickLitTime: 0, candleIgniteEnd: 0,
       firstMatchTutorialShown: false, matchTutorialSweepActive: false, matchTutorialSweepStart: 0,
@@ -1089,7 +1279,8 @@
       basicNavUnlocked: false, roomNavUnlocked: false,
       wentOutside: false, neighborVisited: false, neighborPendingArrival: false,
       neighborReturnTimer: null, neighborArrivalTimerId: null,
-      inPeepholeDialog: false, needsFoodForDice: false, activeBetType: "stew",
+      inPeepholeDialog: false, neighborInsideForDice: false, returnToNeighborAfterStew: false,
+      needsFoodForDice: false, needsStewOnlyForDice: false, activeBetType: "stew",
       hasCandle: false, hasDiceSet: false, hasBrochure1: false, hasDiceRules: false,
       hasBrochure2: false, hasTape: false, hasEmptyCan: false,
       hasGrannyCans: false, grannyCansFilled: false, grannyHelped: false,
@@ -1098,7 +1289,7 @@
       hasShoes: false, hasCoat: false, carpetsTaken: false, carpetsHung: false, stoveBuilt: false,
       junkSearches: 0, landingFloor: 3, landingDir: "down",
       activeDoorApt: null, activeOpponentId: 1,
-      oppProgress: { 1: 1, 2: 1, 3: 1, 4: 1 }, opp3Beaten: false,
+      oppProgress: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 },
       isWalking: false, isKnocking: false, activeSlot: "a",
       stewCount: 3, potatoStage: 5, invStew: 0, invPotato: 0,
       actOffset: 0, movOffset: 0, autoReturnTimer: null, backBtnTarget: null,
@@ -1114,6 +1305,7 @@
       state.neighborPendingArrival = false;
       startDoorKnockLoop();
       setEventText("В тишине квартиры раздался настойчивый стук во входную дверь! Подойдите к выходу и посмотрите в глазок.");
+      renderUI(true);
     }
 
     function startNeighborArrivalCountdown() {
@@ -1141,12 +1333,6 @@
     function spendOneStew() {
       if (state.invStew > 0) { state.invStew--; updateBackpackBadge(); return true; }
       if (state.stewCount > 0) { state.stewCount--; return true; }
-      return false;
-    }
-    function totalPotatoAvailable() { return state.invPotato + state.potatoStage; }
-    function spendOnePotato() {
-      if (state.invPotato > 0) { state.invPotato--; updateBackpackBadge(); return true; }
-      if (state.potatoStage > 0) { state.potatoStage--; return true; }
       return false;
     }
 
@@ -1195,7 +1381,7 @@
         btn.onclick = () => { playCardSound("click"); setEventText(c.desc || c.caption); };
         row.appendChild(btn);
       });
-      playCardSound("deal");
+      playCardSound("shuffle");
       modal.classList.add("visible");
     }
 
@@ -1216,6 +1402,7 @@
     function closeInventoryScreen() {
       document.getElementById("inventory-screen").classList.remove("visible");
       renderCabinetItems();
+      syncCabinetBackButtonLabel();
       renderUI(false);
     }
 
@@ -1249,7 +1436,7 @@
           else if (item.key === "dice_set") { openOchkoBoxOnly(); }
           else if (item.key === "candle") { igniteCandle(); hint.textContent = "Вы зажгли восковую свечу."; }
           else if (item.key === "stew") hint.textContent = "Банка мясной тушёнки в вещмешке. Можно съесть, поставить на кон в кости или выложить обратно в шкаф.";
-          else if (item.key === "potato") hint.textContent = "Сырая картошка из шкафа. Первый сосед (кв. 20) согласен играть в кости и на картошку!";
+          else if (item.key === "potato") hint.textContent = "Сырая картошка из шкафа. Жильцы из кв. 20, 18 и 23 согласны играть в кости и на картошку!";
           else if (item.key === "granny_cans") {
             hint.textContent = state.grannyCansFilled
               ? "Полные бидоны с водой для бабушки из кв. 17. Отнесите их ей на 1-й этаж!"
@@ -1297,103 +1484,218 @@
       });
     }
 
-    /* 8. ОЧКО.HTML */
+    /* 8. ОЧКО.HTML — ЧИСТАЯ ИНТЕГРАЦИЯ БЕЗ УТЕЧЕК WEBGL */
     function sendOrOpenOchkoModal(payload) {
       const wrap = document.getElementById("ochko-modal-wrap");
       const iframe = document.getElementById("ochko-iframe");
       if (!iframe) return;
-      const msg = { type: "OCHKO_OPEN", ...payload };
 
-      if (ochkoIframeReady && iframe.contentWindow && iframe.src && !iframe.src.endsWith("about:blank")) {
-        try { iframe.contentWindow.postMessage(msg, "*"); } catch (e) {}
-        wrap.classList.add("visible");
-      } else {
-        pendingOchkoMessage = msg;
-        iframe.onload = () => {
-          ochkoIframeReady = true;
-          if (pendingOchkoMessage && iframe.contentWindow) {
-            try { iframe.contentWindow.postMessage(pendingOchkoMessage, "*"); } catch (e) {}
-            pendingOchkoMessage = null;
-          }
-          wrap.classList.add("visible");
-        };
-        iframe.src = payload.mode === "box"
-          ? "Очко.html?mode=box"
-          : `Очко.html?mode=match&opponent=${payload.opponent || 1}&game=${payload.game || 1}&bg=${encodeURIComponent(payload.bg || "вход.jpg")}`;
+      // Полная пауза основного файла перед открытием окна костей
+      isOchkoModalOpen = true;
+      stopFlameInterval();
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
       }
+
+      const { ownedCounts, playerSkins } = getStoredOchkoData();
+      const bg = payload.bg || SCENE_IMAGES[state.currentScene] || "вход.jpg";
+      const msg = {
+        type: "OCHKO_OPEN",
+        ...payload,
+        bg,
+        ownedCounts,
+        playerSkins
+      };
+
+      const params = new URLSearchParams();
+      params.set("mode", payload.mode || "box");
+      params.set("bg", bg);
+      params.set("ownedCounts", JSON.stringify(ownedCounts));
+      params.set("playerSkins", JSON.stringify(playerSkins));
+      if (payload.mode === "match") {
+        params.set("opponent", String(payload.opponent || 1));
+        params.set("game", String(payload.game || 1));
+      }
+
+      pendingOchkoMessage = msg;
+      ochkoIframeReady = false;
+      iframe.onload = () => {
+        ochkoIframeReady = true;
+        if (pendingOchkoMessage && iframe.contentWindow) {
+          try { iframe.contentWindow.postMessage(pendingOchkoMessage, "*"); } catch (e) {}
+          pendingOchkoMessage = null;
+        }
+        wrap.classList.add("visible");
+      };
+      iframe.src = `Очко.html?${params.toString()}`;
     }
 
-    function openOchkoBoxOnly() { sendOrOpenOchkoModal({ mode: "box" }); }
+    function closeAndDisposeOchkoModal() {
+      const wrap = document.getElementById("ochko-modal-wrap");
+      const iframe = document.getElementById("ochko-iframe");
+      if (iframe && iframe.contentWindow) {
+        try { iframe.contentWindow.postMessage({ type: "PAUSE_OCHKO" }, "*"); } catch (e) {}
+        try { iframe.contentWindow.postMessage({ type: "DISPOSE_OCHKO" }, "*"); } catch (e) {}
+      }
+      if (wrap) wrap.classList.remove("visible");
+      isOchkoModalOpen = false;
+      pendingOchkoMessage = null;
+      ochkoIframeReady = false;
+      if (iframe) {
+        iframe.onload = null;
+        iframe.src = "about:blank";
+      }
+      syncStaticLightingState();
+      syncFlameIntervalState();
+    }
+
+    function openOchkoBoxOnly() {
+      sendOrOpenOchkoModal({
+        mode: "box",
+        bg: SCENE_IMAGES[state.currentScene] || "вход.jpg"
+      });
+    }
+
+    function hasRareDiceInActiveSet() {
+      const { playerSkins } = getStoredOchkoData();
+      return Array.isArray(playerSkins) && playerSkins.some((skinIdx) => Number(skinIdx) > 0);
+    }
+
+    function canStartOchkoMatch(opponentId = 1) {
+      if (hasRareDiceInActiveSet()) return true;
+      const meta = OPPONENTS_META[opponentId] || OPPONENTS_META[1];
+      if (meta.acceptsPotato) return state.invStew > 0 || state.invPotato > 0;
+      return state.invStew > 0;
+    }
 
     function openOchkoMatch(opponentId = 1) {
-      if (opponentId === 1) {
+      const meta = OPPONENTS_META[opponentId] || OPPONENTS_META[1];
+      if (hasRareDiceInActiveSet()) {
+        state.activeBetType = "dice";
+      } else if (meta.acceptsPotato) {
         if (state.invStew <= 0 && state.invPotato <= 0) {
           state.needsFoodForDice = true;
+          state.needsStewOnlyForDice = false;
+          addStoryCard("go_take_stew", true);
           setEventText("«Пустыми руками за стол не садятся! Возьми на кухне в шкафчике банку тушёнки или хотя бы картошки в вещмешок, тогда и сыграем!»");
-          return;
+          renderUI(true);
+          return false;
         }
-        state.activeBetType = state.invStew > 0 ? "stew" : "potato";
+        state.activeBetType = state.invPotato > 0 ? "potato" : "stew";
       } else {
         if (state.invStew <= 0) {
           state.needsFoodForDice = true;
+          state.needsStewOnlyForDice = true;
+          addStoryCard("go_take_stew", true);
           setEventText("«На картошку я не играю — неси банку настоящей тушёнки в вещмешке, чтобы было что на кон поставить!»");
-          return;
+          renderUI(true);
+          return false;
         }
         state.activeBetType = "stew";
       }
 
       state.needsFoodForDice = false;
+      state.needsStewOnlyForDice = false;
       removeStoryCard("go_take_stew");
       state.activeOpponentId = opponentId;
       sendOrOpenOchkoModal({
-        mode: "match", opponent: opponentId, game: state.oppProgress[opponentId] || 1,
-        bg: SCENE_IMAGES[state.currentScene] || "вход.jpg", betType: state.activeBetType
+        mode: "match",
+        opponent: opponentId,
+        game: state.oppProgress[opponentId] || 1,
+        bg: SCENE_IMAGES[state.currentScene] || "вход.jpg",
+        betType: state.activeBetType
       });
+      return true;
+    }
+
+    async function inviteNeighborIntoApartmentAndPlay() {
+      state.inPeepholeDialog = false;
+      state.neighborInsideForDice = true;
+      removeStoryCard("play_dice_neighbor");
+      removeStoryCard("refuse_trade");
+      removeStoryCard("go_take_stew");
+      resumeLightFromView();
+
+      playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
+      playDoorCreakSound();
+      state.logicalRoom = "entrance";
+      await crossfadeToScene("entrance", false);
+      setNpcPose("neighbor", 1);
+      setEventText("Вы впустили соседа из кв. 20 в прихожую и разложили кости для партии в «Костяное Очко».");
+      renderUI(false);
+      openOchkoMatch(1);
     }
 
     window.addEventListener("message", (e) => {
       const data = e.data;
       if (!data || typeof data !== "object") return;
+
       if (data.type === "OCHKO_BOX_CLOSED") {
+        const nextOwned = Array.isArray(data.ownedCounts)
+          ? data.ownedCounts
+          : (Array.isArray(data.playerOwnedCounts) ? data.playerOwnedCounts : null);
+        if (nextOwned) {
+          try { localStorage.setItem("ochko_owned_counts", JSON.stringify(nextOwned)); } catch (err) {}
+        }
         if (Array.isArray(data.playerSkins)) {
           try { localStorage.setItem("ochko_player_skins", JSON.stringify(data.playerSkins)); } catch (err) {}
         }
-        document.getElementById("ochko-modal-wrap").classList.remove("visible");
+        closeAndDisposeOchkoModal();
         renderInventoryGrid();
       } else if (data.type === "OCHKO_MATCH_FINISHED") {
-        if (data.ownedCounts) {
-          try { localStorage.setItem("ochko_owned_counts", JSON.stringify(data.ownedCounts)); } catch (err) {}
+        const nextOwned = Array.isArray(data.ownedCounts)
+          ? data.ownedCounts
+          : (Array.isArray(data.playerOwnedCounts) ? data.playerOwnedCounts : null);
+        if (nextOwned) {
+          try { localStorage.setItem("ochko_owned_counts", JSON.stringify(nextOwned)); } catch (err) {}
         }
         if (Array.isArray(data.playerSkins)) {
           try { localStorage.setItem("ochko_player_skins", JSON.stringify(data.playerSkins)); } catch (err) {}
         }
-        document.getElementById("ochko-modal-wrap").classList.remove("visible");
+        closeAndDisposeOchkoModal();
 
         const oppId = Number(data.opponentId) || state.activeOpponentId || 1;
+        const meta = OPPONENTS_META[oppId] || { maxGames: 2 };
         if (data.won) {
-          state.oppProgress[oppId] = 2;
-          if (oppId === 3) state.opp3Beaten = true;
-          const stakeWord = state.activeBetType === "potato" ? "Порция картошки" : "Банка тушёнки";
-          setEventText(`Вы выиграли партию в «Костяное Очко»! ${stakeWord} в вещмешке остаётся при вас, а вы забираете 2 трофейные кости соперника в свой ящик!`);
-        } else {
-          if (state.activeBetType === "potato") {
-            state.invPotato = Math.max(0, state.invPotato - 1);
-            setEventText("Вы уступили в партии в «Костяное Очко» и отдали поставленную на кон порцию картошки из вещмешка.");
+          state.oppProgress[oppId] = meta.maxGames > 1 ? 2 : 1;
+          if (state.activeBetType === "dice") {
+            setEventText("Вы выиграли партию в «Костяное Очко»! Ваши кости остаются при вас, а вы забираете 2 трофейные кости соперника в свой ящик!");
           } else {
-            state.invStew = Math.max(0, state.invStew - 1);
-            setEventText("Вы уступили в партии в «Костяное Очко» и отдали поставленную на кон банку тушёнки из вещмешка.");
+            const stakeWord = state.activeBetType === "potato" ? "Порция картошки" : "Банка тушёнки";
+            setEventText(`Вы выиграли партию в «Костяное Очко»! ${stakeWord} в вещмешке остаётся при вас, а вы забираете 2 трофейные кости соперника в свой ящик!`);
           }
-          updateBackpackBadge();
+        } else {
+          const lostDiceArr = Array.isArray(data.lostDice) ? data.lostDice : [];
+          const lostStewNum = Number(data.lostStew);
+          if (lostDiceArr.length > 0 || data.lostStew === 0) {
+            setEventText("Вы проиграли партию в «Костяное Очко» и отдали сопернику выигранные кости, при этом припасы в вещмешке остались при вас.");
+          } else if (lostStewNum > 0 && lostDiceArr.length === 0) {
+            if (state.activeBetType === "potato") {
+              state.invPotato = Math.max(0, state.invPotato - 1);
+              setEventText("Вы уступили в партии в «Костяное Очко» и отдали поставленную на кон порцию картошки из вещмешка.");
+            } else {
+              state.invStew = Math.max(0, state.invStew - 1);
+              setEventText("Вы уступили в партии в «Костяное Очко» и отдали поставленную на кон банку тушёнки из вещмешка.");
+            }
+            updateBackpackBadge();
+          } else {
+            setEventText("Вы проиграли партию в «Костяное Очко», припасы в вещмешке остались при вас.");
+          }
         }
-        if (state.inPeepholeDialog) {
+
+        if (state.neighborInsideForDice || state.inPeepholeDialog) {
+          state.neighborInsideForDice = false;
           finishPeepholeNeighborDialog();
-          if (state.currentScene === "ev_peephole_lit_2") crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
+          if (state.currentScene === "ev_peephole_lit_2") {
+            crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
+          }
         }
         renderUI(true);
       }
     });
 
-    /* 9. СПИЧКА, СВЕЧА, ОБУЧАЮЩИЙ ПРОЛЁТ */
+    /* 9. СПИЧКА, СВЕЧА, ПАУЗА СВЕТА И ОБУЧАЮЩИЙ ПРОЛЁТ */
     function resetTorchPosition() {
       isDraggingTorch = false;
       state.matchTutorialSweepActive = false;
@@ -1421,6 +1723,8 @@
     function igniteMatch(playSoundAlreadyDone = false) {
       if (!playSoundAlreadyDone) playSnd1("СПИЧКА", 0.9);
       state.lightMode = "match";
+      state.lightPaused = false;
+      state.lightPauseStart = 0;
       state.matchStart = performance.now();
       flameCanvas.style.display = "block";
       renderCenterMatchAndCandle(state.matchStart);
@@ -1437,6 +1741,8 @@
       state.hasCandle = true;
       if (state.candleBurnedMs >= CANDLE_DURATION - 500) state.candleBurnedMs = 0;
       state.lightMode = "candle";
+      state.lightPaused = false;
+      state.lightPauseStart = 0;
       const now = performance.now();
       state.candleIgniteStart = now;
       state.candleWickLitTime = now + 720;
@@ -1450,20 +1756,32 @@
       updateBackpackBadge();
     }
 
-    function pauseAndExtinguishLightForView() {
+    function pauseLightForView() {
+      if (state.lightPaused) return;
+      state.lightPaused = true;
+      state.lightPauseStart = performance.now();
+      resetTorchPosition();
+      hideMatchTutorialHint();
+      flameCanvas.style.display = "none";
+      stopFlameInterval();
+      syncStaticLightingState();
+    }
+
+    function resumeLightFromView() {
+      if (!state.lightPaused) return;
       const now = performance.now();
-      if (state.lightMode === "candle" && now > state.candleStart) {
-        state.candleBurnedMs = Math.min(CANDLE_DURATION, state.candleBurnedMs + (now - state.candleStart));
-      }
-      if (state.lightMode !== "kerosene") {
-        state.lightMode = "none";
-        resetTorchPosition();
-        hideMatchTutorialHint();
-        flameCanvas.style.display = "none";
-        syncStaticLightingState();
-        syncFlameIntervalState();
-        addStoryCard(state.hasCandle ? "light_candle" : "light_match", true);
-      }
+      const pausedDelta = Math.max(0, now - state.lightPauseStart);
+      if (state.matchStart > 0) state.matchStart += pausedDelta;
+      if (state.candleStart > 0) state.candleStart += pausedDelta;
+      if (state.candleIgniteStart > 0) state.candleIgniteStart += pausedDelta;
+      if (state.candleWickLitTime > 0) state.candleWickLitTime += pausedDelta;
+      if (state.candleIgniteEnd > 0) state.candleIgniteEnd += pausedDelta;
+      state.lightPaused = false;
+      state.lightPauseStart = 0;
+      updateFlameVisibility();
+      if (hasActiveLightSource()) renderCenterMatchAndCandle(now);
+      syncStaticLightingState();
+      syncFlameIntervalState();
     }
 
     /* 9.1. МАРШРУТЫ ПО КВАРТИРЕ И ПОДЪЕЗДУ */
@@ -1530,14 +1848,17 @@
     const slotA = document.getElementById("slot-a"), slotB = document.getElementById("slot-b");
     const vignetteEl = document.getElementById("vignette");
 
+    function hasActiveLightSource() {
+      return state.lightMode === "match" || state.lightMode === "candle" || state.lightMode === "kerosene";
+    }
+
     function isSceneHidingTorch(sceneKey) {
       if (!sceneKey) return false;
       return sceneKey.startsWith("ev_peephole_") || sceneKey.startsWith("ev_window_") || sceneKey === "ev_yard_window";
     }
 
     function updateFlameVisibility() {
-      const hasActiveFlame = state.lightMode === "match" || state.lightMode === "candle" || state.lightMode === "kerosene";
-      const nextDisplay = (hasActiveFlame && !isSceneHidingTorch(state.currentScene)) ? "block" : "none";
+      const nextDisplay = (hasActiveLightSource() && !state.lightPaused && !isSceneHidingTorch(state.currentScene)) ? "block" : "none";
       if (flameCanvas.style.display !== nextDisplay) flameCanvas.style.display = nextDisplay;
     }
 
@@ -1557,14 +1878,29 @@
     async function handleSceneBackBtn() {
       if (state.isWalking || !state.backBtnTarget) return;
       const target = state.backBtnTarget;
+      const returningToNeighbor = state.returnToNeighborAfterStew && (state.invStew > 0 || state.invPotato > 0);
+      const abandonedNeighborFetch = state.returnToNeighborAfterStew && !returningToNeighbor;
+      state.returnToNeighborAfterStew = false;
+
       state.activeDoorApt = null;
       state.inPeepholeDialog = false;
       removeStoryCard("play_dice_door");
       removeStoryCard("leave_door_view");
       setBackButtonTarget(null);
       hideNpc();
+
+      if (returningToNeighbor) {
+        await walkToRoom("entrance", false);
+        await inviteNeighborIntoApartmentAndPlay();
+        return;
+      }
+
+      if (abandonedNeighborFetch) {
+        finishPeepholeNeighborDialog();
+      }
       if (state.needsFoodForDice) addStoryCard("go_take_stew", true);
       await crossfadeToScene(target, false);
+      resumeLightFromView();
       renderCabinetItems();
       renderUI(true);
     }
@@ -1634,9 +1970,10 @@
 
     const ROOMS_WITH_DOORS = new Set(["bedroom", "junkroom", "toilet", "bath", "kitchen"]);
 
-    async function walkToRoom(targetRoom) {
+    async function walkToRoom(targetRoom, renderAfter = true) {
       if (state.isWalking) return;
       clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
+      resumeLightFromView();
       state.activeDoorApt = null; state.inPeepholeDialog = false;
       removeStoryCard("play_dice_door"); removeStoryCard("leave_door_view");
       if (state.logicalRoom === targetRoom) {
@@ -1646,36 +1983,48 @@
       }
       const fromRoom = state.logicalRoom;
       const frames = buildApartmentRoute(fromRoom, targetRoom);
-      state.isWalking = true; renderUI(false);
+      state.isWalking = true;
+      document.body.classList.add("is-walking");
+      renderUI(false);
 
-      if (ROOMS_WITH_DOORS.has(fromRoom)) playDoorCreakSound();
-      for (const frameKey of frames) await crossfadeToScene(frameKey, true);
-      if (ROOMS_WITH_DOORS.has(targetRoom)) playDoorCreakSound();
+      try {
+        if (ROOMS_WITH_DOORS.has(fromRoom)) playDoorCreakSound();
+        for (const frameKey of frames) await crossfadeToScene(frameKey, true);
+        if (ROOMS_WITH_DOORS.has(targetRoom)) playDoorCreakSound();
+      } finally {
+        document.body.classList.remove("is-walking");
+        state.isWalking = false;
+      }
 
       state.logicalRoom = targetRoom;
       state.actOffset = 0; state.movOffset = 0;
-      state.isWalking = false;
       preloadNextStepForRoom(targetRoom);
       renderCabinetItems();
-      renderUI(true);
+      if (renderAfter) renderUI(true);
     }
 
-    async function playStairwellSequence(frames) {
+    async function playStairwellSequence(frames, renderAfter = true) {
       clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
       state.activeDoorApt = null; state.inPeepholeDialog = false;
       removeStoryCard("play_dice_door"); removeStoryCard("leave_door_view");
-      state.isWalking = true; renderUI(false);
-      for (let i = 0; i < frames.length; i++) {
-        const ahead = [];
-        if (i + 1 < frames.length) ahead.push(frames[i + 1]);
-        if (i + 2 < frames.length) ahead.push(frames[i + 2]);
-        if (ahead.length) preloadSceneKeysLazy(ahead);
-        await crossfadeToScene(frames[i], true);
+      state.isWalking = true;
+      document.body.classList.add("is-walking");
+      renderUI(false);
+      try {
+        for (let i = 0; i < frames.length; i++) {
+          const ahead = [];
+          if (i + 1 < frames.length) ahead.push(frames[i + 1]);
+          if (i + 2 < frames.length) ahead.push(frames[i + 2]);
+          if (ahead.length) preloadSceneKeysLazy(ahead);
+          await crossfadeToScene(frames[i], true);
+        }
+      } finally {
+        document.body.classList.remove("is-walking");
+        state.isWalking = false;
       }
-      state.isWalking = false;
       state.actOffset = 0; state.movOffset = 0;
       preloadNextStepForRoom("landing");
-      renderUI(true);
+      if (renderAfter) renderUI(true);
     }
 
     /* 10. ПЕРЕМЕЩЕНИЯ СПРАВА */
@@ -1696,7 +2045,7 @@
         renderUI(true);
         return;
       }
-      await walkToRoom(targetRoom);
+      await walkToRoom(targetRoom, false);
 
       if (targetRoom === "toilet") {
         if (!state.toiletUsed) {
@@ -1716,16 +2065,31 @@
       renderUI(true);
     }
 
+    function getPriorityMoveCardId() {
+      if (state.logicalRoom === "landing") return null;
+      if (state.isKnocking) return null;
+      if (state.storyCardIds.includes("go_take_stew")) return null;
+      if (state.lightMode === "none" || state.lightMode === "intro") return null;
+      if (state.robeDone && state.toiletUsed && !state.hasCandle && state.logicalRoom !== "junkroom") {
+        return "move_junkroom";
+      }
+      return null;
+    }
+
     function getRightMoveDeck() {
       if (!state.basicNavUnlocked && !state.roomNavUnlocked) return [];
       if (isNeighborCenterChoiceActive()) return [];
+
+      const priorityMoveId = getPriorityMoveCardId();
 
       if (!state.roomNavUnlocked) {
         const earlyRooms = new Set(["bedroom", "kitchen", "toilet", "junkroom"]);
         return APARTMENT_MOVE_CARDS
           .filter((m) => earlyRooms.has(m.room) && m.room !== state.logicalRoom)
           .map((m) => ({
-            id: `move_${m.room}`, sheet: m.sheet, icon: m.icon, caption: m.caption,
+            id: `move_${m.room}`,
+            isPriority: `move_${m.room}` === priorityMoveId,
+            sheet: m.sheet, icon: m.icon, caption: m.caption,
             action: () => navigateToRoomFromPanel(m.room)
           }));
       }
@@ -1734,7 +2098,9 @@
         return APARTMENT_MOVE_CARDS
           .filter((m) => m.room !== state.logicalRoom)
           .map((m) => ({
-            id: `move_${m.room}`, sheet: m.sheet, icon: m.icon, caption: m.caption,
+            id: `move_${m.room}`,
+            isPriority: `move_${m.room}` === priorityMoveId,
+            sheet: m.sheet, icon: m.icon, caption: m.caption,
             action: () => navigateToRoomFromPanel(m.room)
           }));
       }
@@ -1773,26 +2139,33 @@
         action: async () => {
           state.landingDir = "down";
           const seq = buildStairwellFrames(state.landingFloor, "street");
-          await playStairwellSequence(seq);
+          await playStairwellSequence(seq, false);
 
-          state.isWalking = true; renderUI(false);
+          state.isWalking = true;
+          document.body.classList.add("is-walking");
+          renderUI(false);
           playSnd2("ШАГИ СНЕГ", 0.9); playSnd2("СИЛЬНАЯ МЕТЕЛЬ", 0.85);
           setEventText("Вы выходите из подъезда в слепящую метель и пробираетесь сквозь сугробы к уличной колонке...");
 
-          for (let u = 1; u <= 16; u++) {
-            const ahead = [];
-            if (u + 1 <= 16) ahead.push(`street_${u + 1}`);
-            if (u + 2 <= 16) ahead.push(`street_${u + 2}`);
-            if (ahead.length) preloadSceneKeysLazy(ahead);
-            if (u === 8) {
-              playSnd2("колонка", 0.9);
-              setEventText("Вы качаете обледеневший рычаг колонки и набираете ледяную воду...");
+          try {
+            for (let u = 1; u <= 16; u++) {
+              const ahead = [];
+              if (u + 1 <= 16) ahead.push(`street_${u + 1}`);
+              if (u + 2 <= 16) ahead.push(`street_${u + 2}`);
+              if (ahead.length) preloadSceneKeysLazy(ahead);
+              if (u === 8) {
+                playSnd2("колонка", 0.9);
+                setEventText("Вы качаете обледеневший рычаг колонки и набираете ледяную воду...");
+              }
+              if (u === 12) {
+                playSnd2("ШАГИ СНЕГ 2", 0.85);
+                setEventText("С полными ёмкостями воды вы спешите обратно к спасительному подъезду...");
+              }
+              await crossfadeToScene(`street_${u}`, false);
             }
-            if (u === 12) {
-              playSnd2("ШАГИ СНЕГ 2", 0.85);
-              setEventText("С полными ёмкостями воды вы спешите обратно к спасительному подъезду...");
-            }
-            await crossfadeToScene(`street_${u}`, false);
+          } finally {
+            document.body.classList.remove("is-walking");
+            state.isWalking = false;
           }
 
           const firstTrip = !state.wentOutside;
@@ -1801,7 +2174,7 @@
           updateBackpackBadge();
 
           state.landingFloor = 1; state.landingDir = "up";
-          await playStairwellSequence(["p2_1", "p2_2"]);
+          await playStairwellSequence(["p2_1", "p2_2"], false);
 
           if (firstTrip) {
             addStoryCard("collect_carpets", true);
@@ -1822,11 +2195,15 @@
     /* 11. БАЗА КАРТОЧЕК ДЕЙСТВИЙ */
     function finishPeepholeNeighborDialog() {
       state.inPeepholeDialog = false;
-      removeStoryCard("agree_trade"); removeStoryCard("agree_trade_potato");
-      removeStoryCard("play_dice_neighbor"); removeStoryCard("refuse_trade");
-      addStoryCard("check_tap", true); addStoryCard("put_coat", true); addStoryCard("put_shoes", true);
+      state.neighborInsideForDice = false;
+      removeStoryCard("play_dice_neighbor");
+      removeStoryCard("refuse_trade");
+      addStoryCard("check_tap", true);
+      addStoryCard("put_coat", true);
+      addStoryCard("put_shoes", true);
       if (state.needsFoodForDice) addStoryCard("go_take_stew", true);
       hideNpc();
+      resumeLightFromView();
     }
 
     const CARDS_DB = {
@@ -1849,8 +2226,13 @@
           if (wasIntro) {
             state.basicNavUnlocked = true;
             await showActionCloseup(resolveRoomSceneKey("bedroom"), false, false);
-            addStoryCard("put_robe"); addStoryCard("water"); addStoryCard("room_search_junk"); addStoryCard("go_toilet", true);
-            setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
+            addStoryCard("put_robe", true);
+            addStoryCard("water");
+            addStoryCard("room_search_junk");
+            addStoryCard("go_toilet");
+            setEventText("В квартире жутко холодно — нужно срочно что-то надеть.");
+          } else if (!state.robeDone) {
+            setEventText("В квартире жутко холодно — нужно срочно что-то надеть.");
           } else if (!state.toiletUsed) {
             setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
           } else if (!state.hasCandle) {
@@ -1863,13 +2245,18 @@
         sheet: 2, icon: 1, caption: "Надеть халат",
         action: async () => {
           removeStoryCard("put_robe");
-          await walkToRoom("bedroom");
+          await walkToRoom("bedroom", false);
           playSnd2("одежда", 0.9);
           await showActionCloseup("ev_robe", false, true);
           state.robeDone = true;
-          if (!state.toiletUsed) setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
-          else if (!state.hasCandle) setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
-          else setEventText("Вы надели тёплый махровый халат.");
+          if (!state.toiletUsed) {
+            addStoryCard("go_toilet", true);
+            setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
+          } else if (!state.hasCandle) {
+            setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
+          } else {
+            setEventText("Вы надели тёплый махровый халат.");
+          }
           checkInitialStepsProgress();
           renderUI(true);
         }
@@ -1878,11 +2265,12 @@
         sheet: 1, icon: 2, caption: "Выпить воды",
         action: async () => {
           removeStoryCard("water");
-          await walkToRoom("kitchen");
+          await walkToRoom("kitchen", false);
           playSnd1("СТАКАН С ВОДОЙ", 0.9);
           await showActionCloseup("ev_glass", false, true);
           state.waterDone = true;
-          if (!state.toiletUsed) setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
+          if (!state.robeDone) setEventText("В квартире жутко холодно — нужно срочно что-то надеть.");
+          else if (!state.toiletUsed) setEventText("Как же сильно хочется в туалет! Терпеть уже нет сил");
           else if (!state.hasCandle) setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
           else setEventText("Вы выпили стакан ледяной воды на кухне.");
           checkInitialStepsProgress();
@@ -1893,7 +2281,7 @@
         sheet: 5, icon: 4, caption: "Сходить в туалет",
         action: async () => {
           removeStoryCard("go_toilet");
-          await walkToRoom("toilet");
+          await walkToRoom("toilet", false);
           state.toiletUsed = true;
           playSnd1("СМЫВ", 0.9);
           await showActionCloseup("ev_flush", false, true);
@@ -1968,10 +2356,22 @@
       go_take_stew: {
         sheet: 2, icon: 3, caption: "Взять тушёнку",
         action: async () => {
+          const fromPeephole = state.inPeepholeDialog;
           removeStoryCard("go_take_stew");
           state.needsFoodForDice = false;
+
+          if (fromPeephole) {
+            state.returnToNeighborAfterStew = true;
+            state.inPeepholeDialog = false;
+            removeStoryCard("play_dice_neighbor");
+            removeStoryCard("refuse_trade");
+            hideNpc();
+            resumeLightFromView();
+          }
+
           if (state.logicalRoom === "landing") {
             hideNpc(); setBackButtonTarget(null); state.activeDoorApt = null;
+            removeStoryCard("play_dice_door"); removeStoryCard("leave_door_view");
             if (state.landingFloor !== 3) {
               state.landingDir = state.landingFloor < 3 ? "up" : "down";
               const seq = buildStairwellFrames(state.landingFloor, 3);
@@ -1986,11 +2386,11 @@
             if (state.hasCandle) igniteCandle(false);
             else igniteMatch(false);
           }
-          await walkToRoom("kitchen");
+          await walkToRoom("kitchen", false);
           playSnd1("ШКАФ С ЕДОЙ", 0.9);
           await showActionCloseup("cabinet", false, false);
           renderCabinetItems();
-          setBackButtonTarget("kitchen", "Закрыть шкафчик");
+          syncCabinetBackButtonLabel();
           setEventText("Нажмите на тушёнку или картошку, чтобы взять в вещмешок");
           renderUI(false);
         }
@@ -1998,9 +2398,9 @@
       room_look_window: {
         sheet: 1, icon: 4, caption: "Посмотреть в окно",
         action: async () => {
-          if (state.logicalRoom !== "kitchen") await walkToRoom("kitchen");
+          if (state.logicalRoom !== "kitchen") await walkToRoom("kitchen", false);
           clearAutoReturn();
-          pauseAndExtinguishLightForView();
+          pauseLightForView();
           state.isWalking = true; renderUI(false);
 
           await crossfadeToScene("ev_window_2", false);
@@ -2031,7 +2431,7 @@
           await showActionCloseup("cabinet", false, false);
           setEventText("Нажмите на тушёнку или картошку, чтобы взять в вещмешок");
           renderCabinetItems();
-          setBackButtonTarget("kitchen", "Закрыть шкафчик");
+          syncCabinetBackButtonLabel();
         }
       },
       room_radio: {
@@ -2107,8 +2507,11 @@
         sheet: 3, icon: 15, caption: "Посмотреть в глазок",
         action: async () => {
           const someoneKnocking = state.isKnocking || !state.neighborVisited;
+          if (state.logicalRoom !== "entrance") {
+            await walkToRoom("entrance", false);
+          }
           stopDoorKnockLoop();
-          pauseAndExtinguishLightForView();
+          pauseLightForView();
           state.isWalking = true; renderUI(false);
 
           const firstImg = someoneKnocking ? "ev_peephole_lit_1" : "ev_peephole_empty_1";
@@ -2126,10 +2529,8 @@
           if (someoneKnocking && !state.neighborVisited) {
             state.neighborVisited = true;
             state.inPeepholeDialog = true;
-            setEventText("За дверью сосед из кв. 20: «Сосед, выручай банкой тушёнки или картошкой за свечи! Или давай перекинемся в костяшки на тушёнку либо картошку!»");
+            setEventText("За дверью сосед из кв. 20: «Сосед, воду перекрыли, скучно сидеть в холоде — пустишь на минутку? Давай перекинемся в „Костяное Очко“ на банку тушёнки или картошку!»");
             addStoryCard("refuse_trade", true);
-            if (totalPotatoAvailable() > 0) addStoryCard("agree_trade_potato", true);
-            addStoryCard("agree_trade", true);
             addStoryCard("play_dice_neighbor", true);
             renderUI(true);
             await playNpcSpeech("neighbor", "голос мужской");
@@ -2139,48 +2540,32 @@
           }
         }
       },
-      agree_trade: {
-        sheet: 1, icon: 13, caption: "Дать тушёнку",
-        action: async () => {
-          if (totalStewAvailable() <= 0) { setEventText("У вас не осталось ни одной банки тушёнки!"); return; }
-          spendOneStew();
-          finishPeepholeNeighborDialog();
-          playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
-          await showActionCloseup("ev_peephole_lit_2", false, false);
-          setEventText("Сосед дал свечи и сказал: «Воду перекрыли, пошли на колонку! И зайди в 17-ю квартиру на 1-м этаже — там бабушка живёт, помоги ей воды принести!»");
-          renderUI(true);
-          await playNpcSpeech("neighbor", "голос мужской 2");
-          hideNpc(); await crossfadeToScene("entrance", false);
-          renderUI(true);
-        }
-      },
-      agree_trade_potato: {
-        sheet: 2, icon: 14, caption: "Дать картошку",
-        action: async () => {
-          if (totalPotatoAvailable() <= 0) { setEventText("У вас нет картошки для обмена!"); return; }
-          spendOnePotato();
-          finishPeepholeNeighborDialog();
-          playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
-          await showActionCloseup("ev_peephole_lit_2", false, false);
-          setEventText("Сосед взял картошку, дал свечи и сказал: «Воду перекрыли, пошли на колонку! И зайди в 17-ю квартиру на 1-м этаже — там бабушка живёт, помоги ей воды принести!»");
-          renderUI(true);
-          await playNpcSpeech("neighbor", "голос мужской 2");
-          hideNpc(); await crossfadeToScene("entrance", false);
-          renderUI(true);
-        }
-      },
       play_dice_neighbor: {
         sheet: 2, icon: 11, caption: "Сыграть в костяшки",
-        action: async () => openOchkoMatch(1)
+        action: async () => {
+          if (canStartOchkoMatch(1)) {
+            await inviteNeighborIntoApartmentAndPlay();
+          } else {
+            openOchkoMatch(1);
+          }
+        }
       },
       refuse_trade: {
         sheet: 2, icon: 8, caption: "Отказаться",
         action: async () => {
-          finishPeepholeNeighborDialog();
+          state.isWalking = true;
+          state.inPeepholeDialog = false;
+          removeStoryCard("play_dice_neighbor");
+          removeStoryCard("refuse_trade");
+          removeStoryCard("go_take_stew");
+          renderNeighborCenterOverlay(false);
+          document.getElementById("bottom-hud").classList.add("hidden-hud");
           setEventText("Сосед вздохнул: «Ладно, можешь потом зайти ко мне в 20-ю квартиру сыграть в костяшки. Воду отключили — иди на колонку и загляни к бабушке в 17-ю!»");
-          renderUI(true);
           await playNpcSpeech("neighbor", "голос мужской 2", [1, 5, 4, 7, 8]);
-          hideNpc(); await crossfadeToScene("entrance", false);
+          hideNpc();
+          await crossfadeToScene("entrance", false);
+          state.isWalking = false;
+          finishPeepholeNeighborDialog();
           renderUI(true);
         }
       },
@@ -2260,11 +2645,8 @@
         sheet: 2, icon: 11, caption: "Сыграть в костяшки",
         action: async () => {
           const apt = state.activeDoorApt || 20;
-          let oppId = 1;
-          if (apt === 20) oppId = 1;
-          else if (apt === 18 || apt === 26) oppId = 2;
-          else if (apt === 23 || apt === 29) oppId = state.opp3Beaten ? 4 : 3;
-          else if (apt === 24) oppId = 4;
+          const info = APT_DESCRIPTIONS[apt];
+          const oppId = (info && info.oppId) ? info.oppId : 1;
           openOchkoMatch(oppId);
         }
       },
@@ -2386,6 +2768,7 @@
           await walkToRoom("bedroom");
           playSnd2("кирпичи", 0.9); playSnd1("СПИЧКА", 0.9);
           state.stoveBuilt = true; state.hasCandle = true; state.lightMode = "kerosene";
+          state.lightPaused = false; state.lightPauseStart = 0;
           flameCanvas.style.display = "block";
           updateBackpackBadge();
           renderCenterMatchAndCandle(performance.now());
@@ -2409,21 +2792,21 @@
       }
     };
 
-    /* 12. ДВЕРИ КВАРТИР 16–30 */
+    /* 12. ДВЕРИ КВАРТИР 16–30 (5 СОПЕРНИКОВ СТРОГО 1 К 1) */
     const APT_DESCRIPTIONS = {
       16: { inhabited: false, type: "creepy", text: "Вы подошли к двери кв. 16 и постучали. За обшивкой раздались странные тяжёлые хрипы и глухое шарканье, но дверь никто не открыл..." },
       17: { inhabited: true, type: "granny", text: "Дверь кв. 17 приоткрылась. Старенькая бабушка слабым голосом говорит: «Сынок, мне по гололёду до колонки не дойти... Возьми мои бидоны, принеси водички Христа ради!»" },
-      18: { inhabited: true, type: "dice", oppId: 2, text: "Дверь кв. 18 открывается: «Азартный человек? Заходи за стол, перекинемся в Костяное Очко на банку тушёнки!»" },
+      18: { inhabited: true, type: "dice", oppId: 2, acceptsPotato: true, text: "Дверь кв. 18 открывается — жилец перебирает кости: «Азартный человек? Заходи за стол, перекинемся в „Костяное Очко“ — готов сыграть и на банку тушёнки, и на картошку!»" },
       19: { inhabited: false, type: "go_away", text: "На ваш стук в кв. 19 из-за двери грубо рявкнули: «Уходи отсюда! Никому не открываем, проваливай!»" },
-      20: { inhabited: true, type: "dice", oppId: 1, text: "Дверь кв. 20 открывает ваш знакомый сосед с фонарём: «Зашёл перекинуться в костяшки? Ставь тушёнку или картошку на кон!»" },
+      20: { inhabited: true, type: "dice", oppId: 1, acceptsPotato: true, text: "Дверь кв. 20 открывает ваш знакомый сосед с фонарём: «Зашёл перекинуться в костяшки? Ставь тушёнку или картошку на кон!»" },
       21: { inhabited: false, type: "silent", text: "Вы долго стучите в обледеневшую дверь кв. 21, но внутри стоит мёртвая тишина — похоже, хозяева давно уехали." },
-      23: { inhabited: true, type: "dice", oppId: 3, text: "Дверь кв. 23 открывается — на пороге хмурый сосед с резными костями: «В очко сыграть хочешь? Ставь банку тушёнки на кон!»" },
-      24: { inhabited: true, type: "dice_4", oppId: 4, text: "Дверь кв. 24 приоткрывается — хозяин квартиры готов сыграть с вами в «Костяное Очко» на банку тушёнки!" },
+      23: { inhabited: true, type: "dice", oppId: 3, acceptsPotato: true, text: "Дверь кв. 23 открывается — на пороге хмурый моряк с резными костями: «В очко сыграть хочешь? Партия одна, но серьёзная — сгодится и банка тушёнки, и картошка!»" },
+      24: { inhabited: true, type: "dice_4", oppId: 4, acceptsPotato: false, text: "Дверь кв. 24 приоткрывается — финальный игрок пристально смотрит на вас: «На мелочь не размениваюсь. Готов сыграть в „Костяное Очко“ только на банку тушёнки!»" },
       25: { inhabited: false, type: "silent", text: "Вы постучали в дверь кв. 25 на 4-м этаже. За дверью слышен только вой ветра из разбитой форточки." },
-      26: { inhabited: true, type: "dice", oppId: 2, text: "Дверь кв. 26 приоткрывается: «Холодно сидеть без дела... Есть банка тушёнки? Давай раскинем кости!»" },
+      26: { inhabited: true, type: "dice", oppId: 5, acceptsPotato: false, text: "Дверь кв. 26 приоткрывается — пятый соперник хмыкает в темноте: «Редкие кости просто так не отдаю. Если есть банка тушёнки, заходи — раскинем партию!»" },
       27: { inhabited: false, type: "go_away", text: "Из-за двери кв. 27 глухо крикнули: «Света нет, воды нет! Нечего по подъезду шастать!»" },
-      28: { inhabited: false, type: "creepy", text: "Вы постучали в кв. 28 на верхнем этаже. За дверью что-то глухо упало, но к замку никто не подошёл." },
-      29: { inhabited: true, type: "dice", oppId: 3, text: "Дверь кв. 29 открывается — сосед на 5-м этаже согласен перекинуться в костяшки, если поставишь банку тушёнки." },
+      28: { inhabited: false, type: "creepy", text: "Вы постучали в дверь кв. 28 на верхнем этаже. За дверью что-то глухо упало, но к замку никто не подошёл." },
+      29: { inhabited: false, type: "silent", text: "Дверь кв. 29 плотно заперта изнутри на засов. Сквозь щель тянет сырым холодом, и на ваш стук никто не отзывается." },
       30: { inhabited: false, type: "silent", text: "На двери кв. 30 висит замёрзший навесной замок — внутри никого нет." }
     };
 
@@ -2466,19 +2849,68 @@
       };
     });
 
-    /* 12.1. ПРИОРИТЕТЫ И КОЛОДЫ */
+    /* 12.1. ПРИОРИТЕТЫ, СТРОГАЯ ПРИВЯЗКА К КОМНАТАМ И КОЛОДЫ */
+    const CARD_ALLOWED_ROOMS = {
+      // Только на Входе (entrance)
+      put_coat: ["entrance"],
+      put_shoes: ["entrance"],
+      seal_door: ["entrance"],
+      room_exit_door: ["entrance"],
+      room_peephole: ["entrance"],
+      // Только на Кухне (kitchen)
+      water: ["kitchen"],
+      room_supplies: ["kitchen"],
+      room_look_window: ["kitchen"],
+      room_radio: ["kitchen"],
+      check_tap: ["kitchen"],
+      tape_windows: ["kitchen"],
+      // Только в Комнате с хламом (junkroom)
+      room_search_junk: ["junkroom"],
+      collect_carpets: ["junkroom"],
+      room_dumbbells: ["junkroom"],
+      // Только в Спальне (bedroom)
+      put_robe: ["bedroom"],
+      room_thermometer: ["bedroom"],
+      room_bed: ["bedroom"],
+      hang_carpets: ["bedroom"],
+      build_stove: ["bedroom"],
+      heat_stew: ["bedroom"],
+      // Туалет (с сюжетным исключением для спальни сразу после халата)
+      go_toilet: ["toilet"]
+    };
+
+    function isCardAllowedInApartmentRoom(cardId, room) {
+      // Исключение 1: Сходить в туалет доступна в спальне сразу после надевания халата
+      if (cardId === "go_toilet") {
+        if (room === "toilet") return true;
+        if (room === "bedroom" && state.robeDone && !state.toiletUsed) return true;
+        return false;
+      }
+      // Исключение 2: Посмотреть в глазок появляется в любой комнате квартиры, когда сосед стучит
+      if (cardId === "room_peephole") {
+        if (room === "entrance") return true;
+        if (state.isKnocking && room !== "landing") return true;
+        return false;
+      }
+      const allowed = CARD_ALLOWED_ROOMS[cardId];
+      if (!allowed) return true;
+      return allowed.includes(room);
+    }
+
     const LANDING_ALLOWED_STORY_CARDS = new Set([
       "light_candle", "light_match", "go_take_stew", "find_bricks", "help_woman", "take_bricks"
     ]);
 
     function getPriorityCardId() {
+      if (state.isKnocking && state.logicalRoom !== "landing") return "room_peephole";
       if (state.storyCardIds.includes("go_take_stew")) return "go_take_stew";
       if (state.storyCardIds.includes("check_switch")) return "check_switch";
       if (state.lightMode === "none") return state.hasCandle ? "light_candle" : "light_match";
       if (state.lightMode === "intro" && state.storyCardIds.includes("light_match")) return "light_match";
       if (state.logicalRoom === "landing") return null;
+      if (!state.robeDone) return "put_robe";
       if (!state.toiletUsed) return "go_toilet";
-      if (!state.hasCandle) return "room_search_junk";
+      if (!state.hasCandle) return state.logicalRoom === "junkroom" ? "room_search_junk" : null;
       if (state.hasCandle && state.lightMode !== "candle" && state.lightMode !== "kerosene") return "light_candle";
       if (!state.radiatorTouched) return "touch_radiator";
       return null;
@@ -2493,15 +2925,17 @@
     function getCenterNeighborChoiceCards() {
       const ids = [];
       if (state.inPeepholeDialog) {
-        ["play_dice_neighbor", "agree_trade", "agree_trade_potato", "refuse_trade"].forEach((id) => {
-          if (state.storyCardIds.includes(id)) ids.push(id);
+        if (state.storyCardIds.includes("go_take_stew")) ids.push("go_take_stew");
+        ["play_dice_neighbor", "refuse_trade"].forEach((id) => {
+          if (state.storyCardIds.includes(id) && !ids.includes(id)) ids.push(id);
         });
       } else if (state.logicalRoom === "landing" && state.activeDoorApt) {
+        if (state.storyCardIds.includes("go_take_stew")) ids.push("go_take_stew");
         ["play_dice_door", "take_granny_cans", "give_granny_water", "leave_door_view"].forEach((id) => {
-          if (state.storyCardIds.includes(id)) ids.push(id);
+          if (state.storyCardIds.includes(id) && !ids.includes(id)) ids.push(id);
         });
       }
-      return ids.map((id) => CARDS_DB[id] ? { id, ...CARDS_DB[id] } : null).filter(Boolean);
+      return ids.map((id) => CARDS_DB[id] ? { id, isPriority: id === "go_take_stew", ...CARDS_DB[id] } : null).filter(Boolean);
     }
 
     function getLeftActionDeck() {
@@ -2520,15 +2954,20 @@
         else if (state.landingFloor === 1) ["knock_16", "knock_17", "knock_18"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
       } else {
         const apartmentExcluded = new Set([
-          "play_dice_neighbor", "agree_trade", "agree_trade_potato", "refuse_trade",
+          "play_dice_neighbor", "refuse_trade",
           "play_dice_door", "take_granny_cans", "give_granny_water", "leave_door_view",
           "help_woman", "take_bricks"
         ]);
         state.storyCardIds.forEach((id) => {
-          if (!apartmentExcluded.has(id) && !ids.includes(id)) ids.push(id);
+          if (!apartmentExcluded.has(id) && isCardAllowedInApartmentRoom(id, r) && !ids.includes(id)) {
+            ids.push(id);
+          }
         });
+        if (state.isKnocking && !ids.includes("room_peephole")) ids.unshift("room_peephole");
         if (state.hasBrochure1 && !state.readBrochure1 && !ids.includes("read_brochure_1")) ids.unshift("read_brochure_1");
-        if (state.basicNavUnlocked && !state.hasCandle && !ids.includes("room_search_junk")) ids.push("room_search_junk");
+        if (state.basicNavUnlocked && !state.hasCandle && r === "junkroom" && !ids.includes("room_search_junk")) {
+          ids.push("room_search_junk");
+        }
         if (state.hasCandle && (state.lightMode === "candle" || state.lightMode === "kerosene") && !state.radiatorTouched && !ids.includes("touch_radiator")) {
           ids.unshift("touch_radiator");
         }
@@ -2543,18 +2982,21 @@
       }
 
       const priorityId = getPriorityCardId();
-      if (priorityId) {
-        if (!ids.includes(priorityId) && CARDS_DB[priorityId]) {
-          if (r !== "landing" || LANDING_ALLOWED_STORY_CARDS.has(priorityId)) ids.unshift(priorityId);
-        } else if (ids.includes(priorityId)) {
+      if (priorityId && CARDS_DB[priorityId]) {
+        const canPlacePriority = r === "landing"
+          ? LANDING_ALLOWED_STORY_CARDS.has(priorityId)
+          : isCardAllowedInApartmentRoom(priorityId, r);
+        if (canPlacePriority) {
           const idx = ids.indexOf(priorityId);
-          if (idx > 0) { ids.splice(idx, 1); ids.unshift(priorityId); }
+          if (idx === -1) ids.unshift(priorityId);
+          else if (idx > 0) { ids.splice(idx, 1); ids.unshift(priorityId); }
         }
       }
+
       return ids.map((id) => CARDS_DB[id] ? { id, isPriority: id === priorityId, ...CARDS_DB[id] } : null).filter(Boolean);
     }
 
-    /* 13. РЕНДЕР КАРУСЕЛЕЙ КАРТОЧЕК */
+    /* 13. РЕНДЕР КАРУСЕЛЕЙ КАРТОЧЕК И МОБИЛЬНОЕ СЕНСОРНОЕ УПРАВЛЕНИЕ */
     const leftCardsEl = document.getElementById("left-action-cards");
     const rightCardsEl = document.getElementById("right-move-cards");
     const rightGroupEl = document.getElementById("right-move-group");
@@ -2562,6 +3004,115 @@
     const actPrevBtn = document.getElementById("act-prev"), actNextBtn = document.getElementById("act-next");
     const movPrevBtn = document.getElementById("mov-prev"), movNextBtn = document.getElementById("mov-next");
     let cardActivatingLock = false;
+    let lastTouchInteractionTime = 0;
+
+    function clearFocusedCards(exceptCard = null) {
+      document.querySelectorAll(".choice-card.card-focused").forEach((el) => {
+        if (el !== exceptCard) el.classList.remove("card-focused");
+      });
+    }
+
+    function focusCardElement(cardEl) {
+      if (!cardEl || cardEl.disabled || cardEl.classList.contains("activating")) return;
+      const already = cardEl.classList.contains("card-focused");
+      clearFocusedCards(cardEl);
+      if (!already) {
+        cardEl.classList.add("card-focused");
+        playCardSound("hover");
+      }
+    }
+
+    function triggerChoiceCardActivation(btn, card) {
+      if (!btn || !card || state.isWalking || cardActivatingLock || btn.disabled) return;
+      cardActivatingLock = true;
+      clearFocusedCards(null);
+      playCardSound("flip");
+      if (typeof card.instantSound === "function") card.instantSound();
+      btn.classList.remove("deal-anim");
+      btn.classList.add("activating");
+      setTimeout(() => { cardActivatingLock = false; card.action(); }, 380);
+    }
+
+    function bindDeckTouchNavigation(container) {
+      if (!container) return;
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchMoved = false;
+      let touchStartCard = null;
+      let wasAlreadyFocused = false;
+      let activeSlideCard = null;
+
+      container.addEventListener("touchstart", (e) => {
+        if (state.isWalking || !e.touches || e.touches.length === 0) return;
+        const t = e.touches[0];
+        touchStartX = t.clientX;
+        touchStartY = t.clientY;
+        touchMoved = false;
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        const card = el ? el.closest(".choice-card") : e.target.closest(".choice-card");
+        if (!card || !container.contains(card) || card.disabled) {
+          touchStartCard = null;
+          wasAlreadyFocused = false;
+          activeSlideCard = null;
+          return;
+        }
+        lastTouchInteractionTime = performance.now();
+        touchStartCard = card;
+        activeSlideCard = card;
+        wasAlreadyFocused = card.classList.contains("card-focused");
+        if (!wasAlreadyFocused) {
+          focusCardElement(card);
+        }
+      }, { passive: true });
+
+      container.addEventListener("touchmove", (e) => {
+        if (state.isWalking || !e.touches || e.touches.length === 0) return;
+        const t = e.touches[0];
+        if (Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY) > 15) {
+          touchMoved = true;
+        }
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        const card = el ? el.closest(".choice-card") : null;
+        if (card && container.contains(card) && !card.disabled) {
+          e.preventDefault();
+          lastTouchInteractionTime = performance.now();
+          if (card !== activeSlideCard) {
+            activeSlideCard = card;
+            focusCardElement(card);
+          }
+        }
+      }, { passive: false });
+
+      container.addEventListener("touchend", (e) => {
+        if (!touchStartCard && !activeSlideCard) return;
+        lastTouchInteractionTime = performance.now();
+        if (e.cancelable) e.preventDefault();
+
+        const targetCard = !touchMoved ? touchStartCard : null;
+        if (targetCard && wasAlreadyFocused && !targetCard.disabled && typeof targetCard._activateCard === "function") {
+          targetCard._activateCard();
+        }
+        touchStartCard = null;
+        wasAlreadyFocused = false;
+        activeSlideCard = null;
+        touchMoved = false;
+      }, { passive: false });
+
+      container.addEventListener("touchcancel", () => {
+        touchStartCard = null;
+        wasAlreadyFocused = false;
+        activeSlideCard = null;
+        touchMoved = false;
+      }, { passive: true });
+    }
+
+    bindDeckTouchNavigation(leftCardsEl);
+    bindDeckTouchNavigation(rightCardsEl);
+    bindDeckTouchNavigation(neighborOverlayEl);
+
+    document.addEventListener("touchstart", (e) => {
+      if (!e.target.closest(".choice-card")) clearFocusedCards(null);
+    }, { passive: true });
 
     function createChoiceCardElement(card, idx, animateDeal = false) {
       const btn = document.createElement("button");
@@ -2585,14 +3136,17 @@
       const back = document.createElement("div"); back.className = "card-back";
       btn.appendChild(inner); btn.appendChild(back);
 
+      btn._activateCard = () => triggerChoiceCardActivation(btn, card);
+
+      btn.addEventListener("mouseenter", () => {
+        if (btn.disabled || btn.classList.contains("activating")) return;
+        if (performance.now() - lastTouchInteractionTime < 500) return;
+        playCardSound("hover");
+      });
+
       btn.onclick = () => {
-        if (state.isWalking || cardActivatingLock) return;
-        cardActivatingLock = true;
-        playCardSound("flip");
-        if (typeof card.instantSound === "function") card.instantSound();
-        btn.classList.remove("deal-anim");
-        btn.classList.add("activating");
-        setTimeout(() => { cardActivatingLock = false; card.action(); }, 360);
+        if (performance.now() - lastTouchInteractionTime < 500) return;
+        triggerChoiceCardActivation(btn, card);
       };
       return btn;
     }
@@ -2620,7 +3174,7 @@
         return;
       }
       const cards = getCenterNeighborChoiceCards();
-      const sig = cards.map((c) => `${c.id}:${state.isWalking ? 1 : 0}`).join("|");
+      const sig = cards.map((c) => `${c.id}:${c.isPriority ? 1 : 0}:${state.isWalking ? 1 : 0}`).join("|");
       if (!animateDeal && neighborOverlayEl._deckSig === sig) return;
       neighborOverlayEl._deckSig = sig;
       neighborOverlayEl.innerHTML = "";
@@ -2628,7 +3182,7 @@
     }
 
     function renderUI(animateDeal = false) {
-      if (animateDeal && !state.isWalking && !isMenuOpen) playCardSound("deal");
+      if (animateDeal && !state.isWalking && !isMenuOpen) playCardSound("shuffle");
       renderNeighborCenterOverlay(animateDeal);
       if (getPriorityCardId()) state.actOffset = 0;
 
@@ -2642,6 +3196,13 @@
       const rightDeck = getRightMoveDeck();
       rightGroupEl.style.visibility = rightDeck.length > 0 ? "visible" : "hidden";
       rightGroupEl.style.pointerEvents = rightDeck.length > 0 ? "auto" : "none";
+      const priorityMoveId = getPriorityMoveCardId();
+      if (priorityMoveId) {
+        const pIdx = rightDeck.findIndex((c) => c.id === priorityMoveId);
+        if (pIdx >= 0 && (pIdx < state.movOffset || pIdx >= state.movOffset + 3)) {
+          state.movOffset = Math.max(0, Math.min(pIdx, Math.max(0, rightDeck.length - 3)));
+        }
+      }
       const maxRightOffset = Math.max(0, rightDeck.length - 3);
       if (state.movOffset > maxRightOffset) state.movOffset = maxRightOffset;
       renderDeckSlice(rightCardsEl, rightDeck, state.movOffset, animateDeal);
@@ -2748,7 +3309,7 @@
     let torchOffsetX = 0, torchOffsetY = 0, smoothTorchX = 0, smoothTorchY = 0, lastFlameCanvasY = 65;
 
     flameCanvas.addEventListener("pointerdown", (e) => {
-      if (state.lightMode !== "match" && state.lightMode !== "candle" && state.lightMode !== "kerosene") return;
+      if (!hasActiveLightSource() || state.lightPaused) return;
       hideMatchTutorialHint();
       isDraggingTorch = true;
       flameCanvas.classList.add("dragging");
@@ -2804,6 +3365,7 @@
     }
 
     function renderCenterMatchAndCandle(now) {
+      if (state.lightPaused) return;
       const t = now * 0.001;
       fCtx.clearRect(0, 0, flameCanvas.width, flameCanvas.height);
       const cx = flameCanvas.width / 2;
@@ -2895,7 +3457,7 @@
       }
     }
 
-    /* 15. ОПТИМИЗИРОВАННОЕ ОСВЕЩЕНИЕ НА 640×360 CANVAS + ЕДИНЫЙ rAF ТОЛЬКО ПРИ ДВИЖЕНИИ */
+    /* 15. ОПТИМИЗИРОВАННОЕ ОСВЕЩЕНИЕ НА 640×360 CANVAS + ЖИВОЕ МЕРЦАНИЕ (75мс) БЕЗ 60 FPS В ПОКОЕ */
     const darkCanvas = document.getElementById("darkness-canvas");
     const darkCtx = darkCanvas.getContext("2d");
 
@@ -2928,22 +3490,43 @@
     let rafId = null;
     let flameIntervalId = null;
     let lastTorchTransform = "";
+    let currentFlickerFl = 0;
 
     function isFlameVisibleNow() {
       return (
-        (state.lightMode === "match" || state.lightMode === "candle" || state.lightMode === "kerosene") &&
+        hasActiveLightSource() &&
+        !state.lightPaused &&
         !isSceneHidingTorch(state.currentScene)
       );
     }
 
     function needsMovementFrame() {
-      if (isMenuOpen) return false;
+      if (isMenuOpen || isOchkoModalOpen || state.lightPaused) return false;
       if (isDraggingTorch || state.matchTutorialSweepActive) return true;
       if (Math.abs(smoothTorchX - torchOffsetX) > 0.15 || Math.abs(smoothTorchY - torchOffsetY) > 0.15) return true;
       return false;
     }
 
-    function redrawDarknessCanvas(force = false) {
+    function computeIgniteScale(now) {
+      if (state.lightPaused) return 1;
+      if (state.lightMode === "match") {
+        const p = Math.max(0, Math.min(1, (now - state.matchStart) / 420));
+        const eased = 1 - Math.pow(1 - p, 3);
+        return 0.22 + 0.78 * eased;
+      }
+      if (state.lightMode === "candle") {
+        if (now < state.candleWickLitTime) {
+          const pPre = Math.max(0, Math.min(1, (now - state.candleIgniteStart) / Math.max(1, state.candleWickLitTime - state.candleIgniteStart)));
+          return 0.32 + 0.24 * pPre;
+        }
+        const pGrow = Math.max(0, Math.min(1, (now - state.candleWickLitTime) / 560));
+        const eased = 1 - Math.pow(1 - pGrow, 3);
+        return 0.56 + 0.44 * eased;
+      }
+      return 1;
+    }
+
+    function redrawDarknessCanvas(force = false, nowOverride = null) {
       if (isMenuOpen || FULL_BRIGHT_SCENES.has(state.currentScene)) {
         if (darkCanvas.style.display !== "none") {
           darkCanvas.style.display = "none";
@@ -2952,30 +3535,61 @@
         return;
       }
 
-      const lit = isFlameVisibleNow();
+      const now = nowOverride !== null ? nowOverride : performance.now();
+      const t = now * 0.001;
       const mode = state.lightMode;
-      const flameRatioY = Math.max(0.1, Math.min(0.9, lastFlameCanvasY / flameCanvas.height));
-      const fx = ((FLAME_BASE_CENTER_X + smoothTorchX) * 0.5) | 0;
-      const fy = ((FLAME_BASE_TOP + FLAME_BASE_H * flameRatioY + smoothTorchY) * 0.5) | 0;
+      const lit = hasActiveLightSource();
+      const pausedCenterView = lit && (state.lightPaused || isSceneHidingTorch(state.currentScene));
 
-      const sig = lit ? `L:${mode}:${fx}:${fy}` : `D:${mode}`;
+      let fx = 320;
+      let fy = 180;
+      let r = LIGHT_RADIUS_640[mode] || 134;
+      let warmAlpha = 1;
+
+      if (lit) {
+        if (pausedCenterView) {
+          // Мягкий световой круг по центру на промежуточных кадрах (окно/глазок), без полной темноты
+          fx = 320;
+          fy = 180;
+          r = Math.max(175, LIGHT_RADIUS_640[mode] || 175);
+          warmAlpha = 0.85;
+        } else {
+          const flameRatioY = Math.max(0.1, Math.min(0.9, lastFlameCanvasY / flameCanvas.height));
+          const fl = currentFlickerFl;
+          const jitterX = Math.sin(t * 11.4) * 1.45;
+          const jitterY = Math.cos(t * 9.7) * 1.45;
+          fx = (FLAME_BASE_CENTER_X + smoothTorchX) * 0.5 + jitterX;
+          fy = (FLAME_BASE_TOP + FLAME_BASE_H * flameRatioY + smoothTorchY) * 0.5 + jitterY;
+          const baseR = LIGHT_RADIUS_640[mode] || 134;
+          const igniteScale = computeIgniteScale(now);
+          r = Math.max(24, baseR * igniteScale + fl * 6.5);
+          warmAlpha = Math.max(0.68, Math.min(1, 0.88 + fl * 0.12));
+        }
+      }
+
+      const sig = lit
+        ? (pausedCenterView ? `P:${mode}:${r | 0}` : `L:${mode}:${(fx * 2) | 0}:${(fy * 2) | 0}:${(r * 2) | 0}`)
+        : `D:${mode}`;
       if (!force && sig === lastDarkSignature) return;
       lastDarkSignature = sig;
 
       if (darkCanvas.style.display !== "block") darkCanvas.style.display = "block";
 
       darkCtx.globalCompositeOperation = "source-over";
+      darkCtx.globalAlpha = 1;
       darkCtx.clearRect(0, 0, 640, 360);
       darkCtx.fillStyle = mode === "intro" ? "rgba(5, 9, 16, 0.56)" : "rgba(2, 6, 15, 0.93)";
       darkCtx.fillRect(0, 0, 640, 360);
 
       if (lit) {
-        const r = LIGHT_RADIUS_640[mode] || 134;
         darkCtx.globalCompositeOperation = "destination-out";
+        darkCtx.globalAlpha = 1;
         darkCtx.drawImage(holeStamp, fx - r, fy - r, r * 2, r * 2);
 
         darkCtx.globalCompositeOperation = "source-over";
+        darkCtx.globalAlpha = warmAlpha;
         darkCtx.drawImage(warmStamp, fx - r, fy - r, r * 2, r * 2);
+        darkCtx.globalAlpha = 1;
       }
     }
 
@@ -2989,19 +3603,21 @@
     }
 
     function syncFlameIntervalState() {
-      const shouldRun = !isMenuOpen && !document.hidden && isFlameVisibleNow();
+      const shouldRun = !isMenuOpen && !document.hidden && !isOchkoModalOpen && isFlameVisibleNow();
       if (shouldRun && flameIntervalId === null) {
         flameIntervalId = setInterval(() => {
-          if (isMenuOpen || document.hidden || !isFlameVisibleNow()) {
+          if (isMenuOpen || document.hidden || isOchkoModalOpen || !isFlameVisibleNow()) {
             stopFlameInterval();
             return;
           }
-          const prevY = lastFlameCanvasY;
-          renderCenterMatchAndCandle(performance.now());
-          if (isFlameVisibleNow() && !FULL_BRIGHT_SCENES.has(state.currentScene) && Math.abs(lastFlameCanvasY - prevY) >= 0.5) {
-            redrawDarknessCanvas(false);
+          const now = performance.now();
+          const t = now * 0.001;
+          currentFlickerFl = Math.sin(t * 7.3) * 0.5 + Math.cos(t * 13.7) * 0.35 + Math.sin(t * 21.1) * 0.15;
+          renderCenterMatchAndCandle(now);
+          if (isFlameVisibleNow() && !FULL_BRIGHT_SCENES.has(state.currentScene)) {
+            redrawDarknessCanvas(true, now);
           }
-        }, 100);
+        }, 75);
       } else if (!shouldRun) {
         stopFlameInterval();
       }
@@ -3055,7 +3671,7 @@
       }
 
       if (isFlameVisibleNow() && !FULL_BRIGHT_SCENES.has(state.currentScene)) {
-        redrawDarknessCanvas(false);
+        redrawDarknessCanvas(false, now);
       }
 
       if (needsMovementFrame()) {
@@ -3073,4 +3689,3 @@
   </script>
 </body>
 </html>
-```
