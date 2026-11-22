@@ -5,7 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>KOLA PATHOGEN — Холодная Осень</title>
   <style>
-    * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; -webkit-user-drag: none; }
+    * {
+      box-sizing: border-box; user-select: none; margin: 0; padding: 0; -webkit-user-drag: none;
+      -webkit-tap-highlight-color: transparent; outline: none; -webkit-touch-callout: none;
+    }
+    button, a, .menu-item-btn, .choice-card, .shelf-item, .grim-btn, .scroll-arrow,
+    .inv-sub-btn, .brochure-close-btn, #backpack-btn, #fullscreen-btn, #menu-top-btn,
+    #intro-play-btn, .settings-option-btn, [onclick] {
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+      -webkit-touch-callout: none;
+    }
+    :focus { outline: none; }
     html, body {
       width: 100%; height: 100dvh; min-height: 100dvh; overflow: hidden; background: #020305;
       font-family: 'Georgia', serif; color: #e6dccb; display: flex; align-items: center; justify-content: center;
@@ -18,6 +29,51 @@
     #stage-16x9 {
       position: relative; width: 1280px; height: 720px; flex-shrink: 0;
       overflow: hidden; background: #040507; transform-origin: center center;
+    }
+
+    /* 0. СТАРТОВЫЙ ОВЕРЛЕЙ «ИГРАТЬ» */
+    #intro-play-gate {
+      position: absolute; inset: 0; z-index: 115;
+      background: radial-gradient(circle at 50% 48%, #071217 0%, #020406 68%, #010203 100%);
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.55s ease, visibility 0.55s ease;
+    }
+    #intro-play-gate.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    #intro-play-btn {
+      background: transparent; border: none; cursor: pointer;
+      font-family: 'Georgia', serif; font-weight: bold; font-size: 40px; letter-spacing: 5px;
+      text-transform: uppercase; color: rgba(218, 232, 230, 0.86); padding: 18px 46px;
+      animation: introPlayBreath 2.8s ease-in-out infinite;
+      transition: color 0.22s ease, text-shadow 0.22s ease, transform 0.22s ease;
+      will-change: transform, opacity;
+    }
+    @keyframes introPlayBreath {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.84;
+        text-shadow: 0 0 12px rgba(45, 212, 191, 0.28), 0 4px 12px rgba(0, 0, 0, 0.95);
+      }
+      50% {
+        transform: scale(1.06);
+        opacity: 1;
+        text-shadow: 0 0 24px rgba(45, 212, 191, 0.58), 0 4px 14px rgba(0, 0, 0, 0.95);
+      }
+    }
+    @media (hover: hover) and (pointer: fine) {
+      #intro-play-btn:hover {
+        animation: none;
+        transform: scale(1.1);
+        color: #2dd4bf;
+        opacity: 1;
+        text-shadow: 0 0 18px rgba(45, 212, 191, 0.82), 0 0 34px rgba(45, 212, 191, 0.36), 0 2px 8px rgba(0, 0, 0, 0.95);
+      }
+    }
+    #intro-play-btn:active {
+      animation: none;
+      transform: scale(1.06);
+      color: #2dd4bf;
+      opacity: 1;
+      text-shadow: 0 0 18px rgba(45, 212, 191, 0.82), 0 2px 8px rgba(0, 0, 0, 0.95);
     }
 
     /* 1. ГЛАВНОЕ МЕНЮ И PRELOADER */
@@ -49,12 +105,56 @@
       transform: scale(0.88); opacity: 0.62;
       transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), color 0.25s ease, opacity 0.25s ease;
     }
-    .menu-item-btn.active,
-    .menu-item-btn:hover,
-    .menu-item-btn:focus-visible {
+    .menu-item-btn.active {
       transform: scale(1.22); color: #2dd4bf; opacity: 1;
       text-shadow: 0 0 14px rgba(45, 212, 191, 0.72), 0 2px 6px rgba(0, 0, 0, 0.95);
     }
+    @media (hover: hover) and (pointer: fine) {
+      .menu-item-btn:hover {
+        transform: scale(1.22); color: #2dd4bf; opacity: 1;
+        text-shadow: 0 0 14px rgba(45, 212, 191, 0.72), 0 2px 6px rgba(0, 0, 0, 0.95);
+      }
+    }
+
+    /* ПАНЕЛЬ НАСТРОЕК ВНУТРИ МЕНЮ */
+    #menu-settings-panel {
+      display: none; flex-direction: column; align-items: center; gap: 13px;
+      width: min(670px, 92%); padding: 18px 22px 16px;
+      background: rgba(6, 11, 14, 0.9);
+      border: 1px solid rgba(45, 212, 191, 0.36); border-radius: 8px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.88), inset 0 0 24px rgba(45, 212, 191, 0.05);
+    }
+    #menu-settings-panel.visible { display: flex; }
+    .settings-panel-title {
+      font-size: 19px; letter-spacing: 2px; text-transform: uppercase;
+      color: #2dd4bf; text-shadow: 0 0 12px rgba(45, 212, 191, 0.45);
+      border-bottom: 1px solid rgba(45, 212, 191, 0.24); padding-bottom: 7px; width: 100%; text-align: center;
+    }
+    .settings-group {
+      width: 100%; display: flex; flex-direction: column; gap: 6px;
+    }
+    .settings-group-label {
+      font-size: 13px; color: rgba(226, 232, 230, 0.82); letter-spacing: 0.4px;
+    }
+    .settings-options-row {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%;
+    }
+    .settings-option-btn {
+      background: rgba(14, 20, 22, 0.92); color: rgba(214, 224, 222, 0.78);
+      border: 1px solid rgba(168, 138, 98, 0.35); border-radius: 5px;
+      padding: 8px 8px; font: bold 12.5px 'Georgia', serif; cursor: pointer;
+      transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .settings-option-btn:hover {
+        border-color: rgba(45, 212, 191, 0.65); color: #e6f7f5; background: rgba(16, 30, 32, 0.95);
+      }
+    }
+    .settings-option-btn.selected {
+      border-color: #2dd4bf; color: #99f6e4; background: rgba(13, 56, 56, 0.68);
+      box-shadow: 0 0 12px rgba(45, 212, 191, 0.3);
+    }
+    .settings-back-row { margin-top: 4px; }
     #menu-sub-toast {
       min-height: 1.4em; font-size: 13px; color: rgba(45, 212, 191, 0.88);
       font-style: italic; letter-spacing: 0.4px; text-shadow: 0 2px 8px #000;
@@ -140,7 +240,28 @@
       display: none; align-items: flex-end; justify-content: center;
     }
     #npc-layer.visible { display: flex; }
-    #npc-sprite-box { height: 93%; aspect-ratio: 0.565; width: auto; margin-bottom: 0.8%; background-repeat: no-repeat; }
+    #npc-rig-host {
+      position: absolute; inset: -3%; width: 106%; height: 106%;
+      transform: scale(1.03); pointer-events: none; display: none;
+    }
+    #npc-rig-host.visible { display: block; }
+    #npc-sprite-box {
+      height: 93%; aspect-ratio: 0.565; width: auto; margin-bottom: 0.8%;
+      background-repeat: no-repeat; transform-origin: center bottom;
+    }
+    #npc-sprite-box.npc-smooth-active {
+      animation: npcSmoothEnter 0.36s ease-out both, npcSmoothBreath 3.6s ease-in-out 0.36s infinite;
+      will-change: transform, opacity;
+    }
+    @keyframes npcSmoothEnter {
+      0% { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.985); }
+      100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+    }
+    @keyframes npcSmoothBreath {
+      0%, 100% { transform: translate3d(0, 0px, 0) scale(1, 1); }
+      50% { transform: translate3d(0, -3px, 0) scale(1.008, 1.012); }
+    }
+
     #cabinet-items-layer { position: absolute; inset: 0; z-index: 8; pointer-events: none; display: none; }
     #cabinet-items-layer.visible { display: block; }
     .shelf-item {
@@ -149,48 +270,85 @@
       filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.75));
       transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), filter 0.18s ease;
     }
-    .shelf-item:hover {
-      transform: translate(-50%, -56%) scale(1.06);
-      filter: drop-shadow(0 0 12px rgba(215, 165, 95, 0.7)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.78));
+    @media (hover: hover) and (pointer: fine) {
+      .shelf-item:hover {
+        transform: translate(-50%, -56%) scale(1.06);
+        filter: drop-shadow(0 0 12px rgba(215, 165, 95, 0.7)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.78));
+      }
     }
-    .shelf-item.shelf-taking {
-      pointer-events: none;
-      animation: shelfItemTake 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    .shelf-item.shelf-taking { pointer-events: none; will-change: transform, opacity; }
+    #stage-16x9[data-item-anim="fade"] .shelf-item.shelf-taking {
+      animation: shelfItemTakeFade 0.2s ease-out forwards;
     }
-    .shelf-item.potato-stage-shrink {
-      animation: potatoStageShrink 0.34s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    #stage-16x9[data-item-anim="glow"] .shelf-item.shelf-taking {
+      animation: shelfItemTakeGlow 0.24s ease-out forwards;
     }
-    @keyframes shelfItemTake {
+    #stage-16x9[data-item-anim="fly"] .shelf-item.shelf-taking {
+      animation: shelfItemTakeFly 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    #stage-16x9[data-item-anim="fade"] .shelf-item.potato-stage-shrink {
+      animation: potatoStageFade 0.22s ease-out forwards;
+    }
+    #stage-16x9[data-item-anim="glow"] .shelf-item.potato-stage-shrink {
+      animation: potatoStageGlow 0.28s ease-out forwards;
+    }
+    #stage-16x9[data-item-anim="fly"] .shelf-item.potato-stage-shrink {
+      animation: potatoStageShrink 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    @keyframes shelfItemTakeFade {
+      0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+    }
+    @keyframes potatoStageFade {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+    @keyframes shelfItemTakeGlow {
       0% {
-        transform: translate(-50%, -54%) scale(1.08);
-        filter: drop-shadow(0 0 16px rgba(255, 206, 110, 0.95)) brightness(1.35);
+        transform: translate(-50%, -50%) scale(1.03);
+        filter: drop-shadow(0 0 18px rgba(255, 206, 110, 0.95)) brightness(1.35);
         opacity: 1;
       }
-      45% {
-        transform: translate(-15%, -92%) scale(0.92);
-        filter: drop-shadow(0 0 20px rgba(255, 214, 128, 1)) brightness(1.45);
-        opacity: 0.94;
+      100% {
+        transform: translate(-50%, -50%) scale(0.95);
+        filter: drop-shadow(0 0 10px rgba(255, 195, 95, 0.4)) brightness(1.15);
+        opacity: 0;
+      }
+    }
+    @keyframes potatoStageGlow {
+      0% {
+        filter: drop-shadow(0 0 14px rgba(245, 196, 112, 0.85)) brightness(1.25);
+        opacity: 0.72;
       }
       100% {
-        transform: translate(38%, -148%) scale(0.42);
-        filter: drop-shadow(0 0 10px rgba(255, 195, 95, 0.35)) brightness(1.1);
+        filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.75)) brightness(1);
+        opacity: 1;
+      }
+    }
+    @keyframes shelfItemTakeFly {
+      0% {
+        transform: translate(-50%, -50%) translate3d(0px, 0px, 0) scale(1.06);
+        filter: drop-shadow(0 0 16px rgba(255, 206, 110, 0.95)) brightness(1.32);
+        opacity: 1;
+      }
+      40% {
+        transform: translate(-50%, -50%) translate3d(calc(var(--fly-x, 0px) * 0.42), calc(var(--fly-y, 260px) * 0.42), 0) scale(0.92);
+        filter: drop-shadow(0 0 18px rgba(255, 214, 128, 0.95)) brightness(1.35);
+        opacity: 0.95;
+      }
+      100% {
+        transform: translate(-50%, -50%) translate3d(var(--fly-x, 0px), var(--fly-y, 260px), 0) scale(0.38);
+        filter: drop-shadow(0 0 8px rgba(255, 195, 95, 0.35)) brightness(1.08);
         opacity: 0;
       }
     }
     @keyframes potatoStageShrink {
       0% {
-        transform: translate(-50%, -50%) scale(1.16);
-        filter: drop-shadow(0 0 16px rgba(235, 185, 105, 0.92)) brightness(1.3);
+        transform: translate(-50%, -50%) scale(1.1);
         opacity: 0.78;
-      }
-      55% {
-        transform: translate(-50%, -52%) scale(0.96);
-        filter: drop-shadow(0 0 10px rgba(215, 165, 95, 0.55)) brightness(1.1);
-        opacity: 1;
       }
       100% {
         transform: translate(-50%, -50%) scale(1);
-        filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.75)) brightness(1);
         opacity: 1;
       }
     }
@@ -213,18 +371,30 @@
     #match-tutorial-hint.visible { opacity: 1; visibility: visible; }
 
     /* КНОПКИ УПРАВЛЕНИЯ */
+    #menu-top-btn {
+      position: absolute; top: 10px; left: 14px; z-index: 18; height: 42px; padding: 0 13px;
+      background: #12100e; border: 1px solid rgba(168,138,98,0.48); border-radius: 5px;
+      color: #dfd3c0; font: bold 13px 'Georgia', serif; letter-spacing: 0.3px;
+      cursor: pointer; touch-action: manipulation;
+      display: none; align-items: center; justify-content: center; gap: 7px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.85);
+      transition: border-color 0.18s ease, transform 0.15s ease, background 0.18s ease, color 0.18s ease;
+    }
+    #menu-top-btn.visible { display: flex; }
+    #menu-top-btn svg {
+      width: 16px; height: 16px; stroke: #b89f7d; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.18s ease;
+    }
     #backpack-btn {
       position: absolute; top: 10px; right: 14px; z-index: 18; width: 55px; height: 55px;
       background: #12100e; border: 1px solid rgba(168,138,98,0.48); border-radius: 5px;
       padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;
       box-shadow: 0 3px 10px rgba(0,0,0,0.85); transition: border-color 0.18s ease, transform 0.15s ease, background 0.18s ease;
     }
-    #backpack-btn:hover { border-color: #c9a368; background: #1b1714; transform: translateY(-1px); }
     #backpack-btn svg {
       width: 100%; height: 100%; stroke: #b89f7d; fill: #26201a;
       stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.18s ease;
     }
-    #backpack-btn:hover svg { stroke: #dfd0b8; }
     #backpack-badge {
       position: absolute; bottom: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px;
       background: #1f1913; color: #d8c3a5; font: bold 10.5px/16px 'Georgia', serif; text-align: center;
@@ -237,12 +407,18 @@
       display: flex; align-items: center; justify-content: center;
       box-shadow: 0 3px 10px rgba(0,0,0,0.85); transition: border-color 0.18s ease, transform 0.15s ease, background 0.18s ease;
     }
-    #fullscreen-btn:hover { border-color: #c9a368; background: #1b1714; transform: translateY(-1px); }
     #fullscreen-btn svg {
       width: 100%; height: 100%; stroke: #b89f7d; fill: none;
       stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.18s ease;
     }
-    #fullscreen-btn:hover svg { stroke: #dfd0b8; }
+    @media (hover: hover) and (pointer: fine) {
+      #menu-top-btn:hover { border-color: #c9a368; background: #1b1714; color: #f5ebd9; transform: translateY(-1px); }
+      #menu-top-btn:hover svg { stroke: #dfd0b8; }
+      #backpack-btn:hover { border-color: #c9a368; background: #1b1714; transform: translateY(-1px); }
+      #backpack-btn:hover svg { stroke: #dfd0b8; }
+      #fullscreen-btn:hover { border-color: #c9a368; background: #1b1714; transform: translateY(-1px); }
+      #fullscreen-btn:hover svg { stroke: #dfd0b8; }
+    }
 
     .grim-btn {
       position: relative; cursor: pointer; padding: 8px 24px; background: #14110e; color: #dfd3c0;
@@ -259,7 +435,7 @@
 
     #neighbor-choice-overlay {
       position: absolute; inset: 0; z-index: 28; display: none; align-items: center; justify-content: center;
-      gap: 20px; flex-wrap: wrap; padding: 20px; pointer-events: none;
+      gap: 20px; flex-wrap: wrap; padding: 20px; pointer-events: none; touch-action: none;
     }
     #neighbor-choice-overlay.visible { display: flex; }
     #neighbor-choice-overlay .choice-card { pointer-events: auto; width: 118px; }
@@ -326,9 +502,9 @@
     .brochure-section-title { font-size: 14.5px; font-weight: bold; margin: 14px 0 6px 0; text-decoration: underline; }
     .brochure-close-btn { margin-top: 12px; width: 100%; padding: 10px; background: #2b2219; color: #f0e6d6; border: 1px solid #6e563f; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
-    #ochko-modal-wrap { position: absolute; inset: 0; z-index: 50; background: #050403; display: none; flex-direction: column; }
+    #ochko-modal-wrap { position: absolute; inset: 0; z-index: 50; background: #03050a; display: none; flex-direction: column; }
     #ochko-modal-wrap.visible { display: flex; }
-    #ochko-iframe { width: 100%; height: 100%; border: none; }
+    #ochko-iframe { width: 100%; height: 100%; border: none; background: #03050a; }
 
     /* НИЖНЯЯ ЗОНА КАРТОЧЕК */
     #bottom-hud {
@@ -340,7 +516,9 @@
       position: relative; z-index: 20; display: flex; align-items: center;
       gap: 5px; pointer-events: auto; flex: 0 1 auto; max-width: calc(50% - 54px);
     }
-    .deck-cards { display: flex; align-items: flex-end; gap: 8px; min-height: 134px; }
+    .deck-cards { display: flex; align-items: flex-end; gap: 8px; min-height: 134px; touch-action: none; }
+    #stage-16x9[data-card-anim="fan"] .deck-cards { gap: 0px; }
+    #stage-16x9[data-card-anim="fan"] .deck-cards .choice-card:not(:first-child) { margin-left: -10px; }
     .scroll-arrow {
       position: relative; z-index: 5; flex-shrink: 0; width: 24px; height: 105px;
       background: rgba(14,12,10,0.92); border: 1px solid rgba(185,155,115,0.48);
@@ -348,37 +526,116 @@
       touch-action: manipulation; cursor: pointer; display: flex; align-items: center; justify-content: center;
       box-shadow: 0 3px 8px rgba(0,0,0,0.8); transition: border-color 0.15s, transform 0.12s, background 0.15s;
     }
-    .scroll-arrow:hover:not(:disabled) { border-color: #c59b61; background: rgba(30,24,18,0.96); transform: scale(1.05); }
+    @media (hover: hover) and (pointer: fine) {
+      .scroll-arrow:hover:not(:disabled) { border-color: #c59b61; background: rgba(30,24,18,0.96); transform: scale(1.05); }
+    }
     .scroll-arrow:disabled { opacity: 0.22; cursor: default; }
 
     .choice-card {
       position: relative; width: 97px; flex-shrink: 0; background: transparent; border: none; padding: 0;
       cursor: pointer; touch-action: manipulation; font-family: inherit;
-      transition: transform 0.2s cubic-bezier(0.22, 1.3, 0.36, 1), z-index 0.1s;
+      transform-origin: center bottom;
+      transition: transform 0.22s cubic-bezier(0.22, 1.25, 0.36, 1), opacity 0.22s ease;
     }
     .choice-card.deal-anim {
       perspective: 800px; transform-style: preserve-3d;
       animation: cardDeal 0.52s cubic-bezier(0.2, 1.22, 0.32, 1) backwards;
       animation-delay: var(--deal-delay, 0ms);
     }
-    .choice-card:hover:not(:disabled):not(.activating),
-    .choice-card.card-focused:not(:disabled):not(.activating) {
-      transform: translateY(-22px) scale(1.18);
-      z-index: 30;
-    }
-    .choice-card.activating {
-      perspective: 800px; transform-style: preserve-3d; z-index: 35;
-      animation: cardActivateFlip 0.44s cubic-bezier(0.22, 1.22, 0.36, 1) forwards !important;
-      pointer-events: none;
-    }
     .choice-card:disabled:not(.activating) { opacity: 0.48; cursor: default; }
+    .choice-card.priority-card:not(.activating) { transform: translate3d(0, -7px, 0); z-index: 4; }
 
-    .choice-card.priority-card:not(.activating) { transform: translateY(-7px); z-index: 4; }
-    .choice-card.priority-card:hover:not(:disabled):not(.activating),
-    .choice-card.priority-card.card-focused:not(:disabled):not(.activating) {
-      transform: translateY(-22px) scale(1.18);
-      z-index: 30;
+    /* Режим 1: Колода (Веер) */
+    #stage-16x9[data-card-anim="fan"] .deck-cards .choice-card:not(.activating) {
+      transform: translate3d(0, var(--fan-y, 0px), 0) rotate(var(--fan-rot, 0deg));
     }
+    #stage-16x9[data-card-anim="fan"] .deck-cards .choice-card.priority-card:not(.activating) {
+      transform: translate3d(0, calc(var(--fan-y, 0px) - 7px), 0) rotate(var(--fan-rot, 0deg));
+    }
+    #stage-16x9[data-card-anim="fan"] .choice-card.card-focused:not(:disabled):not(.activating),
+    #stage-16x9[data-card-anim="fan"] .choice-card.priority-card.card-focused:not(:disabled):not(.activating) {
+      transform: translate3d(0, -28px, 0) scale(1.24) rotate(0deg);
+      z-index: 40;
+    }
+    #stage-16x9[data-card-anim="fan"] .deck-cards .choice-card.card-focused + .choice-card:not(.activating) {
+      transform: translate3d(6px, var(--fan-y, 0px), 0) rotate(var(--fan-rot, 0deg));
+    }
+    #stage-16x9[data-card-anim="fan"] .deck-cards .choice-card.card-focused + .choice-card.priority-card:not(.activating) {
+      transform: translate3d(6px, calc(var(--fan-y, 0px) - 7px), 0) rotate(var(--fan-rot, 0deg));
+    }
+    #stage-16x9[data-card-anim="fan"] .deck-cards .choice-card:not(.activating):has(+ .choice-card.card-focused) {
+      transform: translate3d(-6px, var(--fan-y, 0px), 0) rotate(var(--fan-rot, 0deg));
+    }
+    #stage-16x9[data-card-anim="fan"] .deck-cards .choice-card.priority-card:not(.activating):has(+ .choice-card.card-focused) {
+      transform: translate3d(-6px, calc(var(--fan-y, 0px) - 7px), 0) rotate(var(--fan-rot, 0deg));
+    }
+    #stage-16x9[data-card-anim="fan"] .choice-card.activating {
+      z-index: 45; pointer-events: none; will-change: transform, opacity;
+      animation: cardActivateFan 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+    }
+
+    /* Режим 2: Плавный подъём */
+    #stage-16x9[data-card-anim="lift"] .choice-card.card-focused:not(:disabled):not(.activating),
+    #stage-16x9[data-card-anim="lift"] .choice-card.priority-card.card-focused:not(:disabled):not(.activating) {
+      transform: translate3d(0, -20px, 0) scale(1.16);
+      z-index: 40;
+    }
+    #stage-16x9[data-card-anim="lift"] .choice-card.activating {
+      z-index: 45; pointer-events: none; will-change: transform, opacity;
+      animation: cardActivateLift 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+    }
+
+    /* Режим 3: Объёмный переворот */
+    #stage-16x9[data-card-anim="flip"] .choice-card.card-focused:not(:disabled):not(.activating),
+    #stage-16x9[data-card-anim="flip"] .choice-card.priority-card.card-focused:not(:disabled):not(.activating) {
+      transform: perspective(800px) rotateX(8deg) translate3d(0, -20px, 0) scale(1.18);
+      z-index: 40;
+    }
+    #stage-16x9[data-card-anim="flip"] .choice-card.activating {
+      perspective: 800px; transform-style: preserve-3d; z-index: 45; pointer-events: none;
+      will-change: transform, opacity;
+      animation: cardActivateFlip 0.38s cubic-bezier(0.22, 1.22, 0.36, 1) forwards !important;
+    }
+
+    /* Hover-эффекты карточек строго для мыши/трекпада (без залипания на мобильных) */
+    @media (hover: hover) and (pointer: fine) {
+      #stage-16x9[data-card-anim="fan"] .choice-card:hover:not(:disabled):not(.activating),
+      #stage-16x9[data-card-anim="fan"] .choice-card.priority-card:hover:not(:disabled):not(.activating) {
+        transform: translate3d(0, -28px, 0) scale(1.24) rotate(0deg);
+        z-index: 40;
+      }
+      #stage-16x9[data-card-anim="fan"] .deck-cards .choice-card:hover:not(:disabled):not(.activating) + .choice-card:not(.activating) {
+        transform: translate3d(6px, var(--fan-y, 0px), 0) rotate(var(--fan-rot, 0deg));
+      }
+      #stage-16x9[data-card-anim="fan"] .deck-cards .choice-card:hover:not(:disabled):not(.activating) + .choice-card.priority-card:not(.activating) {
+        transform: translate3d(6px, calc(var(--fan-y, 0px) - 7px), 0) rotate(var(--fan-rot, 0deg));
+      }
+      #stage-16x9[data-card-anim="fan"] .deck-cards .choice-card:not(.activating):has(+ .choice-card:hover:not(:disabled):not(.activating)) {
+        transform: translate3d(-6px, var(--fan-y, 0px), 0) rotate(var(--fan-rot, 0deg));
+      }
+      #stage-16x9[data-card-anim="fan"] .deck-cards .choice-card.priority-card:not(.activating):has(+ .choice-card:hover:not(:disabled):not(.activating)) {
+        transform: translate3d(-6px, calc(var(--fan-y, 0px) - 7px), 0) rotate(var(--fan-rot, 0deg));
+      }
+      #stage-16x9[data-card-anim="lift"] .choice-card:hover:not(:disabled):not(.activating),
+      #stage-16x9[data-card-anim="lift"] .choice-card.priority-card:hover:not(:disabled):not(.activating) {
+        transform: translate3d(0, -20px, 0) scale(1.16);
+        z-index: 40;
+      }
+      #stage-16x9[data-card-anim="flip"] .choice-card:hover:not(:disabled):not(.activating),
+      #stage-16x9[data-card-anim="flip"] .choice-card.priority-card:hover:not(:disabled):not(.activating) {
+        transform: perspective(800px) rotateX(8deg) translate3d(0, -20px, 0) scale(1.18);
+        z-index: 40;
+      }
+      .choice-card:hover:not(:disabled) .card-inner {
+        border-color: #e6b86a;
+        box-shadow: 0 12px 24px rgba(0,0,0,0.92), 0 0 16px rgba(215, 165, 95, 0.55);
+      }
+      .choice-card.priority-card:hover:not(:disabled) .card-inner {
+        border-color: #5eead4;
+        box-shadow: 0 12px 24px rgba(0,0,0,0.92), 0 0 18px rgba(45, 212, 191, 0.65);
+      }
+    }
+
     .choice-card.priority-card .card-inner {
       border: 1.5px solid #2dd4bf;
       box-shadow: 0 5px 12px rgba(0,0,0,0.85), 0 0 12px rgba(45, 212, 191, 0.38);
@@ -394,13 +651,11 @@
       transition: border-color 0.18s ease, box-shadow 0.18s ease;
     }
     .choice-card.deal-anim .card-inner,
-    .choice-card.activating .card-inner { transform-style: preserve-3d; backface-visibility: hidden; }
-    .choice-card:hover:not(:disabled) .card-inner,
+    #stage-16x9[data-card-anim="flip"] .choice-card.activating .card-inner { transform-style: preserve-3d; backface-visibility: hidden; }
     .choice-card.card-focused:not(:disabled) .card-inner {
       border-color: #e6b86a;
       box-shadow: 0 12px 24px rgba(0,0,0,0.92), 0 0 16px rgba(215, 165, 95, 0.55);
     }
-    .choice-card.priority-card:hover:not(:disabled) .card-inner,
     .choice-card.priority-card.card-focused:not(:disabled) .card-inner {
       border-color: #5eead4;
       box-shadow: 0 12px 24px rgba(0,0,0,0.92), 0 0 18px rgba(45, 212, 191, 0.65);
@@ -413,20 +668,29 @@
       align-items: center; justify-content: center;
     }
     .choice-card.deal-anim .card-back,
-    .choice-card.activating .card-back { display: flex; }
+    #stage-16x9[data-card-anim="flip"] .choice-card.activating .card-back { display: flex; }
     .card-back::after { content: "★"; font-size: 25px; color: rgba(215,175,115,0.55); }
 
     @keyframes cardDeal {
       0% { opacity: 0; transform: translate3d(0, 68px, -60px) rotateY(180deg) rotateZ(-8deg) scale(0.72); }
       65% { opacity: 1; transform: translate3d(0, -7px, 12px) rotateY(-10deg) rotateZ(1.5deg) scale(1.03); }
-      100% { opacity: 1; transform: translate3d(0, 0, 0) rotateY(0deg) rotateZ(0deg) scale(1); }
+      100% { opacity: 1; transform: translate3d(0, var(--fan-y, 0px), 0) rotateY(0deg) rotateZ(var(--fan-rot, 0deg)) scale(1); }
+    }
+    @keyframes cardActivateFan {
+      0% { transform: translate3d(0, -28px, 0) scale(1.24) rotate(0deg); opacity: 1; }
+      38% { transform: translate3d(0, -56px, 0) scale(1.26) rotate(0deg); opacity: 0.92; }
+      100% { transform: translate3d(0, -108px, 0) scale(1.1) rotate(0deg); opacity: 0; }
+    }
+    @keyframes cardActivateLift {
+      0% { transform: translate3d(0, -20px, 0) scale(1.16); opacity: 1; }
+      35% { transform: translate3d(0, -48px, 0) scale(1.22); opacity: 0.94; }
+      100% { transform: translate3d(0, -90px, 0) scale(1.06); opacity: 0; }
     }
     @keyframes cardActivateFlip {
-      0% { transform: translateY(-22px) scale(1.18) rotateY(0deg); }
-      22% { transform: translateY(-30px) scale(1.22) rotateY(0deg); }
-      58% { transform: translateY(-30px) scale(1.22) rotateY(180deg); }
-      86% { transform: translateY(-14px) scale(1.08) rotateY(360deg); }
-      100% { transform: translateY(0) scale(1) rotateY(360deg); }
+      0% { transform: perspective(800px) translate3d(0, -20px, 0) scale(1.18) rotateY(0deg); opacity: 1; }
+      24% { transform: perspective(800px) translate3d(0, -30px, 0) scale(1.22) rotateY(0deg); opacity: 1; }
+      62% { transform: perspective(800px) translate3d(0, -30px, 0) scale(1.22) rotateY(180deg); opacity: 0.96; }
+      100% { transform: perspective(800px) translate3d(0, -12px, 0) scale(1.04) rotateY(360deg); opacity: 0.85; }
     }
 
     .card-icon-frame { width: 100%; aspect-ratio: 1/1; border-radius: 4px; overflow: hidden; background-color: #161412; background-repeat: no-repeat; }
@@ -444,16 +708,51 @@
 </head>
 <body>
 
-  <div id="stage-16x9">
+  <div id="stage-16x9" data-card-anim="fan" data-item-anim="fly" data-npc-anim="rig">
+    <div id="intro-play-gate">
+      <button type="button" id="intro-play-btn" onclick="enterMainMenuFromGate()">Играть</button>
+    </div>
+
     <div id="main-menu">
-      <video id="menu-bg-video" src="Фон.mp4" autoplay loop muted playsinline preload="auto"></video>
+      <video id="menu-bg-video" src="Фон.mp4" loop muted playsinline preload="auto"></video>
       <div class="menu-vignette"></div>
       <div class="menu-content">
         <div id="menu-sub-toast"></div>
         <div class="menu-items" id="menu-items-list">
-          <button type="button" class="menu-item-btn active" data-menu-idx="0" onclick="handleMenuClick('new')">Новая игра</button>
-          <button type="button" class="menu-item-btn" data-menu-idx="1" onclick="handleMenuClick('load')">Загрузки</button>
-          <button type="button" class="menu-item-btn" data-menu-idx="2" onclick="handleMenuClick('settings')">Настройки</button>
+          <button type="button" class="menu-item-btn" id="menu-btn-continue" data-action="continue" style="display:none">Продолжить</button>
+          <button type="button" class="menu-item-btn active" id="menu-btn-new" data-action="new">Новая игра</button>
+          <button type="button" class="menu-item-btn" id="menu-btn-settings" data-action="settings">Настройки</button>
+          <button type="button" class="menu-item-btn" id="menu-btn-load" data-action="load">Загрузить игру</button>
+        </div>
+        <div id="menu-settings-panel">
+          <div class="settings-panel-title">Настройки анимаций</div>
+          <div class="settings-group">
+            <div class="settings-group-label">Анимация карточек</div>
+            <div class="settings-options-row">
+              <button type="button" class="settings-option-btn" data-setting="card" data-value="fan" onclick="setAnimSetting('card', 'fan')">Колода (Веер)</button>
+              <button type="button" class="settings-option-btn" data-setting="card" data-value="lift" onclick="setAnimSetting('card', 'lift')">Плавный подъём</button>
+              <button type="button" class="settings-option-btn" data-setting="card" data-value="flip" onclick="setAnimSetting('card', 'flip')">Объёмный переворот</button>
+            </div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-group-label">Анимация предметов (тушёнка и картошка)</div>
+            <div class="settings-options-row">
+              <button type="button" class="settings-option-btn" data-setting="item" data-value="fade" onclick="setAnimSetting('item', 'fade')">Просто исчезает</button>
+              <button type="button" class="settings-option-btn" data-setting="item" data-value="glow" onclick="setAnimSetting('item', 'glow')">Подсветка и исчезновение</button>
+              <button type="button" class="settings-option-btn" data-setting="item" data-value="fly" onclick="setAnimSetting('item', 'fly')">Отлёт к игроку</button>
+            </div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-group-label">Анимация NPC</div>
+            <div class="settings-options-row">
+              <button type="button" class="settings-option-btn" data-setting="npc" data-value="rig" onclick="setAnimSetting('npc', 'rig')">Живая (Риг)</button>
+              <button type="button" class="settings-option-btn" data-setting="npc" data-value="smooth" onclick="setAnimSetting('npc', 'smooth')">Плавная (Лёгкая)</button>
+              <button type="button" class="settings-option-btn" data-setting="npc" data-value="classic" onclick="setAnimSetting('npc', 'classic')">Классическая (Спрайт)</button>
+            </div>
+          </div>
+          <div class="settings-back-row">
+            <button type="button" class="grim-btn" onclick="closeMenuSettings()">Назад</button>
+          </div>
         </div>
         <div class="menu-logo-wrap">
           <img id="menu-logo-img" src="лого.png" alt="KOLA PATHOGEN" />
@@ -471,8 +770,15 @@
     <div id="slot-a" class="scene-slot current"><div class="layer-bg"></div></div>
     <div id="slot-b" class="scene-slot outgoing"><div class="layer-bg"></div></div>
 
-    <div id="npc-layer"><div id="npc-sprite-box"></div></div>
+    <div id="npc-layer"><div id="npc-rig-host"></div><div id="npc-sprite-box"></div></div>
     <div id="cabinet-items-layer"></div>
+
+    <button type="button" id="menu-top-btn" title="Главное меню" aria-label="Главное меню" onclick="openMainMenuFromGame()">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+      <span>Главное меню</span>
+    </button>
 
     <button type="button" id="fullscreen-btn" title="На весь экран" aria-label="На весь экран" onclick="toggleFullscreenMode()">
       <svg id="fullscreen-icon-enter" viewBox="0 0 24 24" aria-hidden="true">
@@ -557,6 +863,7 @@
     </div>
   </div>
 
+  <script src="npc_rig_player.js"></script>
   <script>
     /* 0. СБРОС ПРОГРЕССА КОСТЕЙ */
     const DEFAULT_OWNED_COUNTS = [6, 0, 0, 0, 0, 0, 0, 0];
@@ -580,18 +887,83 @@
       return { ownedCounts, playerSkins };
     }
 
-    /* 0.1. ГЛАВНОЕ МЕНЮ */
+    /* 0.1. СТАРТОВЫЙ ОВЕРЛЕЙ, НАСТРОЙКИ АНИМАЦИЙ И ГЛАВНОЕ МЕНЮ */
+    const introGateEl = document.getElementById("intro-play-gate");
     const menuEl = document.getElementById("main-menu");
+    const menuItemsListEl = document.getElementById("menu-items-list");
+    const menuSettingsPanelEl = document.getElementById("menu-settings-panel");
+    const menuContinueBtn = document.getElementById("menu-btn-continue");
+    const menuTopBtn = document.getElementById("menu-top-btn");
     const menuVideo = document.getElementById("menu-bg-video");
     const menuLogoImg = document.getElementById("menu-logo-img");
     const menuLogoFallbackText = document.getElementById("menu-logo-fallback-text");
-    const menuButtons = Array.from(document.querySelectorAll(".menu-item-btn"));
+    const allMenuButtons = Array.from(document.querySelectorAll(".menu-item-btn"));
     const menuToast = document.getElementById("menu-sub-toast");
     let activeMenuIdx = 0;
     let menuToastTimer = null;
+    let menuHideTimer = null;
+    let introGateDismissed = false;
     let isMenuOpen = true;
+    let isSettingsOpen = false;
+    let hasActiveGameSession = false;
     let gameStarting = false;
     let isOchkoModalOpen = false;
+    let pausedLightByMenu = false;
+    let pausedKnockBeforeMenu = false;
+    let pausedNpcContextBeforeMenu = null;
+
+    /* Настройки анимаций (сохраняются в localStorage) */
+    const ANIM_SETTINGS_DEFAULTS = { card: "fan", item: "fly", npc: "rig" };
+    const ANIM_SETTINGS_KEYS = {
+      card: "kola_card_anim",
+      item: "kola_item_anim",
+      npc: "kola_npc_anim"
+    };
+    const ANIM_SETTINGS_ALLOWED = {
+      card: new Set(["fan", "lift", "flip"]),
+      item: new Set(["fade", "glow", "fly"]),
+      npc: new Set(["rig", "smooth", "classic"])
+    };
+    const animSettings = { ...ANIM_SETTINGS_DEFAULTS };
+
+    function loadAnimSettings() {
+      try {
+        for (const k of ["card", "item", "npc"]) {
+          const val = localStorage.getItem(ANIM_SETTINGS_KEYS[k]);
+          if (val && ANIM_SETTINGS_ALLOWED[k].has(val)) animSettings[k] = val;
+        }
+      } catch (e) {}
+    }
+
+    function applyAnimSettings() {
+      const stage = document.getElementById("stage-16x9");
+      if (stage) {
+        stage.setAttribute("data-card-anim", animSettings.card);
+        stage.setAttribute("data-item-anim", animSettings.item);
+        stage.setAttribute("data-npc-anim", animSettings.npc);
+      }
+      document.querySelectorAll(".settings-option-btn").forEach((btn) => {
+        const s = btn.getAttribute("data-setting");
+        const v = btn.getAttribute("data-value");
+        btn.classList.toggle("selected", animSettings[s] === v);
+      });
+    }
+
+    function setAnimSetting(category, value) {
+      if (!ANIM_SETTINGS_ALLOWED[category] || !ANIM_SETTINGS_ALLOWED[category].has(value)) return;
+      animSettings[category] = value;
+      try { localStorage.setItem(ANIM_SETTINGS_KEYS[category], value); } catch (e) {}
+      playCardSound("click");
+      applyAnimSettings();
+      if (category === "card" && hasActiveGameSession) {
+        if (leftCardsEl) leftCardsEl._deckSig = "";
+        if (rightCardsEl) rightCardsEl._deckSig = "";
+        renderUI(false);
+      }
+    }
+
+    loadAnimSettings();
+    applyAnimSettings();
 
     const VIDEO_CANDIDATES = ["Фон.mp4", "фон.mp4", "события/Фон.mp4", "события/фон.mp4"];
     let videoCandidateIdx = 0;
@@ -600,7 +972,7 @@
       menuVideo.defaultMuted = true;
       menuVideo.volume = 0;
       menuVideo.addEventListener("error", () => {
-        if (!isMenuOpen) return;
+        if (!isMenuOpen || !introGateDismissed) return;
         videoCandidateIdx++;
         if (videoCandidateIdx < VIDEO_CANDIDATES.length) {
           menuVideo.src = encodeURI(VIDEO_CANDIDATES[videoCandidateIdx]);
@@ -608,7 +980,6 @@
           menuVideo.play().catch(() => {});
         }
       });
-      menuVideo.play().catch(() => {});
     }
 
     const MENU_AUDIO_CANDIDATES = [
@@ -619,9 +990,17 @@
     ];
     let menuAudio = null;
     let menuAudioIdx = 0;
+    let menuAudioFadeTimer = null;
+
+    function cancelMenuAudioFade() {
+      if (menuAudioFadeTimer) {
+        clearInterval(menuAudioFadeTimer);
+        menuAudioFadeTimer = null;
+      }
+    }
 
     function initMenuBackgroundAudio() {
-      if (menuAudio || !isMenuOpen) return;
+      if (menuAudio || !isMenuOpen || !introGateDismissed) return;
       menuAudio = new Audio();
       menuAudio.loop = true;
       menuAudio.volume = 0.65;
@@ -639,39 +1018,75 @@
     }
 
     function ensureMenuAudioPlaying() {
-      if (!isMenuOpen) return;
-      if (!menuAudio) initMenuBackgroundAudio();
-      else if (menuAudio.paused) menuAudio.play().catch(() => {});
-      if (menuVideo && menuVideo.paused) {
+      if (!isMenuOpen || !introGateDismissed) return;
+      cancelMenuAudioFade();
+      if (!menuAudio) {
+        initMenuBackgroundAudio();
+      } else {
+        menuAudio.volume = 0.65;
+        if (menuAudio.paused) menuAudio.play().catch(() => {});
+      }
+      if (menuVideo) {
         menuVideo.muted = true;
-        menuVideo.play().catch(() => {});
+        if (menuVideo.paused) menuVideo.play().catch(() => {});
       }
     }
 
-    window.addEventListener("pointerdown", ensureMenuAudioPlaying, { passive: true });
-    window.addEventListener("keydown", ensureMenuAudioPlaying, { passive: true });
-    initMenuBackgroundAudio();
+    function unlockAudioContext() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+      } catch (e) {}
+    }
+
+    function enterMainMenuFromGate() {
+      if (introGateDismissed) return;
+      introGateDismissed = true;
+      unlockAudioContext();
+      playCardSound("flip");
+      ensureMenuAudioPlaying();
+      if (introGateEl) {
+        introGateEl.classList.add("hidden");
+        setTimeout(() => {
+          if (introGateEl) introGateEl.style.display = "none";
+        }, 560);
+      }
+      setActiveMenuItem(0);
+    }
+
+    window.addEventListener("pointerdown", () => {
+      if (introGateDismissed && isMenuOpen) ensureMenuAudioPlaying();
+    }, { passive: true });
+    window.addEventListener("keydown", () => {
+      if (introGateDismissed && isMenuOpen) ensureMenuAudioPlaying();
+    }, { passive: true });
 
     function stopMenuMedia() {
       isMenuOpen = false;
       if (menuVideo) {
-        try {
-          menuVideo.pause();
-          menuVideo.removeAttribute("src");
-          menuVideo.load();
-        } catch (e) {}
+        try { menuVideo.pause(); } catch (e) {}
       }
       if (menuAudio) {
-        const fade = setInterval(() => {
-          if (!menuAudio) { clearInterval(fade); return; }
+        cancelMenuAudioFade();
+        menuAudioFadeTimer = setInterval(() => {
+          if (!menuAudio || isMenuOpen) {
+            cancelMenuAudioFade();
+            return;
+          }
           if (menuAudio.volume > 0.06) {
             menuAudio.volume = Math.max(0, menuAudio.volume - 0.06);
           } else {
-            clearInterval(fade);
+            cancelMenuAudioFade();
             try { menuAudio.pause(); } catch (e) {}
           }
         }, 50);
       }
+    }
+
+    function syncMenuTopBtnVisibility() {
+      if (!menuTopBtn) return;
+      const show = hasActiveGameSession && !isMenuOpen && !gameStarting && introGateDismissed;
+      menuTopBtn.classList.toggle("visible", show);
     }
 
     const LOGO_CANDIDATES = ["лого.png", "Лого.png", "название.png", "Название.png", "текст фон.jpg", "Текст фон.jpg"];
@@ -696,28 +1111,79 @@
       });
     }
 
-    function setActiveMenuItem(idx) {
-      activeMenuIdx = (idx + menuButtons.length) % menuButtons.length;
-      menuButtons.forEach((btn, i) => btn.classList.toggle("active", i === activeMenuIdx));
+    function getVisibleMenuButtons() {
+      return allMenuButtons.filter((btn) => btn.style.display !== "none");
     }
-    menuButtons.forEach((btn, idx) => {
-      btn.addEventListener("mouseenter", () => {
-        if (activeMenuIdx !== idx) playCardSound("click");
-        setActiveMenuItem(idx);
+
+    function setActiveMenuItem(idx) {
+      const visible = getVisibleMenuButtons();
+      if (visible.length === 0) return;
+      activeMenuIdx = ((idx % visible.length) + visible.length) % visible.length;
+      allMenuButtons.forEach((btn) => btn.classList.remove("active"));
+      visible[activeMenuIdx].classList.add("active");
+    }
+
+    function setActiveMenuButtonEl(targetBtn) {
+      const visible = getVisibleMenuButtons();
+      const idx = visible.indexOf(targetBtn);
+      allMenuButtons.forEach((btn) => btn.classList.remove("active"));
+      if (idx >= 0) {
+        activeMenuIdx = idx;
+        targetBtn.classList.add("active");
+      }
+    }
+
+    const canHoverMouse = window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    allMenuButtons.forEach((btn) => {
+      if (canHoverMouse) {
+        btn.addEventListener("mouseenter", () => {
+          const visible = getVisibleMenuButtons();
+          const idx = visible.indexOf(btn);
+          if (idx >= 0) {
+            if (activeMenuIdx !== idx) playCardSound("click");
+            setActiveMenuItem(idx);
+          }
+        });
+      }
+      btn.addEventListener("pointerdown", () => {
+        setActiveMenuButtonEl(btn);
+        btn.blur();
+      });
+      btn.addEventListener("click", () => {
+        setActiveMenuButtonEl(btn);
+        btn.blur();
+        const action = btn.getAttribute("data-action");
+        if (action) handleMenuClick(action);
       });
     });
 
     window.addEventListener("keydown", (e) => {
+      if (!introGateDismissed) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          enterMainMenuFromGate();
+        }
+        return;
+      }
       if (!isMenuOpen || gameStarting) return;
+      if (isSettingsOpen) {
+        if (e.key === "Escape") closeMenuSettings();
+        return;
+      }
+      const visible = getVisibleMenuButtons();
+      if (visible.length === 0) return;
       if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
+        e.preventDefault();
         playCardSound("click");
         setActiveMenuItem(activeMenuIdx - 1);
       } else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
+        e.preventDefault();
         playCardSound("click");
         setActiveMenuItem(activeMenuIdx + 1);
       } else if (e.key === "Enter" || e.key === " ") {
-        const actions = ["new", "load", "settings"];
-        handleMenuClick(actions[activeMenuIdx] || "new");
+        e.preventDefault();
+        const activeBtn = visible[activeMenuIdx] || visible[0];
+        if (activeBtn) handleMenuClick(activeBtn.getAttribute("data-action"));
       }
     });
 
@@ -729,13 +1195,119 @@
       menuToastTimer = setTimeout(() => menuToast.classList.remove("show"), 2600);
     }
 
+    function openMenuSettings() {
+      isSettingsOpen = true;
+      applyAnimSettings();
+      if (menuItemsListEl) menuItemsListEl.style.display = "none";
+      if (menuSettingsPanelEl) menuSettingsPanelEl.classList.add("visible");
+      if (menuToast) menuToast.classList.remove("show");
+    }
+
+    function closeMenuSettings() {
+      isSettingsOpen = false;
+      playCardSound("click");
+      if (menuSettingsPanelEl) menuSettingsPanelEl.classList.remove("visible");
+      if (menuItemsListEl) menuItemsListEl.style.display = "flex";
+      const settingsBtn = document.getElementById("menu-btn-settings");
+      if (settingsBtn) setActiveMenuButtonEl(settingsBtn);
+    }
+
+    function openMainMenuFromGame() {
+      if (!hasActiveGameSession || isMenuOpen || gameStarting || isOchkoModalOpen || state.isWalking) return;
+      playCardSound("click");
+
+      pausedLightByMenu = !state.lightPaused;
+      pauseLightForView();
+      stopFlameInterval();
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+
+      pausedKnockBeforeMenu = state.isKnocking;
+      if (state.isKnocking) stopDoorKnockLoop();
+
+      pausedNpcContextBeforeMenu = activeNpcContext ? { ...activeNpcContext } : null;
+      hideNpc(true);
+
+      isMenuOpen = true;
+      isSettingsOpen = false;
+      if (menuSettingsPanelEl) menuSettingsPanelEl.classList.remove("visible");
+      if (menuItemsListEl) menuItemsListEl.style.display = "flex";
+      if (menuContinueBtn) menuContinueBtn.style.display = "";
+
+      if (menuHideTimer) { clearTimeout(menuHideTimer); menuHideTimer = null; }
+      menuEl.style.display = "flex";
+      requestAnimationFrame(() => menuEl.classList.remove("hidden"));
+
+      setActiveMenuItem(0);
+      syncMenuTopBtnVisibility();
+      syncStaticLightingState();
+      ensureMenuAudioPlaying();
+    }
+
+    function continueGameFromMenu() {
+      if (!hasActiveGameSession || !isMenuOpen || gameStarting) return;
+      stopMenuMedia();
+      isSettingsOpen = false;
+      if (menuSettingsPanelEl) menuSettingsPanelEl.classList.remove("visible");
+      if (menuItemsListEl) menuItemsListEl.style.display = "flex";
+
+      menuEl.classList.add("hidden");
+      if (menuHideTimer) clearTimeout(menuHideTimer);
+      menuHideTimer = setTimeout(() => {
+        menuHideTimer = null;
+        if (!isMenuOpen) menuEl.style.display = "none";
+      }, 660);
+
+      syncMenuTopBtnVisibility();
+
+      if (pausedLightByMenu) {
+        pausedLightByMenu = false;
+        resumeLightFromView();
+      } else {
+        updateFlameVisibility();
+        syncStaticLightingState();
+        syncFlameIntervalState();
+      }
+
+      if (pausedKnockBeforeMenu) {
+        pausedKnockBeforeMenu = false;
+        startDoorKnockLoop();
+      }
+
+      if (pausedNpcContextBeforeMenu) {
+        const ctxToRestore = pausedNpcContextBeforeMenu;
+        pausedNpcContextBeforeMenu = null;
+        showNpcForContext(ctxToRestore);
+      }
+
+      renderUI(false);
+    }
+
+    function performFullGameRestart() {
+      try {
+        localStorage.setItem("ochko_owned_counts", JSON.stringify(DEFAULT_OWNED_COUNTS));
+        localStorage.setItem("ochko_player_skins", JSON.stringify(DEFAULT_PLAYER_SKINS));
+        sessionStorage.setItem("kola_auto_restart", "1");
+      } catch (e) {}
+      location.reload();
+    }
+
     function handleMenuClick(action) {
       if (gameStarting) return;
       ensureMenuAudioPlaying();
       playCardSound("flip");
-      if (action === "new") startNewGameWithPreloader();
-      else if (action === "load") showMenuToast("Сохранённых игр пока нет.");
-      else if (action === "settings") showMenuToast("Настройки по умолчанию: звук 100%, экран 16:9.");
+      if (action === "continue") {
+        continueGameFromMenu();
+      } else if (action === "new") {
+        if (hasActiveGameSession) performFullGameRestart();
+        else startNewGameWithPreloader();
+      } else if (action === "settings") {
+        openMenuSettings();
+      } else if (action === "load") {
+        showMenuToast("Сохранённых игр пока нет.");
+      }
     }
 
     /* 1. КАРТА КАРТИНОК */
@@ -898,9 +1470,13 @@
       await Promise.all(workers);
 
       stopMenuMedia();
+      hasActiveGameSession = true;
+      gameStarting = false;
+      if (menuContinueBtn) menuContinueBtn.style.display = "";
       startNeighborArrivalCountdown();
       menuEl.classList.add("hidden");
       menuEl.style.display = "none";
+      syncMenuTopBtnVisibility();
       syncStaticLightingState();
       syncFlameIntervalState();
       renderUI(true);
@@ -1088,29 +1664,228 @@
       el.style.backgroundPosition = `${posX.toFixed(2)}% ${posY.toFixed(2)}%`;
     }
 
-    /* 4. СПРАЙТЫ СОСЕДЕЙ */
+    /* 4. СПРАЙТЫ И РИГ-ПЛЕЕР NPC (3 РЕЖИМА АНИМАЦИИ) */
     const NPC_FILES = { neighbor: "сосед.png", woman: "соседка.png" };
+    const INHABITED_DOOR_APTS = new Set([17, 18, 20, 23, 24, 26]);
+    const DOOR_RIG_FALLBACK_SLOTS = {
+      17: "slot_1795367777424",
+      18: "slot_1795368528739",
+      20: "slot_1795367470486",
+      23: "slot_1795369084186",
+      24: "slot_1795367905137",
+      26: "slot_1795368678082"
+    };
     let npcTalkInterval = null;
+    let activeNpcContext = null;
+    let activeRigController = null;
+    let npcRigShowToken = 0;
 
-    function setNpcPose(npcKey, pose) {
-      const layer = document.getElementById("npc-layer"), box = document.getElementById("npc-sprite-box");
-      if (!npcKey) { layer.classList.remove("visible"); return; }
+    function stopNpcRigOnly() {
+      npcRigShowToken++;
+      if (activeRigController && typeof activeRigController.stop === "function") {
+        try { activeRigController.stop(); } catch (e) {}
+      }
+      activeRigController = null;
+      if (window.NpcRigPlayer && typeof window.NpcRigPlayer.stop === "function") {
+        try { window.NpcRigPlayer.stop(); } catch (e) {}
+      }
+      const host = document.getElementById("npc-rig-host");
+      if (host) {
+        host.classList.remove("visible");
+        host.innerHTML = "";
+      }
+    }
+
+    function resolveRigNpcIdForContext(ctx) {
+      if (!window.NpcRigPlayer || typeof window.NpcRigPlayer.getDatabase !== "function") return null;
+      const db = window.NpcRigPlayer.getDatabase();
+      const chars = db && db.characters ? db.characters : null;
+      if (!chars) return null;
+      const charIds = Object.keys(chars);
+      if (charIds.length === 0) return null;
+
+      if (ctx.npcKey === "woman") {
+        const womanId = charIds.find((id) => {
+          const c = chars[id];
+          const nm = `${(c && c.name) || ""} ${(c && c.fileHint) || ""}`.toLowerCase();
+          return nm.includes("соседк") || nm.includes("женщ") || nm.includes("woman");
+        });
+        return womanId || null;
+      }
+
+      if (ctx.type === "door" && ctx.apt) {
+        const aptNum = Number(ctx.apt);
+        const byApt = db.doorsByApt && db.doorsByApt[String(aptNum)];
+        if (byApt && byApt.assignedSlotId && chars[byApt.assignedSlotId]) return byApt.assignedSlotId;
+        if (Array.isArray(db.doors)) {
+          const matchedDoor = db.doors.find((d) => Number(d.aptNumber) === aptNum || (d.fileHint && d.fileHint.includes(`${aptNum} открытая`)));
+          if (matchedDoor && matchedDoor.assignedSlotId && chars[matchedDoor.assignedSlotId]) return matchedDoor.assignedSlotId;
+          if (matchedDoor) {
+            const byAssigned = charIds.find((id) => chars[id] && chars[id].assignedDoorId === matchedDoor.id);
+            if (byAssigned) return byAssigned;
+          }
+        }
+        const mapped = DOOR_RIG_FALLBACK_SLOTS[aptNum];
+        if (mapped && chars[mapped]) return mapped;
+        return charIds[aptNum % charIds.length];
+      }
+
+      if (chars["slot_1795367470486"]) return "slot_1795367470486";
+      if (chars["slot_1795310354424"]) return "slot_1795310354424";
+      return charIds[0];
+    }
+
+    function renderSpriteNpcBox(npcKey, pose = 1, useSmoothBreath = false) {
+      const layer = document.getElementById("npc-layer");
+      const box = document.getElementById("npc-sprite-box");
+      if (!layer || !box || !npcKey || !NPC_FILES[npcKey]) return;
       layer.classList.add("visible");
-      const idx = pose - 1, col = idx % 4, row = (idx / 4) | 0;
+      box.style.display = "block";
+      box.classList.toggle("npc-smooth-active", Boolean(useSmoothBreath));
+      const idx = Math.max(0, (pose || 1) - 1), col = idx % 4, row = (idx / 4) | 0;
       box.style.backgroundImage = `url("${encodeURI(NPC_FILES[npcKey])}")`;
       box.style.backgroundSize = "400% 200%";
       box.style.backgroundPosition = `${((col / 3) * 100).toFixed(2)}% ${(row * 100).toFixed(2)}%`;
     }
 
-    async function playNpcSpeech(npcKey, audioName, seqOverride = null) {
-      if (npcTalkInterval) clearInterval(npcTalkInterval);
-      const seq = seqOverride || (npcKey === "neighbor" ? [1, 4, 6, 7, 8] : [1, 2, 4, 7]);
-      let s = 0; setNpcPose(npcKey, 1);
-      npcTalkInterval = setInterval(() => { s = (s + 1) % seq.length; setNpcPose(npcKey, seq[s]); }, 420);
-      await Promise.race([playSnd2(audioName, 0.95), new Promise((r) => setTimeout(r, 3400))]);
-      clearInterval(npcTalkInterval); npcTalkInterval = null; setNpcPose(npcKey, 1);
+    async function showNpcForContext(ctx) {
+      if (!ctx) { hideNpc(); return; }
+      activeNpcContext = { ...ctx };
+      const layer = document.getElementById("npc-layer");
+      const host = document.getElementById("npc-rig-host");
+      const box = document.getElementById("npc-sprite-box");
+      const fallbackNpcKey = ctx.npcKey || (ctx.apt === 17 ? "woman" : "neighbor");
+      const pose = ctx.pose || 1;
+      const mode = animSettings.npc || "rig";
+
+      stopNpcRigOnly();
+
+      if (mode === "rig" && window.NpcRigPlayer && typeof window.NpcRigPlayer.show === "function" && host) {
+        const rigNpcId = resolveRigNpcIdForContext(ctx);
+        if (rigNpcId) {
+          const myToken = ++npcRigShowToken;
+          layer.classList.add("visible");
+          host.classList.add("visible");
+          if (box) box.style.display = "none";
+
+          const rigContext = ctx.type === "door"
+            ? "door_peek"
+            : (ctx.type === "peephole" ? "peephole" : (ctx.type === "hallway" ? "hallway" : "apartment"));
+          const showOpts = {
+            canvasOrContainer: host,
+            npcId: rigNpcId,
+            context: rigContext,
+            mode: ctx.speechMode || "idle",
+            width: STAGE_W,
+            height: STAGE_H,
+            transparentBg: true
+          };
+          if (ctx.type === "door" && ctx.apt) {
+            showOpts.doorApt = ctx.apt;
+            showOpts.doorImgSrc = SCENE_IMAGES[`door_${ctx.apt}_open`] || "";
+          }
+          try {
+            const ctrl = await window.NpcRigPlayer.show(showOpts);
+            if (myToken !== npcRigShowToken) {
+              if (ctrl && typeof ctrl.stop === "function") ctrl.stop();
+              return;
+            }
+            if (ctrl) {
+              activeRigController = ctrl;
+              if (box) box.style.display = "none";
+              return;
+            }
+          } catch (e) {}
+          if (myToken !== npcRigShowToken) return;
+          stopNpcRigOnly();
+        }
+        renderSpriteNpcBox(fallbackNpcKey, pose, true);
+        return;
+      }
+
+      if (mode === "smooth") {
+        renderSpriteNpcBox(fallbackNpcKey, pose, true);
+      } else {
+        renderSpriteNpcBox(fallbackNpcKey, pose, false);
+      }
     }
-    function hideNpc() { if (npcTalkInterval) { clearInterval(npcTalkInterval); npcTalkInterval = null; } setNpcPose(null); }
+
+    function showDoorNpc(apt) {
+      if (!INHABITED_DOOR_APTS.has(Number(apt))) return;
+      showNpcForContext({
+        type: "door",
+        apt: Number(apt),
+        npcKey: Number(apt) === 17 ? "woman" : "neighbor",
+        pose: 1
+      });
+    }
+
+    function setNpcPose(npcKey, pose, contextOverride = null) {
+      if (!npcKey) { hideNpc(); return; }
+      const inferredType = contextOverride || (
+        state.currentScene === "ev_peephole_lit_2" ? "peephole" :
+        (state.currentScene === "entrance" ? "apartment" :
+        (state.activeDoorApt ? "door" : "hallway"))
+      );
+      if (activeNpcContext && activeNpcContext.npcKey === npcKey && activeNpcContext.type === inferredType && activeRigController) {
+        activeNpcContext.pose = pose || 1;
+        return;
+      }
+      if (activeNpcContext && activeNpcContext.npcKey === npcKey && activeNpcContext.type === inferredType && !activeRigController) {
+        activeNpcContext.pose = pose || 1;
+        renderSpriteNpcBox(npcKey, pose, animSettings.npc !== "classic");
+        return;
+      }
+      showNpcForContext({
+        type: inferredType,
+        npcKey,
+        apt: state.activeDoorApt || null,
+        pose: pose || 1
+      });
+    }
+
+    async function playNpcSpeech(npcKey, audioName, seqOverride = null) {
+      if (npcTalkInterval) { clearInterval(npcTalkInterval); npcTalkInterval = null; }
+      const seq = seqOverride || (npcKey === "neighbor" ? [1, 4, 6, 7, 8] : [1, 2, 4, 7]);
+      const ctxType = state.currentScene === "ev_peephole_lit_2" ? "peephole" :
+        (state.currentScene === "entrance" ? "apartment" : (state.activeDoorApt ? "door" : "hallway"));
+
+      if (!activeNpcContext || activeNpcContext.npcKey !== npcKey || activeNpcContext.type !== ctxType) {
+        await showNpcForContext({ type: ctxType, npcKey, apt: state.activeDoorApt || null, pose: 1, speechMode: "talk" });
+      }
+
+      if (activeRigController && typeof activeRigController.setMode === "function") {
+        activeRigController.setMode("talk");
+        await Promise.race([playSnd2(audioName, 0.95), new Promise((r) => setTimeout(r, 3400))]);
+        if (activeRigController && typeof activeRigController.setMode === "function") {
+          activeRigController.setMode("idle");
+        }
+        return;
+      }
+
+      let s = 0;
+      renderSpriteNpcBox(npcKey, 1, animSettings.npc !== "classic");
+      npcTalkInterval = setInterval(() => {
+        s = (s + 1) % seq.length;
+        renderSpriteNpcBox(npcKey, seq[s], animSettings.npc !== "classic");
+      }, 420);
+      await Promise.race([playSnd2(audioName, 0.95), new Promise((r) => setTimeout(r, 3400))]);
+      if (npcTalkInterval) { clearInterval(npcTalkInterval); npcTalkInterval = null; }
+      if (activeNpcContext) renderSpriteNpcBox(npcKey, 1, animSettings.npc !== "classic");
+    }
+
+    function hideNpc(preserveContext = false) {
+      if (npcTalkInterval) { clearInterval(npcTalkInterval); npcTalkInterval = null; }
+      stopNpcRigOnly();
+      if (!preserveContext) activeNpcContext = null;
+      const layer = document.getElementById("npc-layer");
+      const box = document.getElementById("npc-sprite-box");
+      if (layer) layer.classList.remove("visible");
+      if (box) {
+        box.style.display = "none";
+        box.classList.remove("npc-smooth-active");
+      }
+    }
 
     /* 5. ШКАФ С ПРИПАСАМИ */
     const STEW_CROP = { rx: 0.048, ry: 0.082, rw: 0.148, rh: 0.368, aspect: 0.72 };
@@ -1160,7 +1935,12 @@
           if (state.stewCount <= 0 || cabinetTakeLock) return;
           cabinetTakeLock = true;
           playCardSound("deal");
+          const itemCenterX = (pos.x / 100) * STAGE_W;
+          const itemCenterY = (pos.y / 100) * STAGE_H;
+          d.style.setProperty("--fly-x", `${(640 - itemCenterX).toFixed(1)}px`);
+          d.style.setProperty("--fly-y", `${(680 - itemCenterY).toFixed(1)}px`);
           d.classList.add("shelf-taking");
+          const takeMs = animSettings.item === "fade" ? 200 : (animSettings.item === "glow" ? 240 : 260);
           setTimeout(() => {
             cabinetTakeLock = false;
             if (state.stewCount <= 0) return;
@@ -1174,7 +1954,7 @@
             syncCabinetBackButtonLabel();
             setEventText(`Вы взяли банку тушёнки в вещмешок (в вещмешке: ${state.invStew} шт.).`);
             renderUI(false);
-          }, 240);
+          }, takeMs);
         };
         container.appendChild(d);
       }
@@ -1193,7 +1973,12 @@
           if (state.potatoStage <= 0 || cabinetTakeLock) return;
           cabinetTakeLock = true;
           playCardSound("deal");
+          const itemCenterX = (pPos.x / 100) * STAGE_W;
+          const itemCenterY = (pPos.y / 100) * STAGE_H;
+          d.style.setProperty("--fly-x", `${(640 - itemCenterX).toFixed(1)}px`);
+          d.style.setProperty("--fly-y", `${(680 - itemCenterY).toFixed(1)}px`);
           d.classList.add("shelf-taking");
+          const takeMs = animSettings.item === "fade" ? 200 : (animSettings.item === "glow" ? 240 : 260);
           setTimeout(() => {
             cabinetTakeLock = false;
             if (state.potatoStage <= 0) return;
@@ -1208,7 +1993,7 @@
             syncCabinetBackButtonLabel();
             setEventText(`Вы взяли порцию картошки в вещмешок (в вещмешке: ${state.invPotato} порц.).`);
             renderUI(false);
-          }, 240);
+          }, takeMs);
         };
         container.appendChild(d);
       }
@@ -1490,8 +2275,9 @@
       const iframe = document.getElementById("ochko-iframe");
       if (!iframe) return;
 
-      // Полная пауза основного файла перед открытием окна костей
+      // Полная пауза основного файла и остановка рига NPC перед открытием окна костей
       isOchkoModalOpen = true;
+      stopNpcRigOnly();
       stopFlameInterval();
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
@@ -1503,6 +2289,7 @@
       const msg = {
         type: "OCHKO_OPEN",
         ...payload,
+        darkRoom: true,
         bg,
         ownedCounts,
         playerSkins
@@ -1510,6 +2297,7 @@
 
       const params = new URLSearchParams();
       params.set("mode", payload.mode || "box");
+      params.set("darkRoom", "true");
       params.set("bg", bg);
       params.set("ownedCounts", JSON.stringify(ownedCounts));
       params.set("playerSkins", JSON.stringify(playerSkins));
@@ -1548,6 +2336,9 @@
       }
       syncStaticLightingState();
       syncFlameIntervalState();
+      if (activeNpcContext && !state.neighborInsideForDice && !state.inPeepholeDialog) {
+        showNpcForContext(activeNpcContext);
+      }
     }
 
     function openOchkoBoxOnly() {
@@ -2653,6 +3444,7 @@
       leave_door_view: {
         sheet: 5, icon: 6, caption: "Отойти от двери",
         action: async () => {
+          hideNpc();
           state.activeDoorApt = null;
           removeStoryCard("play_dice_door"); removeStoryCard("leave_door_view");
           removeStoryCard("take_granny_cans"); removeStoryCard("give_granny_water");
@@ -2665,6 +3457,7 @@
       take_granny_cans: {
         sheet: 1, icon: 2, caption: "Взять бидоны бабушки",
         action: async () => {
+          hideNpc();
           removeStoryCard("take_granny_cans"); removeStoryCard("leave_door_view");
           state.activeDoorApt = null; state.hasGrannyCans = true;
           updateBackpackBadge();
@@ -2677,6 +3470,7 @@
       give_granny_water: {
         sheet: 1, icon: 2, caption: "Отдать воду бабушке",
         action: async () => {
+          hideNpc();
           removeStoryCard("give_granny_water"); removeStoryCard("leave_door_view");
           state.activeDoorApt = null; state.hasGrannyCans = false; state.grannyHelped = true; state.invStew++;
           updateBackpackBadge();
@@ -2823,6 +3617,7 @@
           if (info.inhabited) {
             playDoorCreakSound();
             await crossfadeToScene(`door_${apt}_open`, false);
+            showDoorNpc(apt);
           }
           state.isWalking = false;
           setEventText(info.text);
@@ -3074,11 +3869,16 @@
         const el = document.elementFromPoint(t.clientX, t.clientY);
         const card = el ? el.closest(".choice-card") : null;
         if (card && container.contains(card) && !card.disabled) {
-          e.preventDefault();
+          if (e.cancelable) e.preventDefault();
           lastTouchInteractionTime = performance.now();
           if (card !== activeSlideCard) {
             activeSlideCard = card;
             focusCardElement(card);
+          }
+        } else if (touchMoved) {
+          if (activeSlideCard) {
+            activeSlideCard = null;
+            clearFocusedCards(null);
           }
         }
       }, { passive: false });
@@ -3091,6 +3891,11 @@
         const targetCard = !touchMoved ? touchStartCard : null;
         if (targetCard && wasAlreadyFocused && !targetCard.disabled && typeof targetCard._activateCard === "function") {
           targetCard._activateCard();
+        } else if (touchMoved && activeSlideCard && !activeSlideCard.disabled) {
+          clearFocusedCards(activeSlideCard);
+          activeSlideCard.classList.add("card-focused");
+        } else if (touchMoved && !activeSlideCard) {
+          clearFocusedCards(null);
         }
         touchStartCard = null;
         wasAlreadyFocused = false;
@@ -3099,6 +3904,7 @@
       }, { passive: false });
 
       container.addEventListener("touchcancel", () => {
+        clearFocusedCards(null);
         touchStartCard = null;
         wasAlreadyFocused = false;
         activeSlideCard = null;
@@ -3151,13 +3957,27 @@
       return btn;
     }
 
+    function getFanPoseForDeckCard(idx, total) {
+      if (total <= 1) return { rot: 0, y: 0 };
+      if (total === 2) return idx === 0 ? { rot: -4.2, y: 3 } : { rot: 4.2, y: 3 };
+      if (idx === 0) return { rot: -6.2, y: 6 };
+      if (idx === 1) return { rot: 0, y: 0 };
+      return { rot: 6.2, y: 6 };
+    }
+
     function renderDeckSlice(container, items, offset, animateDeal = false) {
       const slice = items.slice(offset, offset + 3);
-      const sig = slice.map((c) => `${c.id}:${c.isPriority ? 1 : 0}:${state.isWalking ? 1 : 0}`).join("|");
+      const sig = `${animSettings.card}|` + slice.map((c) => `${c.id}:${c.isPriority ? 1 : 0}:${state.isWalking ? 1 : 0}`).join("|");
       if (!animateDeal && container._deckSig === sig) return;
       container._deckSig = sig;
       container.innerHTML = "";
-      slice.forEach((card, idx) => container.appendChild(createChoiceCardElement(card, idx, animateDeal)));
+      slice.forEach((card, idx) => {
+        const el = createChoiceCardElement(card, idx, animateDeal);
+        const fan = getFanPoseForDeckCard(idx, slice.length);
+        el.style.setProperty("--fan-rot", `${fan.rot}deg`);
+        el.style.setProperty("--fan-y", `${fan.y}px`);
+        container.appendChild(el);
+      });
     }
 
     function renderNeighborCenterOverlay(animateDeal = false) {
@@ -3686,6 +4506,19 @@
     renderUI(false);
     syncStaticLightingState();
     syncFlameIntervalState();
+    syncMenuTopBtnVisibility();
+
+    try {
+      if (sessionStorage.getItem("kola_auto_restart") === "1") {
+        sessionStorage.removeItem("kola_auto_restart");
+        introGateDismissed = true;
+        if (introGateEl) {
+          introGateEl.classList.add("hidden");
+          introGateEl.style.display = "none";
+        }
+        startNewGameWithPreloader();
+      }
+    } catch (e) {}
   </script>
 </body>
 </html>
