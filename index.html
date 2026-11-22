@@ -33,7 +33,7 @@
 
     /* 0. СТАРТОВЫЙ ОВЕРЛЕЙ «ИГРАТЬ» */
     #intro-play-gate {
-      position: absolute; inset: 0; z-index: 115;
+      position: absolute; inset: 0; z-index: 130;
       background: radial-gradient(circle at 50% 48%, #071217 0%, #020406 68%, #010203 100%);
       display: flex; align-items: center; justify-content: center;
       transition: opacity 0.55s ease, visibility 0.55s ease;
@@ -173,7 +173,7 @@
     }
 
     #preloader-overlay {
-      position: absolute; inset: 0; z-index: 110;
+      position: absolute; inset: 0; z-index: 125;
       background: radial-gradient(circle at 50% 45%, #081114 0%, #020406 100%);
       display: none; flex-direction: column; align-items: center; justify-content: center;
       gap: 18px; padding: 28px; transition: opacity 0.45s ease;
@@ -224,10 +224,10 @@
 
     #darkness-canvas {
       position: absolute; inset: 0; width: 100%; height: 100%;
-      z-index: 4; pointer-events: none; display: none;
+      z-index: 5; pointer-events: none; display: none;
     }
     #vignette {
-      position: absolute; inset: 0; z-index: 5; pointer-events: none;
+      position: absolute; inset: 0; z-index: 6; pointer-events: none;
       background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.86) 100%);
     }
     #vignette.fullbright {
@@ -236,7 +236,7 @@
 
     /* СПРАЙТЫ NPC И ШКАФ */
     #npc-layer {
-      position: absolute; inset: 0; z-index: 6; pointer-events: none;
+      position: absolute; inset: 0; z-index: 4; pointer-events: none;
       display: none; align-items: flex-end; justify-content: center;
     }
     #npc-layer.visible { display: flex; }
@@ -245,6 +245,10 @@
       transform: scale(1.03); pointer-events: none; display: none;
     }
     #npc-rig-host.visible { display: block; }
+    #npc-rig-host.peephole-mask {
+      -webkit-mask-image: radial-gradient(circle closest-side at 50% 50%, #000 56%, transparent 80%);
+      mask-image: radial-gradient(circle closest-side at 50% 50%, #000 56%, transparent 80%);
+    }
     #npc-sprite-box {
       height: 93%; aspect-ratio: 0.565; width: auto; margin-bottom: 0.8%;
       background-repeat: no-repeat; transform-origin: center bottom;
@@ -426,12 +430,14 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.85);
       transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease, transform 0.14s ease;
     }
-    .grim-btn:hover { background: #1e1914; border-color: #c59b61; color: #f5ebd9; }
     .grim-btn:active { transform: translateY(1px); }
 
     #scene-back-btn { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 22; display: none; }
     #scene-back-btn.visible { display: block; }
-    #scene-back-btn:hover { transform: translateX(-50%) translateY(-1px); }
+    @media (hover: hover) and (pointer: fine) {
+      .grim-btn:hover { background: #1e1914; border-color: #c59b61; color: #f5ebd9; }
+      #scene-back-btn:hover { transform: translateX(-50%) translateY(-1px); }
+    }
 
     #neighbor-choice-overlay {
       position: absolute; inset: 0; z-index: 28; display: none; align-items: center; justify-content: center;
@@ -479,7 +485,9 @@
       border: 1px solid rgba(155,125,85,0.45); border-radius: 3px; cursor: pointer;
       transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
-    .inv-sub-btn:hover { border-color: #c59b61; color: #fff; background: #211b15; }
+    @media (hover: hover) and (pointer: fine) {
+      .inv-sub-btn:hover { border-color: #c59b61; color: #fff; background: #211b15; }
+    }
     #inventory-hint {
       font-size: 13.5px; color: rgba(210,192,165,0.75); font-style: italic; text-align: center;
       min-height: 1.5em; border-top: 1px solid rgba(165,135,95,0.18); padding-top: 10px; width: 100%; max-width: 960px;
@@ -671,10 +679,18 @@
     #stage-16x9[data-card-anim="flip"] .choice-card.activating .card-back { display: flex; }
     .card-back::after { content: "★"; font-size: 25px; color: rgba(215,175,115,0.55); }
 
+    .choice-card.card-recovering {
+      animation: cardRecover 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+      will-change: transform, opacity;
+    }
+    @keyframes cardRecover {
+      0% { opacity: 0; transform: translate3d(0, 14px, 0) scale(0.92); }
+      100% { opacity: 1; transform: translate3d(0, var(--deal-end-y, 0px), 0) rotate(var(--fan-rot, 0deg)) scale(1); }
+    }
     @keyframes cardDeal {
       0% { opacity: 0; transform: translate3d(0, 68px, -60px) rotateY(180deg) rotateZ(-8deg) scale(0.72); }
       65% { opacity: 1; transform: translate3d(0, -7px, 12px) rotateY(-10deg) rotateZ(1.5deg) scale(1.03); }
-      100% { opacity: 1; transform: translate3d(0, var(--fan-y, 0px), 0) rotateY(0deg) rotateZ(var(--fan-rot, 0deg)) scale(1); }
+      100% { opacity: 1; transform: translate3d(0, var(--deal-end-y, 0px), 0) rotateY(0deg) rotateZ(var(--fan-rot, 0deg)) scale(1); }
     }
     @keyframes cardActivateFan {
       0% { transform: translate3d(0, -28px, 0) scale(1.24) rotate(0deg); opacity: 1; }
@@ -708,7 +724,7 @@
 </head>
 <body>
 
-  <div id="stage-16x9" data-card-anim="fan" data-item-anim="fly" data-npc-anim="rig">
+  <div id="stage-16x9" data-card-anim="fan" data-item-anim="fly">
     <div id="intro-play-gate">
       <button type="button" id="intro-play-btn" onclick="enterMainMenuFromGate()">Играть</button>
     </div>
@@ -740,14 +756,6 @@
               <button type="button" class="settings-option-btn" data-setting="item" data-value="fade" onclick="setAnimSetting('item', 'fade')">Просто исчезает</button>
               <button type="button" class="settings-option-btn" data-setting="item" data-value="glow" onclick="setAnimSetting('item', 'glow')">Подсветка и исчезновение</button>
               <button type="button" class="settings-option-btn" data-setting="item" data-value="fly" onclick="setAnimSetting('item', 'fly')">Отлёт к игроку</button>
-            </div>
-          </div>
-          <div class="settings-group">
-            <div class="settings-group-label">Анимация NPC</div>
-            <div class="settings-options-row">
-              <button type="button" class="settings-option-btn" data-setting="npc" data-value="rig" onclick="setAnimSetting('npc', 'rig')">Живая (Риг)</button>
-              <button type="button" class="settings-option-btn" data-setting="npc" data-value="smooth" onclick="setAnimSetting('npc', 'smooth')">Плавная (Лёгкая)</button>
-              <button type="button" class="settings-option-btn" data-setting="npc" data-value="classic" onclick="setAnimSetting('npc', 'classic')">Классическая (Спрайт)</button>
             </div>
           </div>
           <div class="settings-back-row">
@@ -911,24 +919,29 @@
     let pausedLightByMenu = false;
     let pausedKnockBeforeMenu = false;
     let pausedNpcContextBeforeMenu = null;
+    let neighborArrivalDueAt = 0;
+    let neighborArrivalRemainingMs = 0;
+    let neighborReturnDueAt = 0;
+    let neighborReturnRemainingMs = 0;
+    let autoReturnDueAt = 0;
+    let autoReturnSceneKey = null;
+    let autoReturnRemainingMs = 0;
 
     /* Настройки анимаций (сохраняются в localStorage) */
-    const ANIM_SETTINGS_DEFAULTS = { card: "fan", item: "fly", npc: "rig" };
+    const ANIM_SETTINGS_DEFAULTS = { card: "fan", item: "fly" };
     const ANIM_SETTINGS_KEYS = {
       card: "kola_card_anim",
-      item: "kola_item_anim",
-      npc: "kola_npc_anim"
+      item: "kola_item_anim"
     };
     const ANIM_SETTINGS_ALLOWED = {
       card: new Set(["fan", "lift", "flip"]),
-      item: new Set(["fade", "glow", "fly"]),
-      npc: new Set(["rig", "smooth", "classic"])
+      item: new Set(["fade", "glow", "fly"])
     };
     const animSettings = { ...ANIM_SETTINGS_DEFAULTS };
 
     function loadAnimSettings() {
       try {
-        for (const k of ["card", "item", "npc"]) {
+        for (const k of ["card", "item"]) {
           const val = localStorage.getItem(ANIM_SETTINGS_KEYS[k]);
           if (val && ANIM_SETTINGS_ALLOWED[k].has(val)) animSettings[k] = val;
         }
@@ -940,7 +953,6 @@
       if (stage) {
         stage.setAttribute("data-card-anim", animSettings.card);
         stage.setAttribute("data-item-anim", animSettings.item);
-        stage.setAttribute("data-npc-anim", animSettings.npc);
       }
       document.querySelectorAll(".settings-option-btn").forEach((btn) => {
         const s = btn.getAttribute("data-setting");
@@ -1213,8 +1225,25 @@
     }
 
     function openMainMenuFromGame() {
-      if (!hasActiveGameSession || isMenuOpen || gameStarting || isOchkoModalOpen || state.isWalking) return;
+      if (!hasActiveGameSession || isMenuOpen || gameStarting || isOchkoModalOpen || state.isWalking || cardActivatingLock || cabinetTakeLock || isOpeningBrochure || isClosingBrochure) return;
       playCardSound("click");
+
+      const now = performance.now();
+      if (state.neighborArrivalTimerId) {
+        neighborArrivalRemainingMs = Math.max(0, neighborArrivalDueAt - now);
+        clearTimeout(state.neighborArrivalTimerId);
+        state.neighborArrivalTimerId = null;
+      }
+      if (state.neighborReturnTimer) {
+        neighborReturnRemainingMs = Math.max(0, neighborReturnDueAt - now);
+        clearTimeout(state.neighborReturnTimer);
+        state.neighborReturnTimer = null;
+      }
+      if (state.autoReturnTimer) {
+        autoReturnRemainingMs = Math.max(0, autoReturnDueAt - now);
+        clearTimeout(state.autoReturnTimer);
+        state.autoReturnTimer = null;
+      }
 
       pausedLightByMenu = !state.lightPaused;
       pauseLightForView();
@@ -1227,6 +1256,7 @@
       pausedKnockBeforeMenu = state.isKnocking;
       if (state.isKnocking) stopDoorKnockLoop();
 
+      stopNpcSpeech();
       pausedNpcContextBeforeMenu = activeNpcContext ? { ...activeNpcContext } : null;
       hideNpc(true);
 
@@ -1276,22 +1306,138 @@
         startDoorKnockLoop();
       }
 
+      if (neighborArrivalRemainingMs > 0 && !state.neighborVisited && !state.wentOutside) {
+        const rem = neighborArrivalRemainingMs;
+        neighborArrivalRemainingMs = 0;
+        startNeighborArrivalCountdown(rem);
+      }
+      if (neighborReturnRemainingMs > 0 && !state.neighborVisited && !state.wentOutside) {
+        const rem = neighborReturnRemainingMs;
+        neighborReturnRemainingMs = 0;
+        scheduleNeighborReturn(rem);
+      }
+      if (autoReturnRemainingMs > 0 && autoReturnSceneKey && state.currentScene === autoReturnSceneKey && !state.backBtnTarget) {
+        const rem = autoReturnRemainingMs;
+        const scKey = autoReturnSceneKey;
+        autoReturnRemainingMs = 0;
+        scheduleAutoReturn(scKey, rem);
+      }
+
       if (pausedNpcContextBeforeMenu) {
         const ctxToRestore = pausedNpcContextBeforeMenu;
         pausedNpcContextBeforeMenu = null;
-        showNpcForContext(ctxToRestore);
+        if (!isOverlayModalBlockingNpc()) {
+          showNpcForContext(ctxToRestore);
+        }
       }
 
       renderUI(false);
     }
 
-    function performFullGameRestart() {
+    function resetGameStateForNewRun() {
       try {
         localStorage.setItem("ochko_owned_counts", JSON.stringify(DEFAULT_OWNED_COUNTS));
         localStorage.setItem("ochko_player_skins", JSON.stringify(DEFAULT_PLAYER_SKINS));
-        sessionStorage.setItem("kola_auto_restart", "1");
       } catch (e) {}
-      location.reload();
+
+      if (state.neighborArrivalTimerId) { clearTimeout(state.neighborArrivalTimerId); state.neighborArrivalTimerId = null; }
+      if (state.neighborReturnTimer) { clearTimeout(state.neighborReturnTimer); state.neighborReturnTimer = null; }
+      clearAutoReturn();
+      stopDoorKnockLoop();
+      stopFlameInterval();
+      if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+
+      neighborArrivalDueAt = 0;
+      neighborArrivalRemainingMs = 0;
+      neighborReturnDueAt = 0;
+      neighborReturnRemainingMs = 0;
+      pausedLightByMenu = false;
+      pausedKnockBeforeMenu = false;
+      pausedNpcContextBeforeMenu = null;
+      sceneBeforeBrochure = null;
+
+      hideNpc(false);
+      if (isOchkoModalOpen || document.getElementById("ochko-modal-wrap")?.classList.contains("visible")) {
+        closeAndDisposeOchkoModal();
+      }
+      document.getElementById("inventory-screen")?.classList.remove("visible");
+      document.getElementById("brochure-modal")?.classList.remove("visible");
+      document.getElementById("loot-center-modal")?.classList.remove("visible");
+      document.getElementById("neighbor-choice-overlay")?.classList.remove("visible");
+      document.getElementById("cabinet-items-layer")?.classList.remove("visible");
+      hideMatchTutorialHint();
+      resetTorchPosition();
+      document.body.classList.remove("is-walking");
+      cardActivatingLock = false;
+      activeActionCardBtn = null;
+      isOpeningBrochure = false;
+      isClosingBrochure = false;
+      cabinetTakeLock = false;
+      clearFocusedCards(null);
+
+      Object.assign(state, {
+        logicalRoom: "bedroom", currentScene: "bedroom",
+        lightMode: "intro",
+        lightPaused: false, lightPauseStart: 0,
+        matchStart: 0, candleStart: 0, candleBurnedMs: 0,
+        candleIgniteStart: 0, candleWickLitTime: 0, candleIgniteEnd: 0,
+        firstMatchTutorialShown: false, matchTutorialSweepActive: false, matchTutorialSweepStart: 0,
+        robeDone: false, waterDone: false, toiletUsed: false, radiatorTouched: false,
+        basicNavUnlocked: false, roomNavUnlocked: false,
+        wentOutside: false, neighborVisited: false, neighborPendingArrival: false,
+        neighborReturnTimer: null, neighborArrivalTimerId: null,
+        inPeepholeDialog: false, neighborInsideForDice: false, returnToNeighborAfterStew: false,
+        needsFoodForDice: false, needsStewOnlyForDice: false, activeBetType: "stew",
+        hasCandle: false, hasDiceSet: false, hasBrochure1: false, hasDiceRules: false,
+        hasBrochure2: false, hasTape: false, hasEmptyCan: false,
+        hasGrannyCans: false, grannyCansFilled: false, grannyHelped: false,
+        hasBricks: false, readBrochure1: false, readBrochure2: false,
+        doorSealed: false, windowsTaped: false,
+        hasShoes: false, hasCoat: false, carpetsTaken: false, carpetsHung: false, stoveBuilt: false,
+        junkSearches: 0, landingFloor: 3, landingDir: "down",
+        activeDoorApt: null, activeOpponentId: 1,
+        oppProgress: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 },
+        isWalking: false, isKnocking: false, activeSlot: "a",
+        stewCount: 3, potatoStage: 5, invStew: 0, invPotato: 0,
+        actOffset: 0, movOffset: 0, autoReturnTimer: null, backBtnTarget: null,
+        storyCardIds: ["check_switch"]
+      });
+
+      setBackButtonTarget(null);
+      slotA.className = "scene-slot current";
+      slotB.className = "scene-slot outgoing";
+      applyBackgroundToSlot(slotA, "bedroom", true);
+      setEventText("Вы проснулись среди ночи со странным ощущением. Пересохло в горле — хочется пить и нужно в туалет.");
+
+      if (leftCardsEl) leftCardsEl._deckSig = "";
+      if (rightCardsEl) rightCardsEl._deckSig = "";
+      if (neighborOverlayEl) neighborOverlayEl._deckSig = "";
+
+      stopMenuMedia();
+      isSettingsOpen = false;
+      if (menuSettingsPanelEl) menuSettingsPanelEl.classList.remove("visible");
+      if (menuItemsListEl) menuItemsListEl.style.display = "flex";
+      menuEl.classList.add("hidden");
+      if (menuHideTimer) clearTimeout(menuHideTimer);
+      menuHideTimer = setTimeout(() => {
+        menuHideTimer = null;
+        if (!isMenuOpen) menuEl.style.display = "none";
+      }, 660);
+
+      hasActiveGameSession = true;
+      if (menuContinueBtn) menuContinueBtn.style.display = "";
+      syncMenuTopBtnVisibility();
+      updateFlameVisibility();
+      updateBackpackBadge();
+      syncStaticLightingState();
+      syncFlameIntervalState();
+      startNeighborArrivalCountdown();
+      renderUI(true);
+      preloadNextStepForRoom("bedroom");
+    }
+
+    function performFullGameRestart() {
+      resetGameStateForNewRun();
     }
 
     function handleMenuClick(action) {
@@ -1571,7 +1717,7 @@
       } catch (e) {}
     }
 
-    function playAudioSmart(folders, names, vol = 0.85) {
+    function playAudioSmart(folders, names, vol = 0.85, onAudioCreated = null) {
       const fList = Array.isArray(folders) ? folders : [folders];
       const nList = Array.isArray(names) ? names : [names];
       const cacheKey = `${fList.join("|")}::${nList.join("|")}`;
@@ -1582,6 +1728,7 @@
         return new Promise((res) => {
           const a = new Audio(cachedPath);
           a.volume = vol;
+          if (typeof onAudioCreated === "function") onAudioCreated(a);
           a.onended = () => res(true);
           a.onerror = () => res(false);
           a.play().catch(() => res(false));
@@ -1608,6 +1755,7 @@
           const path = queue[idx++];
           const a = new Audio(path);
           a.volume = vol;
+          if (typeof onAudioCreated === "function") onAudioCreated(a);
           a.onended = () => res(true);
           a.onerror = () => tryNext();
           a.play().then(() => {
@@ -1618,8 +1766,8 @@
       });
     }
 
-    const playSnd1 = (n, v = 0.85) => playAudioSmart(["АУДИО", "АУДИО 2"], n, v);
-    const playSnd2 = (n, v = 0.85) => playAudioSmart(["АУДИО 2", "АУДИО"], n, v);
+    const playSnd1 = (n, v = 0.85, onAudio = null) => playAudioSmart(["АУДИО", "АУДИО 2"], n, v, onAudio);
+    const playSnd2 = (n, v = 0.85, onAudio = null) => playAudioSmart(["АУДИО 2", "АУДИО"], n, v, onAudio);
 
     function playFootstepSound() {
       if (state.logicalRoom === "landing") playSnd2(stepShoesToggle++ % 2 === 0 ? "ШАГИ ПОДЪЕЗД" : "ШАГИ ПОДЪЕЗД 2");
@@ -1664,21 +1812,39 @@
       el.style.backgroundPosition = `${posX.toFixed(2)}% ${posY.toFixed(2)}%`;
     }
 
-    /* 4. СПРАЙТЫ И РИГ-ПЛЕЕР NPC (3 РЕЖИМА АНИМАЦИИ) */
+    /* 4. СПРАЙТЫ И РИГ-ПЛЕЕР NPC */
     const NPC_FILES = { neighbor: "сосед.png", woman: "соседка.png" };
     const INHABITED_DOOR_APTS = new Set([17, 18, 20, 23, 24, 26]);
-    const DOOR_RIG_FALLBACK_SLOTS = {
-      17: "slot_1795367777424",
-      18: "slot_1795368528739",
-      20: "slot_1795367470486",
-      23: "slot_1795369084186",
-      24: "slot_1795367905137",
-      26: "slot_1795368678082"
-    };
     let npcTalkInterval = null;
     let activeNpcContext = null;
     let activeRigController = null;
     let npcRigShowToken = 0;
+    let npcSpeechToken = 0;
+    let activeNpcSpeechAudio = null;
+    let activeNpcSpeechCancel = null;
+
+    function isOverlayModalBlockingNpc() {
+      const invOpen = document.getElementById("inventory-screen")?.classList.contains("visible");
+      const broOpen = document.getElementById("brochure-modal")?.classList.contains("visible");
+      return Boolean(isMenuOpen || isOchkoModalOpen || invOpen || broOpen);
+    }
+
+    function stopNpcSpeech() {
+      npcSpeechToken++;
+      if (npcTalkInterval) { clearInterval(npcTalkInterval); npcTalkInterval = null; }
+      if (activeNpcSpeechAudio) {
+        try {
+          activeNpcSpeechAudio.pause();
+          activeNpcSpeechAudio.currentTime = 0;
+        } catch (e) {}
+        activeNpcSpeechAudio = null;
+      }
+      if (typeof activeNpcSpeechCancel === "function") {
+        const cancelFn = activeNpcSpeechCancel;
+        activeNpcSpeechCancel = null;
+        cancelFn();
+      }
+    }
 
     function stopNpcRigOnly() {
       npcRigShowToken++;
@@ -1691,12 +1857,61 @@
       }
       const host = document.getElementById("npc-rig-host");
       if (host) {
-        host.classList.remove("visible");
+        host.classList.remove("visible", "peephole-mask");
         host.innerHTML = "";
       }
     }
 
-    function resolveRigNpcIdForContext(ctx) {
+    function collectCandidateDoorsForApt(db, aptNum) {
+      const result = [];
+      const seenIds = new Set();
+      const pushDoor = (d) => {
+        if (!d || !d.id || seenIds.has(d.id)) return;
+        seenIds.add(d.id);
+        result.push(d);
+      };
+      if (Array.isArray(db.doors)) {
+        db.doors.forEach((d) => {
+          if (
+            Number(d.aptNumber) === aptNum ||
+            d.id === `door_${aptNum}` ||
+            (d.fileHint && d.fileHint.includes(`${aptNum} открытая`))
+          ) {
+            pushDoor(d);
+          }
+        });
+      }
+      const byApt = db.doorsByApt && db.doorsByApt[String(aptNum)];
+      if (byApt) pushDoor(byApt);
+      return result;
+    }
+
+    function resolveRigSelectionForApt(db, chars, charIds, aptNum) {
+      const doors = collectCandidateDoorsForApt(db, aptNum);
+      if (doors.length === 0) return null;
+
+      // Приоритет 1: персонаж, чей собственный assignedDoorId указывает на найденную дверь этой квартиры
+      for (const d of doors) {
+        const directCharId = charIds.find((id) => chars[id] && chars[id].assignedDoorId === d.id);
+        if (directCharId) {
+          const doorInList = Array.isArray(db.doors) && db.doors.some((item) => item.id === d.id);
+          return { npcId: directCharId, door: d, useNpcAssignedDoor: doorInList };
+        }
+      }
+
+      // Приоритет 2: дверь, у которой assignedSlotId реально существует в db.characters
+      for (const d of doors) {
+        if (d.assignedSlotId && chars[d.assignedSlotId]) {
+          const ch = chars[d.assignedSlotId];
+          const useAssigned = Boolean(ch && ch.assignedDoorId === d.id && Array.isArray(db.doors) && db.doors.some((item) => item.id === d.id));
+          return { npcId: d.assignedSlotId, door: d, useNpcAssignedDoor: useAssigned };
+        }
+      }
+
+      return null;
+    }
+
+    function resolveRigNpcSelectionForContext(ctx) {
       if (!window.NpcRigPlayer || typeof window.NpcRigPlayer.getDatabase !== "function") return null;
       const db = window.NpcRigPlayer.getDatabase();
       const chars = db && db.characters ? db.characters : null;
@@ -1710,32 +1925,20 @@
           const nm = `${(c && c.name) || ""} ${(c && c.fileHint) || ""}`.toLowerCase();
           return nm.includes("соседк") || nm.includes("женщ") || nm.includes("woman");
         });
-        return womanId || null;
+        return womanId ? { npcId: womanId, door: null, useNpcAssignedDoor: false } : null;
       }
 
       if (ctx.type === "door" && ctx.apt) {
-        const aptNum = Number(ctx.apt);
-        const byApt = db.doorsByApt && db.doorsByApt[String(aptNum)];
-        if (byApt && byApt.assignedSlotId && chars[byApt.assignedSlotId]) return byApt.assignedSlotId;
-        if (Array.isArray(db.doors)) {
-          const matchedDoor = db.doors.find((d) => Number(d.aptNumber) === aptNum || (d.fileHint && d.fileHint.includes(`${aptNum} открытая`)));
-          if (matchedDoor && matchedDoor.assignedSlotId && chars[matchedDoor.assignedSlotId]) return matchedDoor.assignedSlotId;
-          if (matchedDoor) {
-            const byAssigned = charIds.find((id) => chars[id] && chars[id].assignedDoorId === matchedDoor.id);
-            if (byAssigned) return byAssigned;
-          }
-        }
-        const mapped = DOOR_RIG_FALLBACK_SLOTS[aptNum];
-        if (mapped && chars[mapped]) return mapped;
-        return charIds[aptNum % charIds.length];
+        return resolveRigSelectionForApt(db, chars, charIds, Number(ctx.apt));
       }
 
-      if (chars["slot_1795367470486"]) return "slot_1795367470486";
-      if (chars["slot_1795310354424"]) return "slot_1795310354424";
-      return charIds[0];
+      if (ctx.type === "peephole" || ctx.type === "apartment") {
+        return resolveRigSelectionForApt(db, chars, charIds, 20);
+      }
+      return null;
     }
 
-    function renderSpriteNpcBox(npcKey, pose = 1, useSmoothBreath = false) {
+    function renderSpriteNpcBox(npcKey, pose = 1, useSmoothBreath = true) {
       const layer = document.getElementById("npc-layer");
       const box = document.getElementById("npc-sprite-box");
       if (!layer || !box || !npcKey || !NPC_FILES[npcKey]) return;
@@ -1751,21 +1954,23 @@
     async function showNpcForContext(ctx) {
       if (!ctx) { hideNpc(); return; }
       activeNpcContext = { ...ctx };
+      if (isOverlayModalBlockingNpc()) return;
+
       const layer = document.getElementById("npc-layer");
       const host = document.getElementById("npc-rig-host");
       const box = document.getElementById("npc-sprite-box");
-      const fallbackNpcKey = ctx.npcKey || (ctx.apt === 17 ? "woman" : "neighbor");
+      const fallbackNpcKey = ctx.npcKey || null;
       const pose = ctx.pose || 1;
-      const mode = animSettings.npc || "rig";
 
       stopNpcRigOnly();
 
-      if (mode === "rig" && window.NpcRigPlayer && typeof window.NpcRigPlayer.show === "function" && host) {
-        const rigNpcId = resolveRigNpcIdForContext(ctx);
-        if (rigNpcId) {
+      if (window.NpcRigPlayer && typeof window.NpcRigPlayer.show === "function" && host) {
+        const rigSel = resolveRigNpcSelectionForContext(ctx);
+        if (rigSel && rigSel.npcId) {
           const myToken = ++npcRigShowToken;
           layer.classList.add("visible");
           host.classList.add("visible");
+          host.classList.toggle("peephole-mask", ctx.type === "peephole");
           if (box) box.style.display = "none";
 
           const rigContext = ctx.type === "door"
@@ -1773,7 +1978,7 @@
             : (ctx.type === "peephole" ? "peephole" : (ctx.type === "hallway" ? "hallway" : "apartment"));
           const showOpts = {
             canvasOrContainer: host,
-            npcId: rigNpcId,
+            npcId: rigSel.npcId,
             context: rigContext,
             mode: ctx.speechMode || "idle",
             width: STAGE_W,
@@ -1781,12 +1986,14 @@
             transparentBg: true
           };
           if (ctx.type === "door" && ctx.apt) {
-            showOpts.doorApt = ctx.apt;
+            if (!rigSel.useNpcAssignedDoor) {
+              showOpts.doorApt = ctx.apt;
+            }
             showOpts.doorImgSrc = SCENE_IMAGES[`door_${ctx.apt}_open`] || "";
           }
           try {
             const ctrl = await window.NpcRigPlayer.show(showOpts);
-            if (myToken !== npcRigShowToken) {
+            if (myToken !== npcRigShowToken || isOverlayModalBlockingNpc()) {
               if (ctrl && typeof ctrl.stop === "function") ctrl.stop();
               return;
             }
@@ -1799,23 +2006,25 @@
           if (myToken !== npcRigShowToken) return;
           stopNpcRigOnly();
         }
-        renderSpriteNpcBox(fallbackNpcKey, pose, true);
+      }
+
+      // На дверях подъезда НЕ выводим старый крупный спрайт поверх дверного проёма при отсутствии рига
+      if (ctx.type === "door") {
+        if (layer) layer.classList.remove("visible");
+        if (box) box.style.display = "none";
         return;
       }
 
-      if (mode === "smooth") {
-        renderSpriteNpcBox(fallbackNpcKey, pose, true);
-      } else {
-        renderSpriteNpcBox(fallbackNpcKey, pose, false);
-      }
+      if (fallbackNpcKey) renderSpriteNpcBox(fallbackNpcKey, pose, true);
     }
 
     function showDoorNpc(apt) {
       if (!INHABITED_DOOR_APTS.has(Number(apt))) return;
+      if (!window.NpcRigPlayer || typeof window.NpcRigPlayer.show !== "function") return;
       showNpcForContext({
         type: "door",
         apt: Number(apt),
-        npcKey: Number(apt) === 17 ? "woman" : "neighbor",
+        npcKey: null,
         pose: 1
       });
     }
@@ -1833,7 +2042,7 @@
       }
       if (activeNpcContext && activeNpcContext.npcKey === npcKey && activeNpcContext.type === inferredType && !activeRigController) {
         activeNpcContext.pose = pose || 1;
-        renderSpriteNpcBox(npcKey, pose, animSettings.npc !== "classic");
+        if (!isOverlayModalBlockingNpc()) renderSpriteNpcBox(npcKey, pose, true);
         return;
       }
       showNpcForContext({
@@ -1845,7 +2054,8 @@
     }
 
     async function playNpcSpeech(npcKey, audioName, seqOverride = null) {
-      if (npcTalkInterval) { clearInterval(npcTalkInterval); npcTalkInterval = null; }
+      stopNpcSpeech();
+      const mySpeechToken = ++npcSpeechToken;
       const seq = seqOverride || (npcKey === "neighbor" ? [1, 4, 6, 7, 8] : [1, 2, 4, 7]);
       const ctxType = state.currentScene === "ev_peephole_lit_2" ? "peephole" :
         (state.currentScene === "entrance" ? "apartment" : (state.activeDoorApt ? "door" : "hallway"));
@@ -1853,29 +2063,58 @@
       if (!activeNpcContext || activeNpcContext.npcKey !== npcKey || activeNpcContext.type !== ctxType) {
         await showNpcForContext({ type: ctxType, npcKey, apt: state.activeDoorApt || null, pose: 1, speechMode: "talk" });
       }
+      if (mySpeechToken !== npcSpeechToken || isMenuOpen) return;
+
+      let speechTimeoutId = null;
+      const cancelPromise = new Promise((resolve) => {
+        activeNpcSpeechCancel = resolve;
+      });
+      const audioPromise = playSnd2(audioName, 0.95, (a) => {
+        if (mySpeechToken !== npcSpeechToken || isMenuOpen) {
+          try { a.pause(); } catch (e) {}
+          return;
+        }
+        activeNpcSpeechAudio = a;
+      });
+      const timeoutPromise = new Promise((r) => { speechTimeoutId = setTimeout(r, 3400); });
 
       if (activeRigController && typeof activeRigController.setMode === "function") {
         activeRigController.setMode("talk");
-        await Promise.race([playSnd2(audioName, 0.95), new Promise((r) => setTimeout(r, 3400))]);
-        if (activeRigController && typeof activeRigController.setMode === "function") {
-          activeRigController.setMode("idle");
+        await Promise.race([audioPromise, timeoutPromise, cancelPromise]);
+        if (speechTimeoutId) clearTimeout(speechTimeoutId);
+        if (mySpeechToken === npcSpeechToken) {
+          activeNpcSpeechAudio = null;
+          activeNpcSpeechCancel = null;
+          if (!isMenuOpen && activeRigController && typeof activeRigController.setMode === "function") {
+            activeRigController.setMode("idle");
+          }
         }
         return;
       }
 
       let s = 0;
-      renderSpriteNpcBox(npcKey, 1, animSettings.npc !== "classic");
+      renderSpriteNpcBox(npcKey, 1, true);
       npcTalkInterval = setInterval(() => {
+        if (mySpeechToken !== npcSpeechToken || isMenuOpen) {
+          clearInterval(npcTalkInterval);
+          npcTalkInterval = null;
+          return;
+        }
         s = (s + 1) % seq.length;
-        renderSpriteNpcBox(npcKey, seq[s], animSettings.npc !== "classic");
+        renderSpriteNpcBox(npcKey, seq[s], true);
       }, 420);
-      await Promise.race([playSnd2(audioName, 0.95), new Promise((r) => setTimeout(r, 3400))]);
+
+      await Promise.race([audioPromise, timeoutPromise, cancelPromise]);
+      if (speechTimeoutId) clearTimeout(speechTimeoutId);
       if (npcTalkInterval) { clearInterval(npcTalkInterval); npcTalkInterval = null; }
-      if (activeNpcContext) renderSpriteNpcBox(npcKey, 1, animSettings.npc !== "classic");
+      if (mySpeechToken !== npcSpeechToken || isMenuOpen) return;
+      activeNpcSpeechAudio = null;
+      activeNpcSpeechCancel = null;
+      if (activeNpcContext && !isOverlayModalBlockingNpc()) renderSpriteNpcBox(npcKey, 1, true);
     }
 
     function hideNpc(preserveContext = false) {
-      if (npcTalkInterval) { clearInterval(npcTalkInterval); npcTalkInterval = null; }
+      stopNpcSpeech();
       stopNpcRigOnly();
       if (!preserveContext) activeNpcContext = null;
       const layer = document.getElementById("npc-layer");
@@ -1932,7 +2171,7 @@
         d.style.left = `${pos.x}%`; d.style.top = `${pos.y}%`; d.style.width = `${pos.w}%`;
         applySpriteCropToDiv(d, encodeURI("тушенка.png"), STEW_CROP);
         d.onclick = () => {
-          if (state.stewCount <= 0 || cabinetTakeLock) return;
+          if (state.stewCount <= 0 || cabinetTakeLock || state.isWalking || isMenuOpen || isOchkoModalOpen || isOpeningBrochure || isClosingBrochure) return;
           cabinetTakeLock = true;
           playCardSound("deal");
           const itemCenterX = (pos.x / 100) * STAGE_W;
@@ -1943,7 +2182,7 @@
           const takeMs = animSettings.item === "fade" ? 200 : (animSettings.item === "glow" ? 240 : 260);
           setTimeout(() => {
             cabinetTakeLock = false;
-            if (state.stewCount <= 0) return;
+            if (state.currentScene !== "cabinet" || state.stewCount <= 0) return;
             state.stewCount--;
             state.invStew++;
             state.needsFoodForDice = false;
@@ -1970,7 +2209,7 @@
           d.addEventListener("animationend", () => d.classList.remove("potato-stage-shrink"), { once: true });
         }
         d.onclick = () => {
-          if (state.potatoStage <= 0 || cabinetTakeLock) return;
+          if (state.potatoStage <= 0 || cabinetTakeLock || state.isWalking || isMenuOpen || isOchkoModalOpen || isOpeningBrochure || isClosingBrochure) return;
           cabinetTakeLock = true;
           playCardSound("deal");
           const itemCenterX = (pPos.x / 100) * STAGE_W;
@@ -1981,7 +2220,7 @@
           const takeMs = animSettings.item === "fade" ? 200 : (animSettings.item === "glow" ? 240 : 260);
           setTimeout(() => {
             cabinetTakeLock = false;
-            if (state.potatoStage <= 0) return;
+            if (state.currentScene !== "cabinet" || state.potatoStage <= 0) return;
             state.potatoStage--;
             state.invPotato++;
             if (!state.needsStewOnlyForDice) {
@@ -2006,38 +2245,70 @@
       dice: `<div class="brochure-section-title">ПРАВИЛА ИГРЫ «КОСТЯНОЕ ОЧКО» (21)</div><p>1. У каждого игрока в наборе ровно 6 костей. В начале кона проводится жеребьёвка первого хода броском по 2 кости.</p><p>2. Игроки ходят по очереди, бросая по 1 или по 2 кости на доску. Очки всех выброшенных граней суммируются.</p><p>3. Цель — набрать сумму как можно ближе к 21 очку. Перебор (больше 21) означает немедленное поражение в коне. Партия идёт до 3 побед.</p>`
     };
 
+    let sceneBeforeBrochure = null;
+    let isOpeningBrochure = false;
+    let isClosingBrochure = false;
+
     async function openBrochure(part) {
-      if (part === 1 || part === 2) await showActionCloseup("ev_defense", false, false);
-      if (part === 1) {
-        state.readBrochure1 = true;
-        removeStoryCard("read_brochure_1");
-        if (!state.doorSealed) addStoryCard("seal_door", true);
-      }
-      if (part === 2) state.readBrochure2 = true;
+      if (isOpeningBrochure || isClosingBrochure) return;
+      isOpeningBrochure = true;
+      stopNpcRigOnly();
+      try {
+        if (part === 1 || part === 2) {
+          if (state.currentScene !== "ev_defense") sceneBeforeBrochure = state.currentScene;
+          await showActionCloseup("ev_defense", false, false);
+        }
+        if (part === 1) {
+          state.readBrochure1 = true;
+          removeStoryCard("read_brochure_1");
+          if (!state.doorSealed) addStoryCard("seal_door", true);
+        }
+        if (part === 2) state.readBrochure2 = true;
 
-      const stampEl = document.getElementById("brochure-stamp");
-      const titleEl = document.getElementById("brochure-title");
-      const contentEl = document.getElementById("brochure-content");
+        const stampEl = document.getElementById("brochure-stamp");
+        const titleEl = document.getElementById("brochure-title");
+        const contentEl = document.getElementById("brochure-content");
 
-      if (part === "dice") {
-        stampEl.textContent = "Правила настольной игры • Кольский полуостров";
-        titleEl.textContent = "ИНСТРУКЦИЯ: ИГРА «КОСТЯНОЕ ОЧКО»";
-        contentEl.innerHTML = BROCHURE_TEXTS.dice;
-      } else {
-        stampEl.textContent = "Гражданская оборона СССР • Памятка жильцу";
-        titleEl.textContent = "ПАМЯТКА НАСЕЛЕНИЮ: Действия при аварии теплосети";
-        contentEl.innerHTML = part === 2 ? BROCHURE_TEXTS[1] + BROCHURE_TEXTS[2] : BROCHURE_TEXTS[1];
+        if (part === "dice") {
+          stampEl.textContent = "Правила настольной игры • Кольский полуостров";
+          titleEl.textContent = "ИНСТРУКЦИЯ: ИГРА «КОСТЯНОЕ ОЧКО»";
+          contentEl.innerHTML = BROCHURE_TEXTS.dice;
+        } else {
+          stampEl.textContent = "Гражданская оборона СССР • Памятка жильцу";
+          titleEl.textContent = "ПАМЯТКА НАСЕЛЕНИЮ: Действия при аварии теплосети";
+          contentEl.innerHTML = part === 2 ? BROCHURE_TEXTS[1] + BROCHURE_TEXTS[2] : BROCHURE_TEXTS[1];
+        }
+        stopNpcRigOnly();
+        document.getElementById("brochure-modal").classList.add("visible");
+        renderUI(false);
+      } finally {
+        isOpeningBrochure = false;
       }
-      document.getElementById("brochure-modal").classList.add("visible");
-      renderUI(false);
     }
 
     async function closeBrochure() {
+      if (isClosingBrochure) return;
+      isClosingBrochure = true;
       document.getElementById("brochure-modal").classList.remove("visible");
-      if (!state.isWalking && state.currentScene === "ev_defense") {
-        await crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
+      try {
+        if (!state.isWalking && state.currentScene === "ev_defense") {
+          const returnScene = sceneBeforeBrochure || resolveRoomSceneKey(state.logicalRoom);
+          sceneBeforeBrochure = null;
+          await crossfadeToScene(returnScene, false);
+        } else {
+          sceneBeforeBrochure = null;
+        }
+        if (state.currentScene === "cabinet") {
+          renderCabinetItems();
+          syncCabinetBackButtonLabel();
+        }
+        if (activeNpcContext && !isOverlayModalBlockingNpc()) {
+          showNpcForContext(activeNpcContext);
+        }
+        renderUI(false);
+      } finally {
+        isClosingBrochure = false;
       }
-      renderUI(false);
     }
 
     /* 7. СОСТОЯНИЕ ИГРЫ И ИНВЕНТАРЬ */
@@ -2087,15 +2358,36 @@
         state.neighborPendingArrival = true;
         return;
       }
+      if (isMenuOpen || isOchkoModalOpen || cardActivatingLock || cabinetTakeLock || isOpeningBrochure || isClosingBrochure) {
+        scheduleNeighborReturn(1500);
+        return;
+      }
       state.neighborPendingArrival = false;
       startDoorKnockLoop();
       setEventText("В тишине квартиры раздался настойчивый стук во входную дверь! Подойдите к выходу и посмотрите в глазок.");
       renderUI(true);
     }
 
-    function startNeighborArrivalCountdown() {
+    function startNeighborArrivalCountdown(delayMs = NEIGHBOR_ARRIVAL_DELAY) {
       if (state.neighborArrivalTimerId) clearTimeout(state.neighborArrivalTimerId);
-      state.neighborArrivalTimerId = setTimeout(triggerNeighborArrivalNow, NEIGHBOR_ARRIVAL_DELAY);
+      neighborArrivalRemainingMs = 0;
+      neighborArrivalDueAt = performance.now() + delayMs;
+      state.neighborArrivalTimerId = setTimeout(() => {
+        state.neighborArrivalTimerId = null;
+        neighborArrivalDueAt = 0;
+        triggerNeighborArrivalNow();
+      }, delayMs);
+    }
+
+    function scheduleNeighborReturn(delayMs = 15000) {
+      if (state.neighborReturnTimer) clearTimeout(state.neighborReturnTimer);
+      neighborReturnRemainingMs = 0;
+      neighborReturnDueAt = performance.now() + delayMs;
+      state.neighborReturnTimer = setTimeout(() => {
+        state.neighborReturnTimer = null;
+        neighborReturnDueAt = 0;
+        triggerNeighborArrivalNow();
+      }, delayMs);
     }
 
     const setEventText = (t) => { document.getElementById("narrative-text").textContent = t; };
@@ -2180,12 +2472,19 @@
     }
 
     function openInventoryScreen() {
+      if (!hasActiveGameSession || isMenuOpen || gameStarting || isOchkoModalOpen || state.isWalking || cardActivatingLock || cabinetTakeLock || isOpeningBrochure || isClosingBrochure) return;
+      if (document.getElementById("loot-center-modal")?.classList.contains("visible")) return;
+      if (document.getElementById("brochure-modal")?.classList.contains("visible")) return;
+      stopNpcRigOnly();
       renderInventoryGrid();
       document.getElementById("inventory-screen").classList.add("visible");
       playCardSound("click");
     }
-    function closeInventoryScreen() {
+    function closeInventoryScreen(skipNpcRestore = false) {
       document.getElementById("inventory-screen").classList.remove("visible");
+      if (!skipNpcRestore && activeNpcContext && !isOverlayModalBlockingNpc()) {
+        showNpcForContext(activeNpcContext);
+      }
       renderCabinetItems();
       syncCabinetBackButtonLabel();
       renderUI(false);
@@ -2215,9 +2514,9 @@
 
         btn.onclick = () => {
           playCardSound("click");
-          if (item.key === "brochure_1") { closeInventoryScreen(); openBrochure(1); }
-          else if (item.key === "brochure_2") { closeInventoryScreen(); openBrochure(2); }
-          else if (item.key === "dice_rules") { closeInventoryScreen(); openBrochure("dice"); }
+          if (item.key === "brochure_1") { closeInventoryScreen(true); openBrochure(1); }
+          else if (item.key === "brochure_2") { closeInventoryScreen(true); openBrochure(2); }
+          else if (item.key === "dice_rules") { closeInventoryScreen(true); openBrochure("dice"); }
           else if (item.key === "dice_set") { openOchkoBoxOnly(); }
           else if (item.key === "candle") { igniteCandle(); hint.textContent = "Вы зажгли восковую свечу."; }
           else if (item.key === "stew") hint.textContent = "Банка мясной тушёнки в вещмешке. Можно съесть, поставить на кон в кости или выложить обратно в шкаф.";
@@ -2271,12 +2570,14 @@
 
     /* 8. ОЧКО.HTML — ЧИСТАЯ ИНТЕГРАЦИЯ БЕЗ УТЕЧЕК WEBGL */
     function sendOrOpenOchkoModal(payload) {
+      if (isOchkoModalOpen) return;
       const wrap = document.getElementById("ochko-modal-wrap");
       const iframe = document.getElementById("ochko-iframe");
       if (!iframe) return;
 
       // Полная пауза основного файла и остановка рига NPC перед открытием окна костей
       isOchkoModalOpen = true;
+      if (wrap) wrap.classList.add("visible");
       stopNpcRigOnly();
       stopFlameInterval();
       if (rafId !== null) {
@@ -2336,7 +2637,7 @@
       }
       syncStaticLightingState();
       syncFlameIntervalState();
-      if (activeNpcContext && !state.neighborInsideForDice && !state.inPeepholeDialog) {
+      if (activeNpcContext && !state.neighborInsideForDice && !state.inPeepholeDialog && !isOverlayModalBlockingNpc()) {
         showNpcForContext(activeNpcContext);
       }
     }
@@ -2667,7 +2968,7 @@
     }
 
     async function handleSceneBackBtn() {
-      if (state.isWalking || !state.backBtnTarget) return;
+      if (state.isWalking || !state.backBtnTarget || cardActivatingLock || cabinetTakeLock || isOchkoModalOpen || isOpeningBrochure || isClosingBrochure || isMenuOpen) return;
       const target = state.backBtnTarget;
       const returningToNeighbor = state.returnToNeighborAfterStew && (state.invStew > 0 || state.invPotato > 0);
       const abandonedNeighborFetch = state.returnToNeighborAfterStew && !returningToNeighbor;
@@ -2698,6 +2999,24 @@
 
     function clearAutoReturn() {
       if (state.autoReturnTimer) { clearTimeout(state.autoReturnTimer); state.autoReturnTimer = null; }
+      autoReturnDueAt = 0;
+      autoReturnSceneKey = null;
+      autoReturnRemainingMs = 0;
+    }
+
+    function scheduleAutoReturn(sceneKey, delayMs = 2800) {
+      clearAutoReturn();
+      autoReturnSceneKey = sceneKey;
+      autoReturnDueAt = performance.now() + delayMs;
+      state.autoReturnTimer = setTimeout(async () => {
+        state.autoReturnTimer = null;
+        autoReturnDueAt = 0;
+        autoReturnSceneKey = null;
+        if (!state.isWalking && !isMenuOpen && state.currentScene === sceneKey && !state.backBtnTarget) {
+          await crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
+          renderCabinetItems();
+        }
+      }, delayMs);
     }
 
     function buildFallbackBgUrls(rawPath) { return `url("${encodeURI(rawPath)}")`; }
@@ -2749,13 +3068,7 @@
       const baseScene = resolveRoomSceneKey(state.logicalRoom);
       const nonAutoReturn = new Set([baseScene, "cabinet", "ev_peephole_lit_2", "ev_peephole_empty_2", "ev_yard_window", "ev_defense"]);
       if (holdReturn && !nonAutoReturn.has(sceneKey) && !sceneKey.startsWith("door_")) {
-        state.autoReturnTimer = setTimeout(async () => {
-          state.autoReturnTimer = null;
-          if (!state.isWalking && state.currentScene === sceneKey && !state.backBtnTarget) {
-            await crossfadeToScene(resolveRoomSceneKey(state.logicalRoom), false);
-            renderCabinetItems();
-          }
-        }, 2800);
+        scheduleAutoReturn(sceneKey, 2800);
       }
     }
 
@@ -3424,11 +3737,7 @@
           renderUI(true);
 
           if (state.neighborPendingArrival && !state.neighborVisited && !state.wentOutside) {
-            if (state.neighborReturnTimer) clearTimeout(state.neighborReturnTimer);
-            state.neighborReturnTimer = setTimeout(() => {
-              state.neighborReturnTimer = null;
-              triggerNeighborArrivalNow();
-            }, 15000);
+            scheduleNeighborReturn(15000);
           }
         }
       },
@@ -3538,17 +3847,24 @@
       take_bricks: {
         sheet: 3, icon: 9, caption: "Взять кирпичи",
         action: async () => {
+          state.isWalking = true;
           removeStoryCard("take_bricks");
-          if (state.storyCardIds.includes("help_woman")) {
-            removeStoryCard("help_woman");
-            await playNpcSpeech("woman", "женщина недовольный голос");
+          const skippedHelp = state.storyCardIds.includes("help_woman");
+          if (skippedHelp) removeStoryCard("help_woman");
+          renderUI(false);
+          try {
+            if (skippedHelp) {
+              await playNpcSpeech("woman", "женщина недовольный голос");
+            }
+            hideNpc(); playSnd2("кирпичи", 0.95);
+            state.hasBricks = true;
+            updateBackpackBadge();
+            await showActionCloseup("ev_bricks", false, true);
+            addStoryCard("build_stove", true);
+            setEventText("Кирпичи у вас! Вернитесь в квартиру (кв. 22) в спальню и соберите печку.");
+          } finally {
+            state.isWalking = false;
           }
-          hideNpc(); playSnd2("кирпичи", 0.95);
-          state.hasBricks = true;
-          updateBackpackBadge();
-          await showActionCloseup("ev_bricks", false, true);
-          addStoryCard("build_stove", true);
-          setEventText("Кирпичи у вас! Вернитесь в квартиру (кв. 22) в спальню и соберите печку.");
           renderUI(true);
         }
       },
@@ -3799,6 +4115,7 @@
     const actPrevBtn = document.getElementById("act-prev"), actNextBtn = document.getElementById("act-next");
     const movPrevBtn = document.getElementById("mov-prev"), movNextBtn = document.getElementById("mov-next");
     let cardActivatingLock = false;
+    let activeActionCardBtn = null;
     let lastTouchInteractionTime = 0;
 
     function clearFocusedCards(exceptCard = null) {
@@ -3818,31 +4135,94 @@
     }
 
     function triggerChoiceCardActivation(btn, card) {
-      if (!btn || !card || state.isWalking || cardActivatingLock || btn.disabled) return;
+      if (!btn || !card || state.isWalking || cardActivatingLock || cabinetTakeLock || isOchkoModalOpen || isOpeningBrochure || isClosingBrochure || isMenuOpen || btn.disabled) return;
       cardActivatingLock = true;
+      activeActionCardBtn = btn;
       clearFocusedCards(null);
       playCardSound("flip");
       if (typeof card.instantSound === "function") card.instantSound();
-      btn.classList.remove("deal-anim");
+      btn.disabled = true;
+      btn.classList.remove("deal-anim", "card-recovering");
       btn.classList.add("activating");
-      setTimeout(() => { cardActivatingLock = false; card.action(); }, 380);
+      setTimeout(async () => {
+        try {
+          await card.action();
+        } finally {
+          if (activeActionCardBtn === btn) {
+            cardActivatingLock = false;
+            activeActionCardBtn = null;
+          }
+          if (btn && btn.isConnected) {
+            btn.disabled = state.isWalking;
+            btn.classList.remove("activating");
+            btn.classList.add("card-recovering");
+            setTimeout(() => {
+              if (btn && btn.isConnected) btn.classList.remove("card-recovering");
+            }, 260);
+          }
+        }
+      }, 380);
     }
 
-    function bindDeckTouchNavigation(container) {
+    function trySwipePageDeck(deckKind, deltaPage) {
+      if (state.isWalking || cardActivatingLock || cabinetTakeLock || isOchkoModalOpen || isOpeningBrochure || isClosingBrochure || isMenuOpen) return false;
+      if (deckKind === "left") {
+        const d = getLeftActionDeck();
+        if (deltaPage > 0 && state.actOffset + 3 < d.length) {
+          state.actOffset++;
+          clearFocusedCards(null);
+          playCardSound("click");
+          renderUI(false);
+          return true;
+        }
+        if (deltaPage < 0 && state.actOffset > 0) {
+          state.actOffset--;
+          clearFocusedCards(null);
+          playCardSound("click");
+          renderUI(false);
+          return true;
+        }
+      } else if (deckKind === "right") {
+        const d = getRightMoveDeck();
+        if (deltaPage > 0 && state.movOffset + 3 < d.length) {
+          state.movOffset++;
+          clearFocusedCards(null);
+          playCardSound("click");
+          renderUI(false);
+          return true;
+        }
+        if (deltaPage < 0 && state.movOffset > 0) {
+          state.movOffset--;
+          clearFocusedCards(null);
+          playCardSound("click");
+          renderUI(false);
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function bindDeckTouchNavigation(container, deckKind = null) {
       if (!container) return;
       let touchStartX = 0;
       let touchStartY = 0;
+      let lastTouchX = 0;
+      let lastTouchY = 0;
+      let touchStartTime = 0;
       let touchMoved = false;
+      let pagedInGesture = false;
       let touchStartCard = null;
       let wasAlreadyFocused = false;
       let activeSlideCard = null;
 
       container.addEventListener("touchstart", (e) => {
-        if (state.isWalking || !e.touches || e.touches.length === 0) return;
+        if (state.isWalking || cardActivatingLock || isOchkoModalOpen || isOpeningBrochure || isClosingBrochure || isMenuOpen || !e.touches || e.touches.length === 0) return;
         const t = e.touches[0];
-        touchStartX = t.clientX;
-        touchStartY = t.clientY;
+        touchStartX = lastTouchX = t.clientX;
+        touchStartY = lastTouchY = t.clientY;
+        touchStartTime = performance.now();
         touchMoved = false;
+        pagedInGesture = false;
         const el = document.elementFromPoint(t.clientX, t.clientY);
         const card = el ? el.closest(".choice-card") : e.target.closest(".choice-card");
         if (!card || !container.contains(card) || card.disabled) {
@@ -3861,11 +4241,19 @@
       }, { passive: true });
 
       container.addEventListener("touchmove", (e) => {
-        if (state.isWalking || !e.touches || e.touches.length === 0) return;
+        if (state.isWalking || cardActivatingLock || isOchkoModalOpen || isOpeningBrochure || isClosingBrochure || isMenuOpen || !e.touches || e.touches.length === 0) return;
         const t = e.touches[0];
+        lastTouchX = t.clientX;
+        lastTouchY = t.clientY;
         if (Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY) > 15) {
           touchMoved = true;
         }
+        const rect = container.getBoundingClientRect();
+        const insideDeckStrip = (
+          t.clientX >= rect.left - 6 && t.clientX <= rect.right + 6 &&
+          t.clientY >= rect.top - 24 && t.clientY <= rect.bottom + 14
+        );
+
         const el = document.elementFromPoint(t.clientX, t.clientY);
         const card = el ? el.closest(".choice-card") : null;
         if (card && container.contains(card) && !card.disabled) {
@@ -3875,6 +4263,10 @@
             activeSlideCard = card;
             focusCardElement(card);
           }
+        } else if (insideDeckStrip) {
+          // В зазоре 8px между картами не сбрасываем выделение и блокируем скролл
+          if (e.cancelable) e.preventDefault();
+          lastTouchInteractionTime = performance.now();
         } else if (touchMoved) {
           if (activeSlideCard) {
             activeSlideCard = null;
@@ -3884,23 +4276,38 @@
       }, { passive: false });
 
       container.addEventListener("touchend", (e) => {
-        if (!touchStartCard && !activeSlideCard) return;
+        if (!touchStartCard && !activeSlideCard && !pagedInGesture) return;
         lastTouchInteractionTime = performance.now();
         if (e.cancelable) e.preventDefault();
 
-        const targetCard = !touchMoved ? touchStartCard : null;
-        if (targetCard && wasAlreadyFocused && !targetCard.disabled && typeof targetCard._activateCard === "function") {
-          targetCard._activateCard();
-        } else if (touchMoved && activeSlideCard && !activeSlideCard.disabled) {
-          clearFocusedCards(activeSlideCard);
-          activeSlideCard.classList.add("card-focused");
-        } else if (touchMoved && !activeSlideCard) {
-          clearFocusedCards(null);
+        const scale = stageScale || 1;
+        const dxStage = (lastTouchX - touchStartX) / scale;
+        const dyStage = (lastTouchY - touchStartY) / scale;
+        const elapsed = performance.now() - touchStartTime;
+
+        if (!pagedInGesture && deckKind && elapsed < 300 && Math.abs(dxStage) >= 130 && Math.abs(dxStage) > Math.abs(dyStage) * 1.4) {
+          if (trySwipePageDeck(deckKind, dxStage < 0 ? 1 : -1)) {
+            pagedInGesture = true;
+          }
         }
+
+        if (!pagedInGesture) {
+          const targetCard = !touchMoved ? touchStartCard : null;
+          if (targetCard && wasAlreadyFocused && !targetCard.disabled && typeof targetCard._activateCard === "function") {
+            targetCard._activateCard();
+          } else if (touchMoved && activeSlideCard && !activeSlideCard.disabled) {
+            clearFocusedCards(activeSlideCard);
+            activeSlideCard.classList.add("card-focused");
+          } else if (touchMoved && !activeSlideCard) {
+            clearFocusedCards(null);
+          }
+        }
+
         touchStartCard = null;
         wasAlreadyFocused = false;
         activeSlideCard = null;
         touchMoved = false;
+        pagedInGesture = false;
       }, { passive: false });
 
       container.addEventListener("touchcancel", () => {
@@ -3909,12 +4316,13 @@
         wasAlreadyFocused = false;
         activeSlideCard = null;
         touchMoved = false;
+        pagedInGesture = false;
       }, { passive: true });
     }
 
-    bindDeckTouchNavigation(leftCardsEl);
-    bindDeckTouchNavigation(rightCardsEl);
-    bindDeckTouchNavigation(neighborOverlayEl);
+    bindDeckTouchNavigation(leftCardsEl, "left");
+    bindDeckTouchNavigation(rightCardsEl, "right");
+    bindDeckTouchNavigation(neighborOverlayEl, null);
 
     document.addEventListener("touchstart", (e) => {
       if (!e.target.closest(".choice-card")) clearFocusedCards(null);
@@ -3968,14 +4376,25 @@
     function renderDeckSlice(container, items, offset, animateDeal = false) {
       const slice = items.slice(offset, offset + 3);
       const sig = `${animSettings.card}|` + slice.map((c) => `${c.id}:${c.isPriority ? 1 : 0}:${state.isWalking ? 1 : 0}`).join("|");
-      if (!animateDeal && container._deckSig === sig) return;
+      if (!animateDeal && container._deckSig === sig) {
+        if (!cardActivatingLock) {
+          container.querySelectorAll(".choice-card.activating").forEach((el) => el.classList.remove("activating"));
+        }
+        return;
+      }
       container._deckSig = sig;
       container.innerHTML = "";
+      if (activeActionCardBtn && !activeActionCardBtn.isConnected) {
+        cardActivatingLock = false;
+        activeActionCardBtn = null;
+      }
       slice.forEach((card, idx) => {
         const el = createChoiceCardElement(card, idx, animateDeal);
-        const fan = getFanPoseForDeckCard(idx, slice.length);
+        const fan = animSettings.card === "fan" ? getFanPoseForDeckCard(idx, slice.length) : { rot: 0, y: 0 };
+        const dealEndY = card.isPriority ? (fan.y - 7) : fan.y;
         el.style.setProperty("--fan-rot", `${fan.rot}deg`);
         el.style.setProperty("--fan-y", `${fan.y}px`);
+        el.style.setProperty("--deal-end-y", `${dealEndY}px`);
         container.appendChild(el);
       });
     }
@@ -3995,10 +4414,25 @@
       }
       const cards = getCenterNeighborChoiceCards();
       const sig = cards.map((c) => `${c.id}:${c.isPriority ? 1 : 0}:${state.isWalking ? 1 : 0}`).join("|");
-      if (!animateDeal && neighborOverlayEl._deckSig === sig) return;
+      if (!animateDeal && neighborOverlayEl._deckSig === sig) {
+        if (!cardActivatingLock) {
+          neighborOverlayEl.querySelectorAll(".choice-card.activating").forEach((el) => el.classList.remove("activating"));
+        }
+        return;
+      }
       neighborOverlayEl._deckSig = sig;
       neighborOverlayEl.innerHTML = "";
-      cards.forEach((card, idx) => neighborOverlayEl.appendChild(createChoiceCardElement(card, idx, animateDeal)));
+      if (activeActionCardBtn && !activeActionCardBtn.isConnected) {
+        cardActivatingLock = false;
+        activeActionCardBtn = null;
+      }
+      cards.forEach((card, idx) => {
+        const el = createChoiceCardElement(card, idx, animateDeal);
+        el.style.setProperty("--fan-rot", "0deg");
+        el.style.setProperty("--fan-y", "0px");
+        el.style.setProperty("--deal-end-y", `${card.isPriority ? -7 : 0}px`);
+        neighborOverlayEl.appendChild(el);
+      });
     }
 
     function renderUI(animateDeal = false) {
@@ -4030,10 +4464,13 @@
       movNextBtn.disabled = state.isWalking || state.movOffset + 3 >= rightDeck.length;
     }
 
-    actPrevBtn.onclick = () => { if (state.actOffset > 0) { state.actOffset--; playCardSound("click"); renderUI(false); } };
-    actNextBtn.onclick = () => { const d = getLeftActionDeck(); if (state.actOffset + 3 < d.length) { state.actOffset++; playCardSound("click"); renderUI(false); } };
-    movPrevBtn.onclick = () => { if (state.movOffset > 0) { state.movOffset--; playCardSound("click"); renderUI(false); } };
-    movNextBtn.onclick = () => { const d = getRightMoveDeck(); if (state.movOffset + 3 < d.length) { state.movOffset++; playCardSound("click"); renderUI(false); } };
+    function isDeckPagingBlocked() {
+      return Boolean(state.isWalking || cardActivatingLock || cabinetTakeLock || isOchkoModalOpen || isOpeningBrochure || isClosingBrochure || isMenuOpen);
+    }
+    actPrevBtn.onclick = () => { if (!isDeckPagingBlocked() && state.actOffset > 0) { state.actOffset--; playCardSound("click"); renderUI(false); } };
+    actNextBtn.onclick = () => { if (!isDeckPagingBlocked()) { const d = getLeftActionDeck(); if (state.actOffset + 3 < d.length) { state.actOffset++; playCardSound("click"); renderUI(false); } } };
+    movPrevBtn.onclick = () => { if (!isDeckPagingBlocked() && state.movOffset > 0) { state.movOffset--; playCardSound("click"); renderUI(false); } };
+    movNextBtn.onclick = () => { if (!isDeckPagingBlocked()) { const d = getRightMoveDeck(); if (state.movOffset + 3 < d.length) { state.movOffset++; playCardSound("click"); renderUI(false); } } };
 
     /* 14. МАСШТАБИРОВАНИЕ, ПОЛНОЭКРАННЫЙ РЕЖИМ И ТАСКАНИЕ СПИЧКИ/СВЕЧИ */
     const stageEl = document.getElementById("stage-16x9");
@@ -4129,7 +4566,7 @@
     let torchOffsetX = 0, torchOffsetY = 0, smoothTorchX = 0, smoothTorchY = 0, lastFlameCanvasY = 65;
 
     flameCanvas.addEventListener("pointerdown", (e) => {
-      if (!hasActiveLightSource() || state.lightPaused) return;
+      if (!hasActiveLightSource() || state.lightPaused || isMenuOpen || isOchkoModalOpen || isOpeningBrochure || isClosingBrochure) return;
       hideMatchTutorialHint();
       isDraggingTorch = true;
       flameCanvas.classList.add("dragging");
@@ -4507,18 +4944,6 @@
     syncStaticLightingState();
     syncFlameIntervalState();
     syncMenuTopBtnVisibility();
-
-    try {
-      if (sessionStorage.getItem("kola_auto_restart") === "1") {
-        sessionStorage.removeItem("kola_auto_restart");
-        introGateDismissed = true;
-        if (introGateEl) {
-          introGateEl.classList.add("hidden");
-          introGateEl.style.display = "none";
-        }
-        startNewGameWithPreloader();
-      }
-    } catch (e) {}
   </script>
 </body>
 </html>
