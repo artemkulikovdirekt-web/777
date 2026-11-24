@@ -231,7 +231,7 @@
       50% { transform: translate3d(0, -3px, 0) scale(1.008, 1.012); }
     }
 
-    #cabinet-items-layer { position: absolute; inset: 0; z-index: 8; pointer-events: none; display: none; }
+    #cabinet-items-layer { position: absolute; inset: 0; z-index: 4; pointer-events: none; display: none; }
     #cabinet-items-layer.visible { display: block; }
     .shelf-item {
       position: absolute; transform: translate(-50%, -50%); pointer-events: auto;
@@ -368,7 +368,7 @@
 
     #neighbor-choice-overlay {
       position: absolute; inset: 0; z-index: 28; display: none; align-items: flex-end; justify-content: center;
-      gap: 20px; flex-wrap: wrap; padding: 20px 20px 62px 20px; pointer-events: none; touch-action: none;
+      gap: 20px; flex-wrap: wrap; padding: 20px 20px 158px 20px; pointer-events: none; touch-action: none;
     }
     #neighbor-choice-overlay.visible { display: flex; }
     #neighbor-choice-overlay .choice-card { pointer-events: auto; width: 118px; }
@@ -791,18 +791,25 @@
 
     const VIDEO_CANDIDATES = ["Фон.mp4", "фон.mp4", "события/Фон.mp4", "события/фон.mp4"];
     let videoCandidateIdx = 0;
+    let menuVideoAllFailed = false;
 
     function ensureMenuVideoPlaying(forceResetCandidates = false) {
       if (!menuVideo || !isMenuOpen) return;
+      if (menuVideoAllFailed && !forceResetCandidates) return;
       menuVideo.muted = true;
       menuVideo.defaultMuted = true;
       menuVideo.volume = 0;
       if (forceResetCandidates) {
+        menuVideoAllFailed = false;
         videoCandidateIdx = 0;
         menuVideo.src = encodeURI(VIDEO_CANDIDATES[0]);
         menuVideo.load();
       } else if (menuVideo.error || menuVideo.networkState === 3) {
-        videoCandidateIdx = (videoCandidateIdx + 1) < VIDEO_CANDIDATES.length ? (videoCandidateIdx + 1) : 0;
+        videoCandidateIdx++;
+        if (videoCandidateIdx >= VIDEO_CANDIDATES.length) {
+          menuVideoAllFailed = true;
+          return;
+        }
         menuVideo.src = encodeURI(VIDEO_CANDIDATES[videoCandidateIdx]);
         menuVideo.load();
       }
@@ -814,12 +821,14 @@
       menuVideo.defaultMuted = true;
       menuVideo.volume = 0;
       menuVideo.addEventListener("error", () => {
-        if (!isMenuOpen) return;
+        if (!isMenuOpen || menuVideoAllFailed) return;
         videoCandidateIdx++;
         if (videoCandidateIdx < VIDEO_CANDIDATES.length) {
           menuVideo.src = encodeURI(VIDEO_CANDIDATES[videoCandidateIdx]);
           menuVideo.load();
           menuVideo.play().catch(() => {});
+        } else {
+          menuVideoAllFailed = true;
         }
       });
       ensureMenuVideoPlaying(false);
@@ -1197,7 +1206,7 @@
         hasBricks: false, readBrochure1: false, readBrochure2: false,
         doorSealed: false, windowsTaped: false,
         hasShoes: false, hasCoat: false, carpetsTaken: false, carpetsHung: false, stoveBuilt: false,
-        junkSearches: 0, landingFloor: 3, landingDir: "down",
+        junkSearches: 0, activeBuilding: 1, landingFloor: 3, landingDir: "down",
         activeDoorApt: null, activeOpponentId: 1,
         oppProgress: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 },
         isWalking: false, isKnocking: false, activeSlot: "a",
@@ -1289,10 +1298,30 @@
     }
     for (let u = 1; u <= 16; u++) SCENE_IMAGES[`street_${u}`] = `события/улица/${u}.jpg`;
 
+    for (let i = 1; i <= 20; i++) SCENE_IMAGES[`b2_path_${i}`] = `Дом/Путь/${i}.jpg`;
+    for (let i = 1; i <= 34; i++) {
+      SCENE_IMAGES[`b2_p1_${i}`] = `Дом/Подъезд 1/${i}.jpg`;
+      SCENE_IMAGES[`b2_p2_${i}`] = `Дом/Подъезд 2/${i}.jpg`;
+    }
+    const B2_DOOR_PAIRS = [];
+    for (let f = 1; f <= 9; f++) {
+      const leftPair = `${(f - 1) * 4 + 1}-${(f - 1) * 4 + 2}`;
+      const rightPair = `${(f - 1) * 4 + 3}-${(f - 1) * 4 + 4}`;
+      B2_DOOR_PAIRS.push(leftPair, rightPair);
+    }
+    B2_DOOR_PAIRS.forEach((pair) => {
+      SCENE_IMAGES[`b2_door_${pair}`] = `Дом/двери/${pair}.jpg`;
+      SCENE_IMAGES[`b2_door_${pair}_open`] = `Дом/двери/${pair} открытая.jpg`;
+    });
+
+    const B2_DOWN_MAP = { 9: 1, 8: 5, 7: 9, 6: 13, 5: 17, 4: 21, 3: 25, 2: 29, 1: 33 };
+    const B2_UP_MAP = { 1: 2, 2: 6, 3: 10, 4: 14, 5: 18, 6: 22, 7: 26, 8: 30, 9: 34 };
+
     const FULL_BRIGHT_SCENES = new Set([
       "ev_yard_window", "ev_bricks", "ev_peephole_lit_2", "ev_peephole_empty_2"
     ]);
     for (let u = 1; u <= 16; u++) FULL_BRIGHT_SCENES.add(`street_${u}`);
+    for (let i = 1; i <= 20; i++) FULL_BRIGHT_SCENES.add(`b2_path_${i}`);
 
     /* 1.1. ПРЕЛОАДЕР С ДЕКОДИРОВАНИЕМ (img.decode) */
     let ochkoIframeReady = false;
@@ -1340,17 +1369,26 @@
       } else if (roomKey === "landing") {
         const f = state.landingFloor;
         const toPreload = [];
-        const floorDoors = {
-          5: ["door_28", "door_29", "door_30"],
-          4: ["door_25", "door_26", "door_27"],
-          3: ["door_22", "door_22_open", "door_23", "door_24"],
-          2: ["door_19", "door_20", "door_21"],
-          1: ["door_16", "door_17", "door_18"]
-        };
-        if (floorDoors[f]) toPreload.push(...floorDoors[f]);
-        if (f > 1) toPreload.push(`p1_${{ 5: 2, 4: 6, 3: 10, 2: 14 }[f]}`);
-        if (f < 5) toPreload.push(`p2_${{ 1: 3, 2: 6, 3: 9, 4: 12 }[f]}`);
-        if (f === 1) toPreload.push("p1_18", "street_1", "street_2");
+        if (state.activeBuilding === 2) {
+          const leftPair = `${(f - 1) * 4 + 1}-${(f - 1) * 4 + 2}`;
+          const rightPair = `${(f - 1) * 4 + 3}-${(f - 1) * 4 + 4}`;
+          toPreload.push(`b2_door_${leftPair}`, `b2_door_${rightPair}`);
+          if (f > 1 && B2_DOWN_MAP[f]) toPreload.push(`b2_p1_${B2_DOWN_MAP[f] + 1}`);
+          if (f < 9 && B2_UP_MAP[f]) toPreload.push(`b2_p2_${B2_UP_MAP[f] + 1}`);
+          if (f === 1) toPreload.push("b2_p1_34", "b2_path_11");
+        } else {
+          const floorDoors = {
+            5: ["door_28", "door_29", "door_30"],
+            4: ["door_25", "door_26", "door_27"],
+            3: ["door_22", "door_22_open", "door_23", "door_24"],
+            2: ["door_19", "door_20", "door_21"],
+            1: ["door_16", "door_17", "door_18"]
+          };
+          if (floorDoors[f]) toPreload.push(...floorDoors[f]);
+          if (f > 1) toPreload.push(`p1_${{ 5: 2, 4: 6, 3: 10, 2: 14 }[f]}`);
+          if (f < 5) toPreload.push(`p2_${{ 1: 3, 2: 6, 3: 9, 4: 12 }[f]}`);
+          if (f === 1) toPreload.push("p1_18", "street_1", "street_2");
+        }
         preloadSceneKeysLazy(toPreload);
       }
     }
@@ -1662,33 +1700,69 @@
       }
     }
 
+    function escapeRegExpStr(str) {
+      return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
     function collectCandidateDoorsForApt(db, aptNum) {
       const result = [];
       const seenIds = new Set();
+      const pairedHintRe = /\d+\s*-\s*\d+/;
+      const exactFileRe = new RegExp(`(?:^|\\/)${escapeRegExpStr(aptNum)}\\s+открытая\\.(jpg|jpeg|png)$`, "i");
+      const isPairedDoor = (d) => Boolean(d && d.fileHint && pairedHintRe.test(String(d.fileHint)));
+      const pushDoor = (d) => {
+        if (!d || !d.id || seenIds.has(d.id) || isPairedDoor(d)) return;
+        seenIds.add(d.id);
+        result.push(d);
+      };
+      if (Array.isArray(db.doors)) {
+        db.doors.forEach((d) => {
+          if (isPairedDoor(d)) return;
+          const hasExplicitApt = d.aptNumber !== undefined && d.aptNumber !== null && d.aptNumber !== "";
+          if (hasExplicitApt) {
+            if (Number(d.aptNumber) === aptNum) pushDoor(d);
+          } else if (d.id === `door_${aptNum}` || (d.fileHint && exactFileRe.test(String(d.fileHint).replace(/\\/g, "/")))) {
+            pushDoor(d);
+          }
+        });
+      }
+      const byApt = db.doorsByApt && db.doorsByApt[String(aptNum)];
+      if (byApt && !isPairedDoor(byApt)) pushDoor(byApt);
+      return result;
+    }
+
+    function collectCandidateDoorsForB2Pair(db, pair) {
+      const result = [];
+      const seenIds = new Set();
+      const pEsc = escapeRegExpStr(pair);
+      const exactFileRe = new RegExp(`(?:^|\\/)${pEsc}\\s+открытая\\.(jpg|jpeg|png)$`, "i");
+      const exactTokenRe = new RegExp(`(?:^|[^0-9])${pEsc}(?:$|[^0-9])`);
+      const matchesDoor = (d) => {
+        if (!d) return false;
+        const fh = String(d.fileHint || "").replace(/\\/g, "/");
+        if (fh && exactFileRe.test(fh)) return true;
+        if (d.name && exactTokenRe.test(String(d.name))) return true;
+        if (d.id && exactTokenRe.test(String(d.id))) return true;
+        return false;
+      };
       const pushDoor = (d) => {
         if (!d || !d.id || seenIds.has(d.id)) return;
         seenIds.add(d.id);
         result.push(d);
       };
       if (Array.isArray(db.doors)) {
-        db.doors.forEach((d) => {
-          const hasExplicitApt = d.aptNumber !== undefined && d.aptNumber !== null && d.aptNumber !== "";
-          if (hasExplicitApt) {
-            if (Number(d.aptNumber) === aptNum) pushDoor(d);
-          } else if (d.id === `door_${aptNum}` || (d.fileHint && d.fileHint.includes(`${aptNum} открытая`))) {
-            pushDoor(d);
-          }
-        });
+        db.doors.forEach((d) => { if (matchesDoor(d)) pushDoor(d); });
       }
-      const byApt = db.doorsByApt && db.doorsByApt[String(aptNum)];
-      if (byApt) pushDoor(byApt);
+      if (db.doorsByApt) {
+        if (db.doorsByApt[pair]) pushDoor(db.doorsByApt[pair]);
+        if (db.doorsByApt[`b2_${pair}`]) pushDoor(db.doorsByApt[`b2_${pair}`]);
+        Object.values(db.doorsByApt).forEach((d) => { if (matchesDoor(d)) pushDoor(d); });
+      }
       return result;
     }
 
-    function resolveRigSelectionForApt(db, chars, charIds, aptNum) {
-      const doors = collectCandidateDoorsForApt(db, aptNum);
-
-      // Приоритет 1: персонаж, чей собственный assignedDoorId указывает на найденную дверь этой квартиры
+    function resolveRigSelectionFromDoors(db, chars, charIds, doors) {
+      // Приоритет 1: персонаж, чей собственный assignedDoorId указывает на найденную дверь
       for (const d of doors) {
         const directCharId = charIds.find((id) => chars[id] && chars[id].assignedDoorId === d.id);
         if (directCharId) {
@@ -1711,6 +1785,14 @@
       return fallbackId ? { npcId: fallbackId, door: doors[0] || null, useNpcAssignedDoor: false, hasCustomDoor: doors.length > 0 } : null;
     }
 
+    function resolveRigSelectionForApt(db, chars, charIds, aptNum) {
+      return resolveRigSelectionFromDoors(db, chars, charIds, collectCandidateDoorsForApt(db, aptNum));
+    }
+
+    function resolveRigSelectionForB2Pair(db, chars, charIds, pair) {
+      return resolveRigSelectionFromDoors(db, chars, charIds, collectCandidateDoorsForB2Pair(db, pair));
+    }
+
     function resolveRigNpcSelectionForContext(ctx) {
       if (!window.NpcRigPlayer || typeof window.NpcRigPlayer.getDatabase !== "function") return null;
       const db = window.NpcRigPlayer.getDatabase();
@@ -1726,6 +1808,10 @@
           return nm.includes("соседк") || nm.includes("женщ") || nm.includes("woman");
         });
         return womanId ? { npcId: womanId, door: null, useNpcAssignedDoor: false } : null;
+      }
+
+      if (ctx.type === "door" && ctx.b2Pair) {
+        return resolveRigSelectionForB2Pair(db, chars, charIds, String(ctx.b2Pair));
       }
 
       if (ctx.type === "door" && ctx.apt) {
@@ -1785,7 +1871,30 @@
             height: STAGE_H,
             transparentBg: true
           };
-          if (ctx.type === "door" && ctx.apt) {
+          if (ctx.type === "door" && ctx.b2Pair) {
+            const pair = String(ctx.b2Pair);
+            const doorImgPath = SCENE_IMAGES[`b2_door_${pair}_open`] || `Дом/двери/${pair} открытая.jpg`;
+            const baseDb = typeof window.NpcRigPlayer.getDatabase === "function" ? window.NpcRigPlayer.getDatabase() : null;
+            const b2Key = `b2_${pair}`;
+            if (baseDb) {
+              const doorObj = rigSel.hasCustomDoor && rigSel.door ? rigSel.door : {
+                id: `b2_door_default_${pair}`,
+                name: `Кв. ${pair}`,
+                fileHint: doorImgPath,
+                box: { x1: 0.28, y1: 0.04, x2: 0.72, y2: 1.0 },
+                darkThreshold: 24,
+                hingeSide: "left",
+                assignedSlotId: rigSel.npcId,
+                doorPlacement: { offsetX: 0, offsetY: 55, scale: 0.96, flipX: false, shadowDepth: 60 }
+              };
+              showOpts.database = {
+                ...baseDb,
+                doorsByApt: { ...(baseDb.doorsByApt || {}), [b2Key]: doorObj }
+              };
+            }
+            showOpts.doorApt = b2Key;
+            showOpts.doorImgSrc = doorImgPath;
+          } else if (ctx.type === "door" && ctx.apt) {
             const aptNum = Number(ctx.apt);
             const doorImgPath = SCENE_IMAGES[`door_${aptNum}_open`] || "";
             if (!rigSel.hasCustomDoor && typeof window.NpcRigPlayer.getDatabase === "function") {
@@ -1847,6 +1956,17 @@
       showNpcForContext({
         type: "door",
         apt: Number(apt),
+        npcKey: null,
+        pose: 1
+      });
+    }
+
+    function showBuilding2DoorNpc(pair) {
+      if (B2_CLOSED_PAIRS.has(String(pair))) return;
+      if (!window.NpcRigPlayer || typeof window.NpcRigPlayer.show !== "function") return;
+      showNpcForContext({
+        type: "door",
+        b2Pair: String(pair),
         npcKey: null,
         pose: 1
       });
@@ -2065,6 +2185,7 @@
     async function openBrochure(part) {
       if (isOpeningBrochure || isClosingBrochure) return;
       isOpeningBrochure = true;
+      stopNpcSpeech();
       stopNpcRigOnly();
       try {
         if (part === 1 || part === 2) {
@@ -2156,7 +2277,7 @@
       hasBricks: false, readBrochure1: false, readBrochure2: false,
       doorSealed: false, windowsTaped: false,
       hasShoes: false, hasCoat: false, carpetsTaken: false, carpetsHung: false, stoveBuilt: false,
-      junkSearches: 0, landingFloor: 3, landingDir: "down",
+      junkSearches: 0, activeBuilding: 1, landingFloor: 3, landingDir: "down",
       activeDoorApt: null, activeOpponentId: 1,
       oppProgress: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 },
       isWalking: false, isKnocking: false, activeSlot: "a",
@@ -2167,7 +2288,7 @@
 
     function triggerNeighborArrivalNow() {
       if (state.neighborVisited || state.wentOutside) return;
-      if (state.logicalRoom === "landing" || state.isWalking) {
+      if (state.logicalRoom === "landing" || state.logicalRoom === "street_hub" || state.activeBuilding === 2 || state.isWalking) {
         state.neighborPendingArrival = true;
         return;
       }
@@ -2288,6 +2409,7 @@
       if (!hasActiveGameSession || gameStarting || isUiBusy()) return;
       if (document.getElementById("loot-center-modal")?.classList.contains("visible")) return;
       if (document.getElementById("brochure-modal")?.classList.contains("visible")) return;
+      stopNpcSpeech();
       stopNpcRigOnly();
       renderInventoryGrid();
       document.getElementById("inventory-screen").classList.add("visible");
@@ -2694,15 +2816,38 @@
     function resolveRoomSceneKey(roomKey) {
       if (roomKey === "bedroom") return state.stoveBuilt ? "ev_stove" : (state.carpetsHung ? "ev_all_covered" : "bedroom");
       if (roomKey === "junkroom") return state.carpetsTaken ? "junkroom_empty" : "junkroom";
+      if (roomKey === "street_hub") return "street_1";
       if (roomKey === "landing") {
+        if (state.activeBuilding === 2) {
+          if (state.landingDir === "down") return `b2_p1_${B2_DOWN_MAP[state.landingFloor] || 33}`;
+          return `b2_p2_${B2_UP_MAP[state.landingFloor] || 2}`;
+        }
         if (state.landingDir === "down") return `p1_${{ 5: 1, 4: 5, 3: 9, 2: 13, 1: 17 }[state.landingFloor] || 9}`;
         return `p2_${{ 1: 2, 2: 5, 3: 8, 4: 11, 5: 14 }[state.landingFloor] || 8}`;
       }
       return roomKey;
     }
 
-    function buildStairwellFrames(fromFloor, toFloorOrStreet) {
+    function buildStairwellFrames(fromFloor, toFloorOrStreet, buildingNum = state.activeBuilding) {
       const seq = [];
+      if (buildingNum === 2) {
+        if (toFloorOrStreet === "street") {
+          const start = (B2_DOWN_MAP[fromFloor] || 33) + 1;
+          for (let i = start; i <= 34; i++) seq.push(`b2_p1_${i}`);
+          return seq;
+        }
+        const tf = Number(toFloorOrStreet);
+        if (tf < fromFloor) {
+          const s = (B2_DOWN_MAP[fromFloor] || 1) + 1;
+          const e = B2_DOWN_MAP[tf] || 33;
+          for (let i = s; i <= e; i++) seq.push(`b2_p1_${i}`);
+        } else if (tf > fromFloor) {
+          const s = (B2_UP_MAP[fromFloor] || 2) + 1;
+          const e = B2_UP_MAP[tf] || 34;
+          for (let i = s; i <= e; i++) seq.push(`b2_p2_${i}`);
+        }
+        return seq;
+      }
       if (toFloorOrStreet === "street") {
         const start = { 5: 2, 4: 6, 3: 10, 2: 14, 1: 18 }[fromFloor] || 10;
         for (let i = start; i <= 18; i++) seq.push(`p1_${i}`);
@@ -2759,8 +2904,15 @@
     }
 
     function isSceneHidingTorch(sceneKey) {
+      if (state.logicalRoom === "street_hub") return true;
       if (!sceneKey) return false;
-      return sceneKey.startsWith("ev_peephole_") || sceneKey.startsWith("ev_window_") || sceneKey === "ev_yard_window";
+      return (
+        sceneKey.startsWith("ev_peephole_") ||
+        sceneKey.startsWith("ev_window_") ||
+        sceneKey === "ev_yard_window" ||
+        sceneKey.startsWith("street_") ||
+        sceneKey.startsWith("b2_path_")
+      );
     }
 
     function updateFlameVisibility() {
@@ -2778,7 +2930,7 @@
       const hud = document.getElementById("bottom-hud");
       btn.textContent = label;
       btn.classList.toggle("visible", Boolean(sceneKeyOrNull));
-      hud.classList.toggle("hidden-hud", Boolean(sceneKeyOrNull) || isNeighborCenterChoiceActive());
+      hud.classList.toggle("hidden-hud", Boolean(sceneKeyOrNull) || isNeighborCenterChoiceActive() || state.logicalRoom === "street_hub");
     }
 
     async function handleSceneBackBtn() {
@@ -2794,6 +2946,18 @@
       removeStoryCard("leave_door_view");
       setBackButtonTarget(null);
       hideNpc();
+
+      if (target === "street_hub_return") {
+        state.activeBuilding = 1;
+        state.logicalRoom = "landing";
+        state.landingFloor = 1;
+        state.landingDir = "up";
+        await playStairwellSequence(["p2_1", "p2_2"], false);
+        resumeLightFromView();
+        setEventText("Вы вернулись в подъезд своего дома (1-й этаж).");
+        renderUI(true);
+        return;
+      }
 
       if (returningToNeighbor) {
         await walkToRoom("entrance", false);
@@ -2888,6 +3052,27 @@
 
     const ROOMS_WITH_DOORS = new Set(["bedroom", "junkroom", "toilet", "bath", "kitchen"]);
 
+    async function walkApartmentRouteInternal(targetRoom) {
+      if (state.logicalRoom === targetRoom) {
+        const sc = resolveRoomSceneKey(targetRoom);
+        if (state.currentScene !== sc) await crossfadeToScene(sc, false);
+        return;
+      }
+      const fromRoom = state.logicalRoom;
+      const frames = buildApartmentRoute(fromRoom, targetRoom);
+      document.body.classList.add("is-walking");
+      try {
+        if (ROOMS_WITH_DOORS.has(fromRoom)) playDoorCreakSound();
+        for (const frameKey of frames) await crossfadeToScene(frameKey, true);
+        if (ROOMS_WITH_DOORS.has(targetRoom)) playDoorCreakSound();
+      } finally {
+        document.body.classList.remove("is-walking");
+      }
+      state.logicalRoom = targetRoom;
+      state.actOffset = 0; state.movOffset = 0;
+      preloadNextStepForRoom(targetRoom);
+    }
+
     async function walkToRoom(targetRoom, renderAfter = true) {
       if (state.isWalking) return;
       clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
@@ -2899,24 +3084,14 @@
         if (state.currentScene !== sc) await crossfadeToScene(sc, false);
         return;
       }
-      const fromRoom = state.logicalRoom;
-      const frames = buildApartmentRoute(fromRoom, targetRoom);
       state.isWalking = true;
-      document.body.classList.add("is-walking");
       renderUI(false);
-
       try {
-        if (ROOMS_WITH_DOORS.has(fromRoom)) playDoorCreakSound();
-        for (const frameKey of frames) await crossfadeToScene(frameKey, true);
-        if (ROOMS_WITH_DOORS.has(targetRoom)) playDoorCreakSound();
+        await walkApartmentRouteInternal(targetRoom);
       } finally {
         document.body.classList.remove("is-walking");
         state.isWalking = false;
       }
-
-      state.logicalRoom = targetRoom;
-      state.actOffset = 0; state.movOffset = 0;
-      preloadNextStepForRoom(targetRoom);
       renderCabinetItems();
       if (renderAfter) renderUI(true);
     }
@@ -2963,18 +3138,34 @@
         renderUI(true);
         return;
       }
+      if (targetRoom === "toilet" && !state.toiletUsed) {
+        clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
+        resumeLightFromView();
+        state.activeDoorApt = null; state.inPeepholeDialog = false;
+        removeStoryCard("play_dice_door"); removeStoryCard("leave_door_view");
+        removeStoryCard("go_toilet");
+        state.isWalking = true;
+        renderUI(false);
+        try {
+          await walkApartmentRouteInternal("toilet");
+          state.toiletUsed = true;
+          playSnd1("СМЫВ", 0.9);
+          await showActionCloseup("ev_flush", false, true);
+        } finally {
+          document.body.classList.remove("is-walking");
+          state.isWalking = false;
+        }
+        renderCabinetItems();
+        setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
+        checkInitialStepsProgress();
+        renderUI(true);
+        return;
+      }
+
       await walkToRoom(targetRoom, false);
 
       if (targetRoom === "toilet") {
-        if (!state.toiletUsed) {
-          state.toiletUsed = true; removeStoryCard("go_toilet");
-          playSnd1("СМЫВ", 0.9);
-          await showActionCloseup("ev_flush", false, true);
-          setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
-          checkInitialStepsProgress();
-        } else {
-          setEventText("Вы в туалете. Вода в бачке пустая.");
-        }
+        setEventText("Вы в туалете. Вода в бачке пустая.");
       } else if (targetRoom === "bath") setEventText("Вы заглянули в ванную комнату. Здесь сыро и холодно.");
       else if (targetRoom === "kitchen") setEventText("Вы на кухне.");
       else if (targetRoom === "bedroom") setEventText("Вы в спальне.");
@@ -2996,7 +3187,7 @@
 
     function getRightMoveDeck() {
       if (!state.basicNavUnlocked && !state.roomNavUnlocked) return [];
-      if (isNeighborCenterChoiceActive()) return [];
+      if (isNeighborCenterChoiceActive() || state.logicalRoom === "street_hub") return [];
 
       const priorityMoveId = getPriorityMoveCardId();
 
@@ -3026,13 +3217,92 @@
       if (state.activeDoorApt) return [];
 
       const moves = [];
+      if (state.activeBuilding === 2) {
+        if (state.landingFloor < 9) {
+          moves.push({
+            id: "b2_move_up", sheet: 4, icon: 1, caption: `На ${state.landingFloor + 1} этаж`,
+            action: async () => {
+              const nextF = state.landingFloor + 1;
+              state.landingDir = "up";
+              const seq = buildStairwellFrames(state.landingFloor, nextF, 2);
+              state.landingFloor = nextF;
+              await playStairwellSequence(seq);
+              setEventText(`Вы поднялись на ${state.landingFloor}-й этаж девятиэтажного дома.`);
+            }
+          });
+        }
+        if (state.landingFloor > 1) {
+          moves.push({
+            id: "b2_move_down", sheet: 4, icon: 2, caption: `На ${state.landingFloor - 1} этаж`,
+            action: async () => {
+              const nextF = state.landingFloor - 1;
+              state.landingDir = "down";
+              const seq = buildStairwellFrames(state.landingFloor, nextF, 2);
+              state.landingFloor = nextF;
+              await playStairwellSequence(seq);
+              setEventText(`Вы спустились на ${state.landingFloor}-й этаж девятиэтажного дома.`);
+            }
+          });
+        }
+        moves.push({
+          id: "b2_move_return", sheet: 4, icon: 4, caption: "Вернуться к нашему дому",
+          action: async () => {
+            clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
+            state.activeDoorApt = null;
+            state.landingDir = "down";
+            const stairSeq = buildStairwellFrames(state.landingFloor, "street", 2);
+            state.isWalking = true;
+            document.body.classList.add("is-walking");
+            renderUI(false);
+
+            try {
+              for (let i = 0; i < stairSeq.length; i++) {
+                const ahead = [];
+                if (i + 1 < stairSeq.length) ahead.push(stairSeq[i + 1]);
+                if (i + 2 < stairSeq.length) ahead.push(stairSeq[i + 2]);
+                if (ahead.length) preloadSceneKeysLazy(ahead);
+                await crossfadeToScene(stairSeq[i], true);
+              }
+              pauseLightForView();
+              state.logicalRoom = "street_hub";
+              renderUI(false);
+              playSnd2("ШАГИ СНЕГ", 0.9); playSnd2("СИЛЬНАЯ МЕТЕЛЬ", 0.85);
+              setEventText("Вы выходите из девятиэтажки в метель и возвращаетесь по заснеженному двору к своему дому...");
+              for (let p = 11; p <= 20; p++) {
+                const ahead = [];
+                if (p + 1 <= 20) ahead.push(`b2_path_${p + 1}`);
+                if (p + 2 <= 20) ahead.push(`b2_path_${p + 2}`);
+                if (ahead.length) preloadSceneKeysLazy(ahead);
+                if (p === 16) playSnd2("ШАГИ СНЕГ 2", 0.85);
+                await crossfadeToScene(`b2_path_${p}`, false);
+              }
+              document.body.classList.remove("is-walking");
+              state.activeBuilding = 1;
+              state.logicalRoom = "street_hub";
+              state.landingFloor = 1;
+              state.landingDir = "up";
+              await crossfadeToScene("street_1", false);
+            } finally {
+              document.body.classList.remove("is-walking");
+              state.isWalking = false;
+            }
+
+            preloadSceneKeysLazy(["street_2", "b2_path_1", "p2_1", "p2_2"]);
+            setEventText("Вы вернулись ко входу в свой подъезд. Куда пойдёте дальше?");
+            setBackButtonTarget("street_hub_return", "Вернуться в подъезд");
+            renderUI(true);
+          }
+        });
+        return moves;
+      }
+
       if (state.landingFloor < 5) {
         moves.push({
           id: "move_up", sheet: 4, icon: 1, caption: `На ${state.landingFloor + 1} этаж`,
           action: async () => {
             const nextF = state.landingFloor + 1;
             state.landingDir = "up";
-            const seq = buildStairwellFrames(state.landingFloor, nextF);
+            const seq = buildStairwellFrames(state.landingFloor, nextF, 1);
             state.landingFloor = nextF;
             await playStairwellSequence(seq);
             setEventText(`Вы поднялись на ${state.landingFloor}-й этаж подъезда.`);
@@ -3045,7 +3315,7 @@
           action: async () => {
             const nextF = state.landingFloor - 1;
             state.landingDir = "down";
-            const seq = buildStairwellFrames(state.landingFloor, nextF);
+            const seq = buildStairwellFrames(state.landingFloor, nextF, 1);
             state.landingFloor = nextF;
             await playStairwellSequence(seq);
             setEventText(`Вы спустились на ${state.landingFloor}-й этаж подъезда.`);
@@ -3055,55 +3325,35 @@
       moves.push({
         id: "move_outside", sheet: 4, icon: 4, caption: "Выйти на улицу",
         action: async () => {
+          clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
+          state.activeDoorApt = null;
           state.landingDir = "down";
-          const seq = buildStairwellFrames(state.landingFloor, "street");
-          await playStairwellSequence(seq, false);
-
+          const seq = buildStairwellFrames(state.landingFloor, "street", 1);
           state.isWalking = true;
           document.body.classList.add("is-walking");
           renderUI(false);
-          playSnd2("ШАГИ СНЕГ", 0.9); playSnd2("СИЛЬНАЯ МЕТЕЛЬ", 0.85);
-          setEventText("Вы выходите из подъезда в слепящую метель и пробираетесь сквозь сугробы к уличной колонке...");
 
           try {
-            for (let u = 1; u <= 16; u++) {
+            for (let i = 0; i < seq.length; i++) {
               const ahead = [];
-              if (u + 1 <= 16) ahead.push(`street_${u + 1}`);
-              if (u + 2 <= 16) ahead.push(`street_${u + 2}`);
+              if (i + 1 < seq.length) ahead.push(seq[i + 1]);
+              if (i + 2 < seq.length) ahead.push(seq[i + 2]);
               if (ahead.length) preloadSceneKeysLazy(ahead);
-              if (u === 8) {
-                playSnd2("колонка", 0.9);
-                setEventText("Вы качаете обледеневший рычаг колонки и набираете ледяную воду...");
-              }
-              if (u === 12) {
-                playSnd2("ШАГИ СНЕГ 2", 0.85);
-                setEventText("С полными ёмкостями воды вы спешите обратно к спасительному подъезду...");
-              }
-              await crossfadeToScene(`street_${u}`, false);
+              await crossfadeToScene(seq[i], true);
             }
+            document.body.classList.remove("is-walking");
+            pauseLightForView();
+            state.activeBuilding = 1;
+            state.logicalRoom = "street_hub";
+            await crossfadeToScene("street_1", false);
           } finally {
             document.body.classList.remove("is-walking");
             state.isWalking = false;
           }
 
-          const firstTrip = !state.wentOutside;
-          state.wentOutside = true;
-          if (state.hasGrannyCans) state.grannyCansFilled = true;
-          updateBackpackBadge();
-
-          state.landingFloor = 1; state.landingDir = "up";
-          await playStairwellSequence(["p2_1", "p2_2"], false);
-
-          if (firstTrip) {
-            addStoryCard("collect_carpets", true);
-            setEventText(
-              state.grannyCansFilled
-                ? "Вы вернулись с улицы на 1-й этаж с водой и полными бидонами бабушки! Занесите воду в кв. 17 или поднимитесь на 3-й этаж домой."
-                : "Вы набрали воды на улице и вернулись в подъезд (1-й этаж). Поднимитесь на 3-й этаж домой!"
-            );
-          } else {
-            setEventText("Вы вернулись с морозной улицы на 1-й этаж подъезда.");
-          }
+          preloadSceneKeysLazy(["street_2", "b2_path_1", "b2_path_2", "p2_1", "p2_2"]);
+          setEventText("Вы вышли на заснеженную улицу у своего подъезда. Куда направитесь?");
+          setBackButtonTarget("street_hub_return", "Вернуться в подъезд");
           renderUI(true);
         }
       });
@@ -3208,10 +3458,19 @@
         sheet: 5, icon: 4, caption: "Сходить в туалет",
         action: async () => {
           removeStoryCard("go_toilet");
-          await walkToRoom("toilet", false);
-          state.toiletUsed = true;
-          playSnd1("СМЫВ", 0.9);
-          await showActionCloseup("ev_flush", false, true);
+          clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
+          resumeLightFromView();
+          state.isWalking = true;
+          renderUI(false);
+          try {
+            await walkApartmentRouteInternal("toilet");
+            state.toiletUsed = true;
+            playSnd1("СМЫВ", 0.9);
+            await showActionCloseup("ev_flush", false, true);
+          } finally {
+            document.body.classList.remove("is-walking");
+            state.isWalking = false;
+          }
           setEventText("Ничего не видно, со спичками так долго не протянешь — нужно срочно порыться в хламе и найти свечку");
           checkInitialStepsProgress();
           renderUI(true);
@@ -3296,26 +3555,45 @@
             resumeLightFromView();
           }
 
-          if (state.logicalRoom === "landing") {
-            hideNpc(); setBackButtonTarget(null); state.activeDoorApt = null;
-            removeStoryCard("play_dice_door"); removeStoryCard("leave_door_view");
-            if (state.landingFloor !== 3) {
-              state.landingDir = state.landingFloor < 3 ? "up" : "down";
-              const seq = buildStairwellFrames(state.landingFloor, 3);
-              state.landingFloor = 3;
-              await playStairwellSequence(seq);
+          clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
+          state.activeDoorApt = null;
+          removeStoryCard("play_dice_door"); removeStoryCard("leave_door_view");
+          state.isWalking = true;
+          renderUI(false);
+
+          try {
+            if (state.logicalRoom === "landing") {
+              if (state.landingFloor !== 3) {
+                document.body.classList.add("is-walking");
+                state.landingDir = state.landingFloor < 3 ? "up" : "down";
+                const seq = buildStairwellFrames(state.landingFloor, 3, 1);
+                state.landingFloor = 3;
+                for (let i = 0; i < seq.length; i++) {
+                  const ahead = [];
+                  if (i + 1 < seq.length) ahead.push(seq[i + 1]);
+                  if (i + 2 < seq.length) ahead.push(seq[i + 2]);
+                  if (ahead.length) preloadSceneKeysLazy(ahead);
+                  await crossfadeToScene(seq[i], true);
+                }
+                document.body.classList.remove("is-walking");
+              }
+              playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
+              state.logicalRoom = "entrance";
+              await crossfadeToScene("entrance", true);
             }
-            playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
-            state.logicalRoom = "entrance";
-            await crossfadeToScene("entrance", true);
+            if (state.lightMode === "none") {
+              if (state.hasCandle) igniteCandle(false);
+              else igniteMatch(false);
+            }
+            resumeLightFromView();
+            await walkApartmentRouteInternal("kitchen");
+            playSnd1("ШКАФ С ЕДОЙ", 0.9);
+            await showActionCloseup("cabinet", false, false);
+          } finally {
+            document.body.classList.remove("is-walking");
+            state.isWalking = false;
           }
-          if (state.lightMode === "none") {
-            if (state.hasCandle) igniteCandle(false);
-            else igniteMatch(false);
-          }
-          await walkToRoom("kitchen", false);
-          playSnd1("ШКАФ С ЕДОЙ", 0.9);
-          await showActionCloseup("cabinet", false, false);
+
           renderCabinetItems();
           syncCabinetBackButtonLabel();
           setEventText("Нажмите на тушёнку или картошку, чтобы взять в вещмешок");
@@ -3549,6 +3827,7 @@
             renderUI(true); return;
           }
           playSnd1("ВХОДНАЯ ДВЕРЬ", 0.9);
+          state.activeBuilding = 1;
           state.logicalRoom = "landing"; state.landingFloor = 3; state.landingDir = "down";
           state.actOffset = 0; state.movOffset = 0;
           preloadNextStepForRoom("landing");
@@ -3622,7 +3901,11 @@
           removeStoryCard("take_granny_cans"); removeStoryCard("give_granny_water");
           if (state.needsFoodForDice) addStoryCard("go_take_stew", true);
           await crossfadeToScene(resolveRoomSceneKey("landing"), false);
-          setEventText(`Вы на лестничной площадке ${state.landingFloor}-го этажа.`);
+          setEventText(
+            state.activeBuilding === 2
+              ? `Вы на лестничной площадке ${state.landingFloor}-го этажа девятиэтажного дома.`
+              : `Вы на лестничной площадке ${state.landingFloor}-го этажа.`
+          );
           renderUI(true);
         }
       },
@@ -3685,16 +3968,122 @@
         sheet: 3, icon: 12, caption: "Найти кирпичи",
         action: async () => {
           removeStoryCard("find_bricks");
-          if (state.logicalRoom !== "landing") {
-            await walkToRoom("entrance");
-            state.logicalRoom = "landing"; state.landingFloor = 3; state.landingDir = "down";
-            await crossfadeToScene("p1_9", true);
+          clearAutoReturn(); hideNpc(); setBackButtonTarget(null);
+          state.isWalking = true;
+          renderUI(false);
+          try {
+            if (state.logicalRoom !== "landing") {
+              resumeLightFromView();
+              await walkApartmentRouteInternal("entrance");
+              state.activeBuilding = 1;
+              state.logicalRoom = "landing"; state.landingFloor = 3; state.landingDir = "down";
+              await crossfadeToScene("p1_9", true);
+            }
+          } finally {
+            document.body.classList.remove("is-walking");
+            state.isWalking = false;
           }
           setEventText("В подъезде замёрзшая соседка просит помочь едой...");
           addStoryCard("take_bricks", true);
           if (totalStewAvailable() > 0) addStoryCard("help_woman", true);
           renderUI(true);
           await playNpcSpeech("woman", "женщина голос");
+        }
+      },
+      street_go_water: {
+        sheet: 1, icon: 2, caption: "На колонку с водой",
+        action: async () => {
+          setBackButtonTarget(null);
+          state.isWalking = true;
+          document.body.classList.add("is-walking");
+          renderUI(false);
+          playSnd2("ШАГИ СНЕГ", 0.9); playSnd2("СИЛЬНАЯ МЕТЕЛЬ", 0.85);
+          setEventText("Вы идёте сквозь слепящую метель и сугробы к уличной колонке...");
+
+          try {
+            for (let u = 2; u <= 16; u++) {
+              const ahead = [];
+              if (u + 1 <= 16) ahead.push(`street_${u + 1}`);
+              if (u + 2 <= 16) ahead.push(`street_${u + 2}`);
+              if (ahead.length) preloadSceneKeysLazy(ahead);
+              if (u === 8) {
+                playSnd2("колонка", 0.9);
+                setEventText("Вы качаете обледеневший рычаг колонки и набираете ледяную воду...");
+              }
+              if (u === 12) {
+                playSnd2("ШАГИ СНЕГ 2", 0.85);
+                setEventText("С полными ёмкостями воды вы спешите обратно к спасительному подъезду...");
+              }
+              await crossfadeToScene(`street_${u}`, false);
+            }
+            const firstTrip = !state.wentOutside;
+            state.wentOutside = true;
+            if (state.hasGrannyCans) state.grannyCansFilled = true;
+            updateBackpackBadge();
+
+            state.activeBuilding = 1;
+            state.logicalRoom = "landing";
+            state.landingFloor = 1;
+            state.landingDir = "up";
+            await crossfadeToScene("p2_1", true);
+            await crossfadeToScene("p2_2", true);
+            document.body.classList.remove("is-walking");
+            resumeLightFromView();
+
+            if (firstTrip) {
+              addStoryCard("collect_carpets", true);
+              setEventText(
+                state.grannyCansFilled
+                  ? "Вы вернулись с улицы на 1-й этаж с водой и полными бидонами бабушки! Занесите воду в кв. 17 или поднимитесь на 3-й этаж домой."
+                  : "Вы набрали воды на улице и вернулись в подъезд (1-й этаж). Поднимитесь на 3-й этаж домой!"
+              );
+            } else {
+              setEventText("Вы вернулись с морозной улицы на 1-й этаж подъезда.");
+            }
+          } finally {
+            document.body.classList.remove("is-walking");
+            state.isWalking = false;
+          }
+          preloadNextStepForRoom("landing");
+          renderUI(true);
+        }
+      },
+      street_go_building2: {
+        sheet: 4, icon: 4, caption: "До 9-этажного дома",
+        action: async () => {
+          setBackButtonTarget(null);
+          state.isWalking = true;
+          document.body.classList.add("is-walking");
+          renderUI(false);
+          playSnd2("ШАГИ СНЕГ", 0.9); playSnd2("СИЛЬНАЯ МЕТЕЛЬ", 0.85);
+          setEventText("Вы пробираетесь через метель по двору к соседней девятиэтажке...");
+
+          try {
+            for (let p = 1; p <= 10; p++) {
+              const ahead = [];
+              if (p + 1 <= 10) ahead.push(`b2_path_${p + 1}`);
+              if (p + 2 <= 10) ahead.push(`b2_path_${p + 2}`);
+              if (ahead.length) preloadSceneKeysLazy(ahead);
+              await crossfadeToScene(`b2_path_${p}`, false);
+            }
+            preloadSceneKeysLazy(["b2_p2_1", "b2_p2_2"]);
+            state.activeBuilding = 2;
+            state.logicalRoom = "landing";
+            state.landingFloor = 1;
+            state.landingDir = "up";
+            state.actOffset = 0; state.movOffset = 0;
+            await crossfadeToScene("b2_p2_1", true);
+            await crossfadeToScene("b2_p2_2", true);
+            document.body.classList.remove("is-walking");
+            resumeLightFromView();
+          } finally {
+            document.body.classList.remove("is-walking");
+            state.isWalking = false;
+          }
+
+          preloadNextStepForRoom("landing");
+          setEventText("Вы зашли в подъезд девятиэтажного дома (1-й этаж).");
+          renderUI(true);
         }
       },
       help_woman: {
@@ -3828,6 +4217,63 @@
       };
     });
 
+
+    /* 12.0. ДВЕРИ 9-ЭТАЖНОГО ДОМА (18 ДВЕРЕЙ: ЗАКРЫТЫ 13-14 И 21-22, ОСТАЛЬНЫЕ 16 ОТКРЫТЫ) */
+    const B2_CLOSED_PAIRS = new Set(["13-14", "21-22"]);
+    const B2_DOOR_TEXTS = {
+      "1-2": "Дверь тамбура кв. 1-2 приоткрылась — жилец в тёплом платке хрипло шепчет: «На первом этаже дует из подвала, мы уже все щели тряпками забили.»",
+      "3-4": "Из-за приоткрытой двери кв. 3-4 выглядывает настороженный сосед со свечой: «В вашем доме тоже света нет? Говорят, вся ветка встала.»",
+      "5-6": "Дверь кв. 5-6 со скрипом отворяется — жилец кутается в пальто: «Воды нет с полуночи, держимся на старых запасах.»",
+      "7-8": "В проёме кв. 7-8 мелькает тусклый огонёк: «Если увидишь ремонтников во дворе — крикни, мы тут совсем замерзаем.»",
+      "9-10": "Сосед из кв. 9-10 приоткрывает дверь: «Лифт встал ещё вечером, хорошо хоть на третьем этаже живём, а не под крышей.»",
+      "11-12": "Дверь кв. 11-12 открывается на пару ладоней — усталый голос: «Тише, дети только уснули под тремя одеялами.»",
+      "13-14": "Вы постучали в дверь кв. 13-14. Из-за обивки доносится только глухое завывание сквозняка — никто не открывает.",
+      "15-16": "Из кв. 15-16 выглядывает сосед с фонарём: «На четвёртом этаже соседнюю дверь заклинило, кажется, там никого нет с осени.»",
+      "17-18": "Дверь кв. 17-18 приоткрывается — жилец щурится в темноту площадки: «Холод пробирает до костей, без свечки и шагу не ступить.»",
+      "19-20": "В проёме кв. 19-20 стоит мрачный жилец: «Слухи ходят, что аварию быстро не починят. Береги еду и спички.»",
+      "21-22": "Вы долго стучите в обледеневшую дверь кв. 21-22, но замок мёртво заперт изнутри и за дверью стоит пугающая тишина.",
+      "23-24": "Дверь кв. 23-24 со скрипом открывается: «На шестом этаже уже иней на перилах. Зачем ты в такую стужу по этажам ходишь?»",
+      "25-26": "Жилец из кв. 25-26 приоткрывает дверь: «С седьмого этажа видно весь двор — ни одного живого окна вокруг, темнота сплошная.»",
+      "27-28": "Из-за двери кв. 27-28 доносится хриплый голос: «Мы печку из консервной банки смастерили, хоть руки погреть можно.»",
+      "29-30": "Дверь кв. 29-30 приоткрылась — сосед в шапке-ушанке кивает вам: «На восьмом ветрище гудит в вентиляции, как в трубе.»",
+      "31-32": "В проёме кв. 31-32 тускло блестят глаза жильца: «Если найдёшь где-то керосин или свечи — держи при себе, на вес золота стали.»",
+      "33-34": "Дверь кв. 33-34 открывается на последнем этаже: «Под самой крышей холоднее всего, потолок буквально ледяной.»",
+      "35-36": "Жилец из кв. 35-36 приоткрывает дверь с тусклым огоньком: «Добрался аж до девятого? Спускайся лучше вниз, пока свеча не прогорела.»"
+    };
+
+    B2_DOOR_PAIRS.forEach((pair, idx) => {
+      const sideLabel = idx % 2 === 0 ? "слева" : "справа";
+      const isClosed = B2_CLOSED_PAIRS.has(pair);
+      CARDS_DB[`b2_knock_${pair}`] = {
+        sheet: 3, icon: 12, caption: `Кв. ${pair} (${sideLabel})`,
+        action: async () => {
+          if (!isClosed) preloadSceneKeysLazy([`b2_door_${pair}_open`]);
+          state.isWalking = true; renderUI(false);
+          try {
+            await crossfadeToScene(`b2_door_${pair}`, false);
+            await playSnd2(knockToggle++ % 2 === 0 ? "СТУК" : "СТУК 2", 0.85);
+            if (!isClosed) {
+              playDoorCreakSound();
+              await crossfadeToScene(`b2_door_${pair}_open`, false);
+              showBuilding2DoorNpc(pair);
+            }
+          } finally {
+            state.isWalking = false;
+          }
+          setEventText(B2_DOOR_TEXTS[pair] || `Вы подошли к двери кв. ${pair}.`);
+          if (!isClosed) {
+            state.activeDoorApt = `b2_${pair}`;
+            removeStoryCard("play_dice_door"); removeStoryCard("take_granny_cans"); removeStoryCard("give_granny_water");
+            addStoryCard("leave_door_view", true);
+            state.actOffset = 0;
+            renderUI(true);
+          } else {
+            setBackButtonTarget(resolveRoomSceneKey("landing"), "Отойти от двери");
+          }
+        }
+      };
+    });
+
     /* 12.1. ПРИОРИТЕТЫ, СТРОГАЯ ПРИВЯЗКА К КОМНАТАМ И КОЛОДЫ */
     const CARD_ALLOWED_ROOMS = {
       // Только на Входе (entrance)
@@ -3900,6 +4346,7 @@
     }
 
     function isNeighborCenterChoiceActive() {
+      if (state.logicalRoom === "street_hub" && !state.isWalking) return true;
       if (state.inPeepholeDialog) return true;
       if (state.logicalRoom === "landing" && state.activeDoorApt) return true;
       return false;
@@ -3907,7 +4354,9 @@
 
     function getCenterNeighborChoiceCards() {
       const ids = [];
-      if (state.inPeepholeDialog) {
+      if (state.logicalRoom === "street_hub") {
+        ids.push("street_go_water", "street_go_building2");
+      } else if (state.inPeepholeDialog) {
         if (state.storyCardIds.includes("go_take_stew")) ids.push("go_take_stew");
         ["play_dice_neighbor", "refuse_trade"].forEach((id) => {
           if (state.storyCardIds.includes(id) && !ids.includes(id)) ids.push(id);
@@ -3921,20 +4370,34 @@
       return ids.map((id) => CARDS_DB[id] ? { id, isPriority: id === "go_take_stew", ...CARDS_DB[id] } : null).filter(Boolean);
     }
 
+    const B2_ALLOWED_STORY_CARDS = new Set(["light_candle", "light_match"]);
+
     function getLeftActionDeck() {
-      if (isNeighborCenterChoiceActive()) return [];
+      if (isNeighborCenterChoiceActive() || state.logicalRoom === "street_hub") return [];
       const ids = [];
       const r = state.logicalRoom;
 
       if (r === "landing") {
-        state.storyCardIds.forEach((id) => {
-          if (LANDING_ALLOWED_STORY_CARDS.has(id) && !ids.includes(id)) ids.push(id);
-        });
-        if (state.landingFloor === 5) ["knock_28", "knock_29", "knock_30"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
-        else if (state.landingFloor === 4) ["knock_25", "knock_26", "knock_27"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
-        else if (state.landingFloor === 3) ["landing_back_home", "knock_23", "knock_24"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
-        else if (state.landingFloor === 2) ["knock_19", "knock_20", "knock_21"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
-        else if (state.landingFloor === 1) ["knock_16", "knock_17", "knock_18"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+        if (state.activeBuilding === 2) {
+          state.storyCardIds.forEach((id) => {
+            if (B2_ALLOWED_STORY_CARDS.has(id) && !ids.includes(id)) ids.push(id);
+          });
+          const f = state.landingFloor;
+          const leftPair = `${(f - 1) * 4 + 1}-${(f - 1) * 4 + 2}`;
+          const rightPair = `${(f - 1) * 4 + 3}-${(f - 1) * 4 + 4}`;
+          [`b2_knock_${leftPair}`, `b2_knock_${rightPair}`].forEach((k) => {
+            if (!ids.includes(k)) ids.push(k);
+          });
+        } else {
+          state.storyCardIds.forEach((id) => {
+            if (LANDING_ALLOWED_STORY_CARDS.has(id) && !ids.includes(id)) ids.push(id);
+          });
+          if (state.landingFloor === 5) ["knock_28", "knock_29", "knock_30"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+          else if (state.landingFloor === 4) ["knock_25", "knock_26", "knock_27"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+          else if (state.landingFloor === 3) ["landing_back_home", "knock_23", "knock_24"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+          else if (state.landingFloor === 2) ["knock_19", "knock_20", "knock_21"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+          else if (state.landingFloor === 1) ["knock_16", "knock_17", "knock_18"].forEach((k) => { if (!ids.includes(k)) ids.push(k); });
+        }
       } else {
         const apartmentExcluded = new Set([
           "play_dice_neighbor", "refuse_trade",
@@ -3967,7 +4430,7 @@
       const priorityId = getPriorityCardId();
       if (priorityId && CARDS_DB[priorityId]) {
         const canPlacePriority = r === "landing"
-          ? LANDING_ALLOWED_STORY_CARDS.has(priorityId)
+          ? (state.activeBuilding === 2 ? B2_ALLOWED_STORY_CARDS.has(priorityId) : LANDING_ALLOWED_STORY_CARDS.has(priorityId))
           : isCardAllowedInApartmentRoom(priorityId, r);
         if (canPlacePriority) {
           const idx = ids.indexOf(priorityId);
@@ -4275,7 +4738,7 @@
       const active = isNeighborCenterChoiceActive();
       const hud = document.getElementById("bottom-hud");
       neighborOverlayEl.classList.toggle("visible", active);
-      hud.classList.toggle("hidden-hud", active || Boolean(state.backBtnTarget));
+      hud.classList.toggle("hidden-hud", active || Boolean(state.backBtnTarget) || state.logicalRoom === "street_hub");
 
       if (!active) {
         if (neighborOverlayEl._deckSig !== "") {
